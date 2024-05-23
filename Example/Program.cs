@@ -9,7 +9,7 @@ Console.WriteLine("Dataset:");
 DataSet.Scatter(v);
 
 Random rnd = new();
-Tensor<float> ta = new(10, 10, 10);
+Tensor<float> ta = new(100, 100, 100);
 for(int d = 0; d < ta.Shape[0]; d++)
 {
     for (int i = 0; i < ta.Shape[1]; i++)
@@ -21,7 +21,8 @@ for(int d = 0; d < ta.Shape[0]; d++)
     }
 }
 
-Tensor<float> tb = new(10, 10, 10);
+Tensor<float> tb = new(100, 100, 100);
+Tensor<float> ty = new(100, 100, 100);
 for (int d = 0; d < tb.Shape[0]; d++)
 {
     for (int i = 0; i < tb.Shape[1]; i++)
@@ -29,12 +30,27 @@ for (int d = 0; d < tb.Shape[0]; d++)
         for (int j = 0; j < tb.Shape[2]; j++)
         {
             tb[d, i, j] = (float)rnd.NextDouble();
+            ty[d, i, j] = ta[d, i, j] + tb[d, i, j];
         }
     }
 }
 
 Tensor<float> tc = ta + tb;
-
+for (int d = 0; d < tc.Shape[0]; d++)
+{
+    for (int i = 0; i < tc.Shape[1]; i++)
+    {
+        for (int j = 0; j < tc.Shape[2]; j++)
+        {
+            if(tc[d, i, j] != ty[d, i, j])
+            {
+                Console.WriteLine($"Error: {tc[d, i, j]} != {ty[d, i, j]} (expected)");
+                return;
+            }
+        }
+    }
+}
+Console.WriteLine($"Addition test passed.");
 return;
 
 MLP<float> cerebrin = new(2, 8, 1);
