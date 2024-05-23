@@ -12,6 +12,8 @@ namespace SharpGrad
         public Dim this[int index] => dims[index];
         public int Count => dims.Length;
 
+        public int Size => dims.Aggregate(1, (a, b) => a * b);
+
         public int GetFlattenedIndex(int indice, params int[] indices)
         {
             if (indices.Length + 1 != Count)

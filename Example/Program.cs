@@ -9,6 +9,7 @@ Console.WriteLine("Dataset:");
 DataSet.Scatter(v);
 
 // ! \\ PoC // ! \\
+
 Random rnd = new();
 Tensor<float> ta = new(256, 256, 256);
 for(int d = 0; d < ta.Shape[0]; d++)
@@ -17,19 +18,52 @@ for(int d = 0; d < ta.Shape[0]; d++)
             ta[d, i, j] = (float)rnd.NextDouble();
 
 Tensor<float> tb = new(256, 256, 256);
-for (int d = 0; d < ta.Shape[0]; d++)
-    for (int i = 0; i < ta.Shape[1]; i++)
-        for (int j = 0; j < ta.Shape[2]; j++)
-            ta[d, i, j] = (float)rnd.NextDouble();
+for (int d = 0; d < tb.Shape[0]; d++)
+    for (int i = 0; i < tb.Shape[1]; i++)
+        for (int j = 0; j < tb.Shape[2]; j++)
+            tb[d, i, j] = (float)rnd.NextDouble();
 
+Tensor<float> tc = new(256, 256, 256);
+
+Tensor<float> ty = new(256, 256, 256);
+
+// Test dynamic operations
+for (int d = 0; d < tb.Shape[0]; d++)
+    for (int i = 0; i < tb.Shape[1]; i++)
+        for (int j = 0; j < tb.Shape[2]; j++)
+        {
+            ty[d, i, j] += ta[d, i, j] + tb[d, i, j];
+            ty[d, i, j] += ta[d, i, j] * tb[d, i, j];
+            ty[d, i, j] += ta[d, i, j] / tb[d, i, j];
+            ty[d, i, j] += ta[d, i, j] - tb[d, i, j];
+        }
+
+tc = Tensor<float>.ExecGpu([Operation.Add, Operation.Mul, Operation.Div, Operation.Sub], ta, tb);
+
+float diff = 0;
+float min = float.MaxValue;
+float max = float.MinValue;
+
+int size = ta.Shape.Size;
+for (int d = 0; d < tc.Shape[0]; d++)
+    for (int i = 0; i < tc.Shape[1]; i++)
+        for (int j = 0; j < tc.Shape[2]; j++)
+        {
+            float diff_ = Math.Abs(tc[d, i, j] - ty[d, i, j]);
+            diff += diff_ / size;
+            if (diff_ < min)
+                min = diff_;
+            if (diff_ > max)
+                max = diff_;
+        }
+Console.WriteLine($"dynamic test passed: error mean={diff}, min={min}, max={max}");
 
 // Test Addition
-Tensor<float> ty = new(256, 256, 256);
 for (int d = 0; d < tb.Shape[0]; d++)
    for (int i = 0; i < tb.Shape[1]; i++)
         for (int j = 0; j < tb.Shape[2]; j++)
              ty[d, i, j] = ta[d, i, j] + tb[d, i, j];
-Tensor<float> tc = ta + tb;
+tc = ta + tb;
 
 for (int d = 0; d < tc.Shape[0]; d++)
     for (int i = 0; i < tc.Shape[1]; i++)
@@ -79,7 +113,6 @@ for (int d = 0; d < tc.Shape[0]; d++)
             if (tc[d, i, j] != ty[d, i, j])
                 Console.WriteLine($" !!!!! Error: [{d},{i},{j}]{tc[d, i, j]} != [{d},{i},{j}]{ty[d, i, j]} (expected)");
 Console.WriteLine("Division test passed.");
-
 
 Console.WriteLine($"//// Finish \\\\\\\\");
 // ! \\ PoC // ! \\
