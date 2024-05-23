@@ -2,12 +2,40 @@
 using SharpGrad;
 using SharpGrad.DifEngine;
 using SharpGrad.NN;
+using SharpGrad.Tensors;
 
 var v = DataSet.GetDataSet(400);
 Console.WriteLine("Dataset:");
 DataSet.Scatter(v);
 
+Random rnd = new();
+Tensor<float> ta = new(10, 10, 10);
+for(int d = 0; d < ta.Shape[0]; d++)
+{
+    for (int i = 0; i < ta.Shape[1]; i++)
+    {
+        for (int j = 0; j < ta.Shape[2]; j++)
+        {
+            ta[d, i, j] = (float)rnd.NextDouble();
+        }
+    }
+}
 
+Tensor<float> tb = new(10, 10, 10);
+for (int d = 0; d < tb.Shape[0]; d++)
+{
+    for (int i = 0; i < tb.Shape[1]; i++)
+    {
+        for (int j = 0; j < tb.Shape[2]; j++)
+        {
+            tb[d, i, j] = (float)rnd.NextDouble();
+        }
+    }
+}
+
+Tensor<float> tc = ta + tb;
+
+return;
 
 MLP<float> cerebrin = new(2, 8, 1);
 

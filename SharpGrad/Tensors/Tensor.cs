@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SharpGrad.Tensors
 {
     public readonly partial struct Tensor<TType>
-        where TType : IFloatingPoint<TType>
+        where TType : unmanaged, IFloatingPoint<TType>
     {
         private readonly TType[] data;
         private readonly TType[]? gradients;
@@ -24,6 +24,17 @@ namespace SharpGrad.Tensors
         public Tensor(Shape shape)
         {
             data = new TType[shape.Aggregate(1, (a, b) => a * b)];
+            gradients = new TType[data.Length];
+            Shape = shape;
+        }
+        public Tensor(params Dim[] shape) : this(new Shape(shape)) { }
+
+        public Tensor(Shape shape, TType[] data)
+        {
+            if (data.Length != shape.Aggregate(1, (a, b) => a * b))
+                throw new ArgumentException($"Expected data length {shape.Aggregate(1, (a, b) => a * b)}, got {data.Length}");
+
+            this.data = data;
             gradients = new TType[data.Length];
             Shape = shape;
         }
