@@ -8,49 +8,81 @@ var v = DataSet.GetDataSet(400);
 Console.WriteLine("Dataset:");
 DataSet.Scatter(v);
 
+// ! \\ PoC // ! \\
 Random rnd = new();
-Tensor<float> ta = new(100, 100, 100);
+Tensor<float> ta = new(256, 256, 256);
 for(int d = 0; d < ta.Shape[0]; d++)
-{
     for (int i = 0; i < ta.Shape[1]; i++)
-    {
         for (int j = 0; j < ta.Shape[2]; j++)
-        {
             ta[d, i, j] = (float)rnd.NextDouble();
-        }
-    }
-}
 
-Tensor<float> tb = new(100, 100, 100);
-Tensor<float> ty = new(100, 100, 100);
+Tensor<float> tb = new(256, 256, 256);
+for (int d = 0; d < ta.Shape[0]; d++)
+    for (int i = 0; i < ta.Shape[1]; i++)
+        for (int j = 0; j < ta.Shape[2]; j++)
+            ta[d, i, j] = (float)rnd.NextDouble();
+
+
+// Test Addition
+Tensor<float> ty = new(256, 256, 256);
 for (int d = 0; d < tb.Shape[0]; d++)
-{
-    for (int i = 0; i < tb.Shape[1]; i++)
-    {
+   for (int i = 0; i < tb.Shape[1]; i++)
         for (int j = 0; j < tb.Shape[2]; j++)
-        {
-            tb[d, i, j] = (float)rnd.NextDouble();
-            ty[d, i, j] = ta[d, i, j] + tb[d, i, j];
-        }
-    }
-}
-
+             ty[d, i, j] = ta[d, i, j] + tb[d, i, j];
 Tensor<float> tc = ta + tb;
+
 for (int d = 0; d < tc.Shape[0]; d++)
-{
     for (int i = 0; i < tc.Shape[1]; i++)
-    {
         for (int j = 0; j < tc.Shape[2]; j++)
-        {
             if(tc[d, i, j] != ty[d, i, j])
-            {
-                Console.WriteLine($"Error: {tc[d, i, j]} != {ty[d, i, j]} (expected)");
-                return;
-            }
-        }
-    }
-}
-Console.WriteLine($"Addition test passed.");
+                Console.WriteLine($" !!!!! Error: [{d},{i},{j}]{tc[d, i, j]} != [{d},{i},{j}]{ty[d, i, j]} (expected)");
+Console.WriteLine("Addition test passed.");
+
+// Test Subtraction
+for (int d = 0; d < tb.Shape[0]; d++)
+    for (int i = 0; i < tb.Shape[1]; i++)
+        for (int j = 0; j < tb.Shape[2]; j++)
+            ty[d, i, j] = ta[d, i, j] - tb[d, i, j];
+tc = ta - tb;
+
+for (int d = 0; d < tc.Shape[0]; d++)
+    for (int i = 0; i < tc.Shape[1]; i++)
+        for (int j = 0; j < tc.Shape[2]; j++)
+            if (tc[d, i, j] != ty[d, i, j])
+                Console.WriteLine($" !!!!! Error: [{d},{i},{j}]{tc[d, i, j]} != [{d},{i},{j}]{ty[d, i, j]} (expected)");
+Console.WriteLine("Subtraction test passed.");
+
+// Test Multiplication
+for (int d = 0; d < tb.Shape[0]; d++)
+    for (int i = 0; i < tb.Shape[1]; i++)
+        for (int j = 0; j < tb.Shape[2]; j++)
+            ty[d, i, j] = ta[d, i, j] * tb[d, i, j];
+tc = ta * tb;
+
+for (int d = 0; d < tc.Shape[0]; d++)
+    for (int i = 0; i < tc.Shape[1]; i++)
+        for (int j = 0; j < tc.Shape[2]; j++)
+            if (tc[d, i, j] != ty[d, i, j])
+                Console.WriteLine($" !!!!! Error: [{d},{i},{j}]{tc[d, i, j]} != [{d},{i},{j}]{ty[d, i, j]} (expected)");
+Console.WriteLine("Multiplication test passed.");
+
+// Test Division
+for (int d = 0; d < tb.Shape[0]; d++)
+    for (int i = 0; i < tb.Shape[1]; i++)
+        for (int j = 0; j < tb.Shape[2]; j++)
+            ty[d, i, j] = ta[d, i, j] / tb[d, i, j];
+tc = ta / tb;
+
+for (int d = 0; d < tc.Shape[0]; d++)
+    for (int i = 0; i < tc.Shape[1]; i++)
+        for (int j = 0; j < tc.Shape[2]; j++)
+            if (tc[d, i, j] != ty[d, i, j])
+                Console.WriteLine($" !!!!! Error: [{d},{i},{j}]{tc[d, i, j]} != [{d},{i},{j}]{ty[d, i, j]} (expected)");
+Console.WriteLine("Division test passed.");
+
+
+Console.WriteLine($"//// Finish \\\\\\\\");
+// ! \\ PoC // ! \\
 return;
 
 MLP<float> cerebrin = new(2, 8, 1);
