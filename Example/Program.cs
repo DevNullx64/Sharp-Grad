@@ -64,7 +64,7 @@ internal class Program
             ty[k, i, j] += ta[k, i, j] / tb[k, i, j];
             return ty[k, i, j];
         });
-        tc = Tensor<float>.ExecGpu([Operation.Sub, Operation.Add, Operation.Mul, Operation.Div], ta, tb);
+        tc = Tensor<float>.ExecGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb);
 
         (float mean, float min, float max) = Test(tc, ty);
         Console.WriteLine($"dynamic test passed with mean error: {mean}, min error: {min}, max error: {max}");

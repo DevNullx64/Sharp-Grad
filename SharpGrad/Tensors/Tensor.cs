@@ -45,7 +45,7 @@ namespace SharpGrad.Tensors
     {
         TType this[params int[] indices] { get; set; }
     }
-    public readonly partial struct Tensor<TType>: ITensor<TType>
+    public partial class Tensor<TType>: ITensor<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
         private readonly TType[] data;
@@ -55,7 +55,7 @@ namespace SharpGrad.Tensors
 
         public bool IsOnGpu => false;
 
-        public readonly TType this[params int[] indices]
+        public TType this[params int[] indices]
         {
             get => data[shape.GetFlattenedIndex(indices)];
             set => data[shape.GetFlattenedIndex(indices)] = value;
@@ -75,7 +75,7 @@ namespace SharpGrad.Tensors
         public Tensor(Shape shape) : this(shape, new TType[shape.Aggregate(1, (a, b) => a * b)]) { }
         public Tensor(params Dim[] shape) : this(new Shape(shape)) { }
 
-        public readonly void AddGradient(Tensor<TType> gradient)
+        public void AddGradient(Tensor<TType> gradient)
         {
             if(gradient.shape != shape)
                 throw new ArgumentException($"Expected gradient shape {shape}, got {gradient.shape}");
