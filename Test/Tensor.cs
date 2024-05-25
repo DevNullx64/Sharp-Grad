@@ -11,19 +11,19 @@ namespace Test
 
         public static void Fill(Tensor<float> result, Func<int, int, int, float> fnc)
         {
-            for (int d = 0; d < result.Shape[0]; d++)
-                for (int i = 0; i < result.Shape[1]; i++)
-                    for (int j = 0; j < result.Shape[2]; j++)
-                        result[d, i, j] = fnc(d, i, j);
+            for (int i = 0; i < result.Shape[0]; i++)
+                for (int j = 0; j < result.Shape[1]; j++)
+                    for (int k = 0; k < result.Shape[2]; k++)
+                        result[i, j, k] = fnc(i, j, k);
         }
 
         public static Tensor<float> NewRandom(params Dim[] dims)
         {
             Tensor<float> result = new(dims);
-            for (int d = 0; d < dims[0]; d++)
-                for (int i = 0; i < dims[1]; i++)
-                    for (int j = 0; j < dims[2]; j++)
-                        result[d, i, j] = (float)rnd.NextDouble() * 100;
+            for (int i = 0; i < dims[0]; i++)
+                for (int j = 0; j < dims[1]; j++)
+                    for (int k = 0; k < dims[2]; k++)
+                        result[i, j, k] = (float)rnd.NextDouble() * 100;
             return result;
         }
 
@@ -79,18 +79,18 @@ namespace Test
             Tensor<float> ty = new(256, 256, 256);
 
             // Test dynamic operations
-            Fill(ty, (k, i, j) =>
+            Fill(ty, (i, j, k) =>
             {
-                ty[k, i, j] += ta[k, i, j] - tb[k, i, j];
-                ty[k, i, j] += ta[k, i, j] + tb[k, i, j];
-                ty[k, i, j] += ta[k, i, j] * tb[k, i, j];
-                ty[k, i, j] += ta[k, i, j] / tb[k, i, j];
-                return ty[k, i, j];
+                ty[i, j, k] += ta[i, j, k] - tb[i, j, k];
+                ty[i, j, k] += ta[i, j, k] + tb[i, j, k];
+                ty[i, j, k] += ta[i, j, k] * tb[i, j, k];
+                ty[i, j, k] += ta[i, j, k] / tb[i, j, k];
+                return ty[i, j, k];
             });
             tc = Tensor<float>.ExecGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb);
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5);
+            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5, $"mean={mean}/1e-6, min={min}/0, max={max}/0.5");
             Debug.WriteLine($"dynamic test passed with mean error: {mean}, min error: {min}, max error: {max}");
         }
 
@@ -109,7 +109,7 @@ namespace Test
             tc = ta + tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, max={max}");
         }
 
@@ -128,7 +128,7 @@ namespace Test
             tc = ta - tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Subtraction test passed with error mean={mean}, min={min}, max={max}");
         }
 
@@ -147,7 +147,7 @@ namespace Test
             tc = ta * tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Multiplication test passed with error mean={mean}, min={min}, max={max}");
         }
 
@@ -166,7 +166,7 @@ namespace Test
             tc = ta / tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5);
+            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5, $"mean={mean}/1e-6, min={min}/0, max={max}/0.5");
             Debug.WriteLine($"Division test passed with error mean={mean}, min={min}, max={max}");
         }
     }
