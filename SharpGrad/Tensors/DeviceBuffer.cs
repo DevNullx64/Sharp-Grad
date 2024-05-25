@@ -83,7 +83,10 @@ namespace SharpGrad.Tensors
         [Obsolete($"Use {nameof(Length)} instead")]
         public readonly int Count => (int)Length;
 
-        public TType this[int index] => CPUData[index];
+        public TType this[int index] {
+            get => CPUData[index];
+            set => CPUData[index] = value;
+        }
 
         public DeviceBuffer(TType[] data)
             : this(data.Length) { cpuData = data; }

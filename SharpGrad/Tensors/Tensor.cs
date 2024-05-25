@@ -10,16 +10,6 @@ using System.Threading.Tasks;
 
 namespace SharpGrad.Tensors
 {
-
-    public interface ITensor {
-        bool IsOnGpu { get; }
-        Shape Shape { get; }
-    }
-
-    public interface ITensor<TType>: ITensor
-    {
-        TType this[params int[] indices] { get; set; }
-    }
     public partial class Tensor<TType>: ITensor<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
