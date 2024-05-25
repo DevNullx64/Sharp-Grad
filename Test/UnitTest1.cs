@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Test
 {
     [TestClass]
-    public class UnitTest1
+    public class Operators
     {
         static readonly Random rnd = new();
 
@@ -48,15 +48,8 @@ namespace Test
         }
 
         [TestMethod]
-        public void TestDynamic()
+        public void TestKPU()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
-
-            Tensor<float> ta = NewRandom(256, 256, 256);
-            Tensor<float> tb = NewRandom(256, 256, 256);
-            Tensor<float> tc = new(256, 256, 256);
-            Tensor<float> ty = new(256, 256, 256);
-
             // Test KPU
             //OperationKPU[] ops =
             //    [
@@ -74,6 +67,17 @@ namespace Test
             //});
             //tc = Tensor<float>.ExecGpu(ops, ta, tb, tc);
 
+        }
+        [TestMethod]
+        public void TestDynamic()
+        {
+            Tensors.Accelerator.PrintInformation(Console.Out);
+
+            Tensor<float> ta = NewRandom(256, 256, 256);
+            Tensor<float> tb = NewRandom(256, 256, 256);
+            Tensor<float> tc = new(256, 256, 256);
+            Tensor<float> ty = new(256, 256, 256);
+
             // Test dynamic operations
             Fill(ty, (k, i, j) =>
             {
@@ -86,12 +90,15 @@ namespace Test
             tc = Tensor<float>.ExecGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb);
 
             (float mean, float min, float max) = Test(tc, ty);
+            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5);
             Debug.WriteLine($"dynamic test passed with mean error: {mean}, min error: {min}, max error: {max}");
         }
 
         [TestMethod]
         public void TestAddition()
         {
+            Tensors.Accelerator.PrintInformation(Console.Out);
+
             Tensor<float> ta = NewRandom(256, 256, 256);
             Tensor<float> tb = NewRandom(256, 256, 256);
             Tensor<float> tc = new(256, 256, 256);
@@ -102,13 +109,15 @@ namespace Test
             tc = ta + tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            //Assert.IsTrue(mean < 1e-6);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
             Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, max={max}");
         }
 
         [TestMethod]
         public void TestSubtraction()
         {
+            Tensors.Accelerator.PrintInformation(Console.Out);
+
             Tensor<float> ta = NewRandom(256, 256, 256);
             Tensor<float> tb = NewRandom(256, 256, 256);
             Tensor<float> tc = new(256, 256, 256);
@@ -119,13 +128,15 @@ namespace Test
             tc = ta - tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            //Assert.IsTrue(mean < 1e-6);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
             Debug.WriteLine($"Subtraction test passed with error mean={mean}, min={min}, max={max}");
         }
 
         [TestMethod]
         public void TestMultiplication()
         {
+            Tensors.Accelerator.PrintInformation(Console.Out);
+
             Tensor<float> ta = NewRandom(256, 256, 256);
             Tensor<float> tb = NewRandom(256, 256, 256);
             Tensor<float> tc = new(256, 256, 256);
@@ -136,13 +147,15 @@ namespace Test
             tc = ta * tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            //Assert.IsTrue(mean < 1e-6);
+            Assert.IsTrue(mean == 0 && min == 0 && max == 0);
             Debug.WriteLine($"Multiplication test passed with error mean={mean}, min={min}, max={max}");
         }
 
         [TestMethod]
         public void TestDivision()
         {
+            Tensors.Accelerator.PrintInformation(Console.Out);
+
             Tensor<float> ta = NewRandom(256, 256, 256);
             Tensor<float> tb = NewRandom(256, 256, 256);
             Tensor<float> tc = new(256, 256, 256);
@@ -153,7 +166,7 @@ namespace Test
             tc = ta / tb;
 
             (float mean, float min, float max) = Test(tc, ty);
-            //Assert.IsTrue(mean < 1e-6);
+            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5);
             Debug.WriteLine($"Division test passed with error mean={mean}, min={min}, max={max}");
         }
     }

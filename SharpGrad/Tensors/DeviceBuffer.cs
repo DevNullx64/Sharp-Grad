@@ -8,6 +8,13 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
+    public interface IDeviceBuffer<TType> : IReadOnlyList<TType>
+        where TType : unmanaged, IFloatingPoint<TType>
+    {
+        TType[] CPUData { get; set; }
+        MemoryBuffer1D<TType, Stride1D.Dense> DeviceData { get; set; }
+    }
+
     /// <summary>
     /// A structure that manages data on the RAM and a device (GPU). It free the RAM data when the data is available on the device. And vice versa.
     /// </summary>

@@ -13,10 +13,8 @@ using System.Threading.Tasks;
 
 namespace SharpGrad.Tensors
 {
-    internal static class Tensors
+    public static class Tensors
     {
-        public static Dictionary<ITensor, long> Instances = [];
-
         private static Context GetContext()
         {
             Context result = Context.Create(builder => builder.AllAccelerators());
@@ -70,7 +68,6 @@ namespace SharpGrad.Tensors
             this.data = data;
             gradients = new TType[data.Length];
             this.shape = shape;
-            Tensors.Instances.Add(this, DateTime.Now.Ticks);
         }
         public Tensor(Shape shape) : this(shape, new TType[shape.Aggregate(1, (a, b) => a * b)]) { }
         public Tensor(params Dim[] shape) : this(new Shape(shape)) { }

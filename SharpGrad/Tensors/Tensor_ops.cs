@@ -15,19 +15,6 @@ namespace SharpGrad.Tensors
         where TType : unmanaged, IFloatingPoint<TType>
     {
         public static void ExecGpu(
-            Operation[] operations, List<Tensor<TType>> tensors)
-        {
-            MemoryBuffer1D<Operation, Stride1D.Dense> opsOnDevice = Tensors.Accelerator.Allocate1D(operations);
-            MemoryBuffer2D<TType, Stride2D.DenseX> tensorsOnDevoce = Tensors.Accelerator.Allocate2DDenseX<TType>(new LongIndex2D(tensors.Count, tensors[0].Shape.Size));
-            tensors.Select(t => Tensors.Accelerator.Allocate1D(t.data)).ToList();
-
-            Action<Index1D, ArrayView<Operation>, ArrayView2D<TType, Stride2D.DenseX>> loadedKernel =
-                Tensors.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<Operation>, ArrayView2D<TType, Stride2D.DenseX>>(KernelProcessUnit<TType>.KPU);
-            loadedKernel(tensors[0].data.Length, opsOnDevice.View, tensorsOnDevoce);
-            Tensors.Accelerator.Synchronize();
-
-        }
-        public static void ExecGpu(
             OpCode[] operations,
             Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
         {
