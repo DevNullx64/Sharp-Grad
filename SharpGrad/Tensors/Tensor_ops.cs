@@ -28,8 +28,6 @@ namespace SharpGrad.Tensors
                 Tensors.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>>(KernelProcessUnit<TType>.Dynamic);
             loadedKernel(left.data_.DeviceData.IntExtent, opsOnDevice.View, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
             Tensors.Accelerator.Synchronize();
-
-            resultOnDevice.CopyToCPU(result.data_);
         }
         public static Tensor<TType> ExecGpu(OpCode[] operations,
             Tensor<TType> left, Tensor<TType> right)
@@ -53,8 +51,6 @@ namespace SharpGrad.Tensors
             Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> loadedKernel = Tensors.Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.data_.DeviceData.IntExtent, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
             Tensors.Accelerator.Synchronize();
-
-            var r = result.data_.CPUData;
         }
 
         public static Tensor<TType> ExecGpu(Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
