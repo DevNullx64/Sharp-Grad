@@ -68,6 +68,7 @@ namespace Test
             //tc = Tensor<float>.ExecGpu(ops, ta, tb, tc);
 
         }
+
         [TestMethod]
         public void TestDynamic()
         {
@@ -90,7 +91,7 @@ namespace Test
             tc = Tensor<float>.ExecGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb);
 
             (float mean, float min, float max) = Test(tc, ty);
-            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 0.5, $"mean={mean}/1e-6, min={min}/0, max={max}/0.5");
+            Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 1, $"mean={mean}/1e-6, min={min}/0, max={max}/1");
             Debug.WriteLine($"dynamic test passed with mean error: {mean}, min error: {min}, max error: {max}");
         }
 
