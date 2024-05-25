@@ -19,7 +19,7 @@ namespace SharpGrad.Tensors
     /// A structure that manages data on the RAM and a device (GPU). It free the RAM data when the data is available on the device. And vice versa.
     /// </summary>
     /// <typeparam name="TType">The type of the data</typeparam>
-    public struct DeviceBuffer<TType>(long length) : IDeviceBuffer<TType>
+    public class DeviceBuffer<TType>(long length) : IDeviceBuffer<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
         public readonly long Length = length;
@@ -63,7 +63,6 @@ namespace SharpGrad.Tensors
                     {
                         deviceData = Tensors.Accelerator.Allocate1D<TType>(Length);
                         deviceData.CopyFromCPU(cpuData);
-                        deviceData = Tensors.Accelerator.Allocate1D(cpuData);
                         cpuData = null;
                     }
                     else
@@ -81,12 +80,9 @@ namespace SharpGrad.Tensors
         }
 
         [Obsolete($"Use {nameof(Length)} instead")]
-        public readonly int Count => (int)Length;
+        public  int Count => (int)Length;
 
-        public TType this[int index] {
-            get => CPUData[index];
-            set => CPUData[index] = value;
-        }
+        TType IReadOnlyList<TType>.this[int index] { get => CPUData[index]; }
 
         public DeviceBuffer(TType[] data)
             : this(data.Length) { cpuData = data; }
@@ -94,11 +90,10 @@ namespace SharpGrad.Tensors
         public DeviceBuffer(MemoryBuffer1D<TType, Stride1D.Dense> data)
             : this(data.Length) { deviceData = data; }
 
+        public IEnumerator<TType> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
         public static implicit operator TType[](DeviceBuffer<TType> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<TType, Stride1D.Dense>(DeviceBuffer<TType> gpu) => gpu.DeviceData;
-
-        public IEnumerator<TType> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

@@ -16,7 +16,7 @@ namespace SharpGrad
 
 
         public bool Equals(Dim other) => Size == other.Size;
-        public override bool Equals(object obj) => obj is Dim dim && Equals(dim);
+        public override bool Equals(object? obj) => obj is Dim dim && Equals(dim);
         public static bool operator ==(Dim left, Dim right) => left.Equals(right);
         public static bool operator !=(Dim left, Dim right) => !left.Equals(right);
 

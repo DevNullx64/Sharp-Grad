@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Tensors
 {
@@ -19,16 +20,16 @@ namespace SharpGrad.Tensors
             Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
         {
             MemoryBuffer1D<OpCode, Stride1D.Dense> opsOnDevice = Tensors.Accelerator.Allocate1D(operations);
-            MemoryBuffer1D<TType, Stride1D.Dense> leftOnDevice = Tensors.Accelerator.Allocate1D(left.data);
-            MemoryBuffer1D<TType, Stride1D.Dense> rightOnDevice = Tensors.Accelerator.Allocate1D(right.data);
-            MemoryBuffer1D<TType, Stride1D.Dense> resultOnDevice = Tensors.Accelerator.Allocate1D(result.data);
+            MemoryBuffer1D<TType, Stride1D.Dense> leftOnDevice = left.data_.DeviceData;
+            MemoryBuffer1D<TType, Stride1D.Dense> rightOnDevice = right.data_.DeviceData;
+            MemoryBuffer1D<TType, Stride1D.Dense> resultOnDevice = result.data_.DeviceData;
 
             Action<Index1D, ArrayView<OpCode>, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> loadedKernel =
                 Tensors.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>>(KernelProcessUnit<TType>.Dynamic);
-            loadedKernel(left.data.Length, opsOnDevice.View, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
+            loadedKernel(left.data_.DeviceData.IntExtent, opsOnDevice.View, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
             Tensors.Accelerator.Synchronize();
 
-            resultOnDevice.CopyToCPU(result.data);
+            resultOnDevice.CopyToCPU(result.data_);
         }
         public static Tensor<TType> ExecGpu(OpCode[] operations,
             Tensor<TType> left, Tensor<TType> right)
@@ -45,15 +46,15 @@ namespace SharpGrad.Tensors
             Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
             Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
         {
-            MemoryBuffer1D<TType, Stride1D.Dense> leftOnDevice = Tensors.Accelerator.Allocate1D(left.data);
-            MemoryBuffer1D<TType, Stride1D.Dense> rightOnDevice = Tensors.Accelerator.Allocate1D(right.data);
-            MemoryBuffer1D<TType, Stride1D.Dense> resultOnDevice = Tensors.Accelerator.Allocate1D(result.data);
+            MemoryBuffer1D<TType, Stride1D.Dense> leftOnDevice = left.data_.DeviceData;
+            MemoryBuffer1D<TType, Stride1D.Dense> rightOnDevice = right.data_.DeviceData;
+            MemoryBuffer1D<TType, Stride1D.Dense> resultOnDevice = result.data_.DeviceData;
 
             Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> loadedKernel = Tensors.Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.data.Length, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
+            loadedKernel(left.data_.DeviceData.IntExtent, leftOnDevice.View, rightOnDevice.View, resultOnDevice.View);
             Tensors.Accelerator.Synchronize();
 
-            resultOnDevice.CopyToCPU(result.data);
+            var r = result.data_.CPUData;
         }
 
         public static Tensor<TType> ExecGpu(Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,

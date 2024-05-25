@@ -13,7 +13,7 @@ namespace SharpGrad.Tensors
     public partial class Tensor<TType>: ITensor<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
-        private readonly TType[] data;
+        private readonly DeviceBuffer<TType> data_;
         private readonly TType[]? gradients;
         private readonly Shape shape;
         public Shape Shape => shape;
@@ -22,8 +22,8 @@ namespace SharpGrad.Tensors
 
         public TType this[params int[] indices]
         {
-            get => data[shape.GetFlattenedIndex(indices)];
-            set => data[shape.GetFlattenedIndex(indices)] = value;
+            get => data_.CPUData[shape.GetFlattenedIndex(indices)];
+            set => data_.CPUData[shape.GetFlattenedIndex(indices)] = value;
         }
 
 
@@ -32,7 +32,8 @@ namespace SharpGrad.Tensors
             if (data.Length != shape.Aggregate(1, (a, b) => a * b))
                 throw new ArgumentException($"Expected data length {shape.Aggregate(1, (a, b) => a * b)}, got {data.Length}");
 
-            this.data = data;
+            var deviceBuffer = new DeviceBuffer<TType>(data.Length);
+            data_ = deviceBuffer;
             gradients = new TType[data.Length];
             this.shape = shape;
         }
@@ -47,7 +48,7 @@ namespace SharpGrad.Tensors
             if (gradients != null)
             {
                 for (int i = 0; i < gradients.Length; i++)
-                    gradients[i] += gradient.data[i];
+                    gradients[i] += gradient.data_.CPUData[i];
             }
         }
     }
