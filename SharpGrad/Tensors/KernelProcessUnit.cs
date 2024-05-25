@@ -14,12 +14,11 @@ namespace SharpGrad.Tensors
         /// <param name="left">Left operand</param>
         /// <param name="right">Right operand</param>
         /// <param name="result">Result of the operation</param>
-        /// <remarks>Operations are performed in-place</remarks>
         private static void KPU(OpCode operation, ref TType left, ref TType right, ref TType result)
         {
             switch (operation)
             {
-                case OpCode.Store: result = left; break;
+                case OpCode.Load: result = left; break;
                 case OpCode.Add: result += AddOp<TType>.Apply(left, right); break;
                 case OpCode.Sub: result += SubOp<TType>.Apply(left, right); break;
                 case OpCode.Mul: result += MulOp<TType>.Apply(left, right); break;
@@ -36,7 +35,6 @@ namespace SharpGrad.Tensors
         /// <param name="left">Left operands</param>
         /// <param name="right">Right operands</param>
         /// <param name="output">Results of the operations</param>
-        /// <remarks>Operations are performed in-place</remarks>
         public static void Dynamic(Index1D idx, ArrayView<OpCode> ops, ArrayView<TType> left, ArrayView<TType> right, ArrayView<TType> output)
         {
             for (int i = 0; i < ops.Length; i++)
@@ -49,13 +47,12 @@ namespace SharpGrad.Tensors
         /// <param name="idx">GPU Index</param>
         /// <param name="ops">Operations to perform</param>
         /// <param name="tensors">Tensors to operate on</param>
-        /// <remarks>Operations are performed in-place</remarks>
-        public static void KPU(Index1D idx, ArrayView<Operation> ops, ArrayView2D<TType, Stride2D.DenseX> tensors)
+        public static void KPU(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<TType, Stride2D.DenseX> tensors)
         {
             TType accumulator = TType.Zero;
             for (int i = 0; i < ops.Length; i++)
             {
-                Operation op = ops[i];
+                OperationKPU op = ops[i];
                 TType left = op.Left == -1 ? accumulator : tensors[op.Left, idx];
                 TType right = op.Right == -1 ? accumulator : tensors[op.Right, idx];
                 TType result = op.Result == -1 ? accumulator : tensors[op.Result, idx];
