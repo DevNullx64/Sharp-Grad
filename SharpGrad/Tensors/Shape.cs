@@ -7,6 +7,8 @@ namespace SharpGrad
 {
     public readonly struct Shape(params Dim[] dims) : IReadOnlyList<Dim>, IEquatable<Shape>
     { 
+        public static readonly Shape Empty = new();
+
         private readonly Dim[] dims = dims;
 
         public Dim this[int index] => dims[index];
