@@ -185,6 +185,7 @@ namespace SharpGrad.Tensors
         // Implementing and hide the IReadOnlyList<TType> interface.
         int IReadOnlyCollection<T>.Count => (int)Length;
 
+        public bool IsEmpty => cpuData is null && shared is null && deviceData is null;
 
         // Implementing and hide the IReadOnlyList<TType> interface.
         public T this[int index]

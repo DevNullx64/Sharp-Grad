@@ -17,6 +17,16 @@ namespace SharpGrad.Tensors
 
         public abstract T this[params int[] indices] { get; set; }
 
+
+        public static void ExecGpu(
+            Action<Index1D, ArrayView<T>, ArrayView<T>> func,
+            MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> result)
+        {
+            Action<Index1D, ArrayView<T>, ArrayView<T>> loadedKernel = Tensors.Accelerator.LoadAutoGroupedStreamKernel(func);
+            loadedKernel(left.IntExtent, left.View, result.View);
+            Tensors.Accelerator.Synchronize();
+        }
+
         public static void ExecGpu(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
@@ -67,7 +77,7 @@ namespace SharpGrad.Tensors
             Tensor<T> left, Tensor<T> right, Tensor<T> result)
             => DynGpu(operations, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
 
-        public static TensorBase<T> operator +(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(AddOp<T>.Apply, left, right);
+        public static TensorBase<T> operator +(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(AddOp<T>.ApplyGpu, left, right);
         public static TensorBase<T> operator -(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(SubOp<T>.Apply, left, right);
         public static TensorBase<T> operator *(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(MulOp<T>.Apply, left, right);
         public static TensorBase<T> operator /(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(DivOp<T>.Apply, left, right);

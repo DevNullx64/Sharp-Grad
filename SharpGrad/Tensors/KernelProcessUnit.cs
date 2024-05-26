@@ -19,10 +19,10 @@ namespace SharpGrad.Tensors
             switch (operation)
             {
                 case OpCode.Load: result = left; break;
-                case OpCode.Add: result += AddOp<TType>.Apply(left, right); break;
-                case OpCode.Sub: result += SubOp<TType>.Apply(left, right); break;
-                case OpCode.Mul: result += MulOp<TType>.Apply(left, right); break;
-                case OpCode.Div: result += DivOp<TType>.Apply(left, right); break;
+                case OpCode.Add: result += AddOp<TType>.ApplyCpu(left, right); break;
+                case OpCode.Sub: result += SubOp<TType>.ApplyCpu(left, right); break;
+                case OpCode.Mul: result += MulOp<TType>.ApplyCpu(left, right); break;
+                case OpCode.Div: result += DivOp<TType>.ApplyCpu(left, right); break;
                 default: result = TType.Zero; break;
             }
         }
