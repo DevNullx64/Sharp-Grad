@@ -20,9 +20,8 @@ namespace SharpGrad.Tensors
         private readonly DeviceBuffer<TType> data = new(shape.Size);
         protected override DeviceBuffer<TType> Data { get => data; }
         private readonly DeviceBuffer<TType> gradients = new(shape.Size);
-        public Shape Shape => shape;
 
-        public TType this[params int[] indices]
+        public override TType this[params int[] indices]
         {
             get => Data.CPUData[shape.GetFlattenedIndex(indices)];
             set => Data.CPUData[shape.GetFlattenedIndex(indices)] = value;

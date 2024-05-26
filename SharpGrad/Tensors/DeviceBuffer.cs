@@ -1,10 +1,14 @@
 ﻿using ILGPU;
+using ILGPU.IR;
 using ILGPU.Runtime;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace SharpGrad.Tensors
 {
@@ -15,7 +19,25 @@ namespace SharpGrad.Tensors
     public interface IDeviceBuffer<TType> : IReadOnlyList<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
+        /// <summary>
+        /// Return the C# managed data.
+        /// </summary>
+        /// <remarks>If data is not available on the RAM, it will be copied from the device. Than, the shared memory and the device data will be disposed.</remarks>
         TType[] CPUData { get; set; }
+        /// <summary>
+        /// Return the shared memory data.
+        /// </summary>
+        /// <remarks>If data is not available on the shared memory, it will be copied from the CPU or the device. Then, the RAM and the device data will be disposed.</remarks>
+        ArrayView<TType> SharedData { get; }
+        /// <summary>
+        /// Return the device data view from <see cref="DeviceData"/> or <see cref="SharedData"/>.
+        /// </summary>
+        /// <remarks>No movement of data will be done. If no data is available, SharedData will be initialized to 0 and returned.</remarks>
+        ArrayView<TType> View { get; }
+        /// <summary>
+        /// Return the device data.
+        /// </summary>
+        /// <remarks>If data is not available on the device, it will be copied from <see cref="CPUData"/> or <see cref="SharedData"/>. Then, the RAM and the shared memory data will be disposed.</remarks>
         MemoryBuffer1D<TType, Stride1D.Dense> DeviceData { get; set; }
     }
 
@@ -28,6 +50,8 @@ namespace SharpGrad.Tensors
     public class DeviceBuffer<TType>(long length) : IDeviceBuffer<TType>
         where TType : unmanaged, IFloatingPoint<TType>
     {
+        public long LastAccess { get; set; } = DateTime.UtcNow.Ticks;
+
         /// <summary>
         /// The length of the data.
         /// </summary>
@@ -48,9 +72,16 @@ namespace SharpGrad.Tensors
                 if (cpuData is null)
                 {
                     cpuData = new TType[Length];
-                    if (deviceData is not null)
+                    if(shared is not null)
+                    {
+                        shared.Value.CopyToCPU(cpuData);
+                        shared = null;
+                        deviceData?.Dispose();
+                        deviceData = null;
+                    } else if (deviceData is not null)
                     {
                         deviceData.CopyToCPU(cpuData);
+                        shared = null;
                         deviceData.Dispose();
                         deviceData = null;
                     }
@@ -59,13 +90,58 @@ namespace SharpGrad.Tensors
             }
             set
             {
-                if(value.Length != Length)
+                if (value.Length != Length)
                     throw new ArgumentException($"Expected length {Length}, got {value.Length}");
                 cpuData = value;
+                shared = null;
                 deviceData?.Dispose();
                 deviceData = null;
             }
         }
+
+        private ArrayView<TType>? shared;
+        public ArrayView<TType> SharedData
+        {
+            get
+            {
+                if (shared is null)
+                {
+                    shared = SharedMemory.Allocate1D<TType>((int)Length);
+                    if (cpuData is not null)
+                    {
+                        shared.Value.CopyFromCPU(cpuData);
+                        cpuData = null;
+                        deviceData?.Dispose();
+                        deviceData = null;
+                    }
+                    else if (deviceData is not null)
+                    {
+                        shared.Value.CopyFrom(deviceData.AsArrayView<TType>(0, Length));
+                        cpuData = null;
+                        deviceData.Dispose();
+                        deviceData = null;
+                    }
+                    else
+                    {
+                        shared.Value.MemSetToZero();
+                    }
+                }
+                return shared.Value;
+            }
+            set
+            {
+                if(!value.IsValid)
+                    throw new ArgumentException($"Invalid view");
+                if(value.Length != Length)
+                    throw new ArgumentException($"Expected length {Length}, got {value.Length}");
+
+                cpuData = null;
+                shared = value;
+                deviceData = null;
+            }
+        }
+        
+        public ArrayView<TType> View => deviceData is not null ? (ArrayView<TType>)DeviceData.View : SharedData;
 
         // The data on the device.
         private MemoryBuffer1D<TType, Stride1D.Dense>? deviceData = null;
@@ -82,9 +158,15 @@ namespace SharpGrad.Tensors
                     deviceData = Tensors.Accelerator.Allocate1D<TType>(Length);
                     if (cpuData is not null)
                     {
-                        deviceData = Tensors.Accelerator.Allocate1D<TType>(Length);
-                        deviceData.CopyFromCPU(cpuData);
+                        deviceData = Tensors.Accelerator.Allocate1D(CPUData);
                         cpuData = null;
+                        shared = null;
+                    }
+                    else if (shared is not null)
+                    {
+                        shared.Value.CopyTo(deviceData.AsArrayView<TType>(0, Length));
+                        cpuData = null;
+                        shared = null;
                     }
                     else
                         deviceData.MemSetToZero();
@@ -93,7 +175,7 @@ namespace SharpGrad.Tensors
             }
             set
             {
-                if(value.Length != Length)
+                if (value.Length != Length)
                     throw new ArgumentException($"Expected length {Length}, got {value.Length}");
                 deviceData = value;
                 cpuData = null;
@@ -102,6 +184,8 @@ namespace SharpGrad.Tensors
 
         // Implementing and hide the IReadOnlyList<TType> interface.
         int IReadOnlyCollection<TType>.Count => (int)Length;
+
+
         // Implementing and hide the IReadOnlyList<TType> interface.
         public TType this[int index]
         {
@@ -125,7 +209,9 @@ namespace SharpGrad.Tensors
         public DeviceBuffer(MemoryBuffer1D<TType, Stride1D.Dense> data)
             : this(data.Length) { deviceData = data; }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IEnumerator<TType> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public static implicit operator TType[](DeviceBuffer<TType> gpu) => gpu.CPUData;

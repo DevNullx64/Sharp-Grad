@@ -5,11 +5,15 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public abstract class TensorBase<TType>(Shape shape) where TType : unmanaged, IFloatingPoint<TType>
+    public abstract class TensorBase<TType>(Shape shape) : ITensor<TensorBase<TType>, TType>
+        where TType : unmanaged, IFloatingPoint<TType>
     {
         protected abstract DeviceBuffer<TType> Data { get; }
 
         protected readonly Shape shape = shape;
+        public Shape Shape => shape;
+
+        public abstract TType this[params int[] indices] { get; set; }
 
         public static void ExecGpu(
             Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
@@ -20,9 +24,15 @@ namespace SharpGrad.Tensors
             Tensors.Accelerator.Synchronize();
         }
 
+
+        public static void ExecGpu(
+            Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
+            TensorBase<TType> left, TensorBase<TType> right, TensorBase<TType> result)
+            => ExecGpu(func, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
+
         public static Tensor<TType> ExecGpu(
             Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
-            Tensor<TType> left, Tensor<TType> right)
+            TensorBase<TType> left, TensorBase<TType> right)
         {
             if (left.shape != right.shape)
                 throw new ArgumentException($"Expected shapes {left.shape}, got {right.shape}");
@@ -30,11 +40,6 @@ namespace SharpGrad.Tensors
             ExecGpu(func, left, right, result);
             return result;
         }
-
-        public static void ExecGpu(
-            Action<Index1D, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> func,
-            Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
-            => ExecGpu(func, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
 
         public static void ExecGpu(
             OpCode[] operations,
@@ -47,14 +52,23 @@ namespace SharpGrad.Tensors
 
         public static void DynGpu(
             OpCode[] operations,
-            Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
+            MemoryBuffer1D<TType, Stride1D.Dense> left, MemoryBuffer1D<TType, Stride1D.Dense> right, MemoryBuffer1D<TType, Stride1D.Dense> result)
         {
             Action<Index1D, ArrayView<OpCode>, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>> loadedKernel =
                 Tensors.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<TType>, ArrayView<TType>, ArrayView<TType>>(KernelProcessUnit<TType>.Dynamic);
-            loadedKernel(left.Data.DeviceData.IntExtent, Tensors.Accelerator.Allocate1D(operations).View, left.Data.DeviceData.View, right.Data.DeviceData.View, result.Data.DeviceData.View);
+            loadedKernel(left.IntExtent, Tensors.Accelerator.Allocate1D(operations).View, left.View, right.View, result.View);
             Tensors.Accelerator.Synchronize();
-
-
         }
+
+        public static void DynGpu(
+            OpCode[] operations,
+            Tensor<TType> left, Tensor<TType> right, Tensor<TType> result)
+            => DynGpu(operations, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
+
+        public static TensorBase<TType> operator +(TensorBase<TType> left, TensorBase<TType> right) => ExecGpu(AddOp<TType>.Apply, left, right);
+        public static TensorBase<TType> operator -(TensorBase<TType> left, TensorBase<TType> right) => ExecGpu(SubOp<TType>.Apply, left, right);
+        public static TensorBase<TType> operator *(TensorBase<TType> left, TensorBase<TType> right) => ExecGpu(MulOp<TType>.Apply, left, right);
+        public static TensorBase<TType> operator /(TensorBase<TType> left, TensorBase<TType> right) => ExecGpu(DivOp<TType>.Apply, left, right);
+
     }
 }
