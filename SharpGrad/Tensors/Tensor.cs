@@ -14,7 +14,7 @@ namespace SharpGrad.Tensors
         where TType : unmanaged, IFloatingPoint<TType>
     {
         private readonly DeviceBuffer<TType> data_;
-        private readonly TType[]? gradients;
+        private readonly DeviceBuffer<TType> gradients;
         private readonly Shape shape;
         public Shape Shape => shape;
 
@@ -34,7 +34,7 @@ namespace SharpGrad.Tensors
 
             var deviceBuffer = new DeviceBuffer<TType>(data.Length);
             data_ = deviceBuffer;
-            gradients = new TType[data.Length];
+            gradients = new DeviceBuffer<TType>(data.Length);
             this.shape = shape;
         }
         public Tensor(Shape shape) : this(shape, new TType[shape.Aggregate(1, (a, b) => a * b)]) { }

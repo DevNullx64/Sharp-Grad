@@ -103,7 +103,11 @@ namespace SharpGrad.Tensors
         // Implementing and hide the IReadOnlyList<TType> interface.
         int IReadOnlyCollection<TType>.Count => (int)Length;
         // Implementing and hide the IReadOnlyList<TType> interface.
-        public TType this[int index] { get => CPUData[index]; }
+        public TType this[int index]
+        {
+            get => CPUData[index];
+            set => CPUData[index] = value;
+        }
 
         /// <summary>
         /// Create a new DeviceBuffer with the specified length.
