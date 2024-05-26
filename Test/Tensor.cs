@@ -88,7 +88,7 @@ namespace Test
                 ty[i, j, k] += ta[i, j, k] / tb[i, j, k];
                 return ty[i, j, k];
             });
-            tc = Tensor<float>.ExecGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb);
+            Tensor<float>.DynGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb, tc);
 
             (float mean, float min, float max) = Test(tc, ty);
             Assert.IsTrue(mean < 1e-6 && min == 0 && max <= 1, $"mean={mean}/1e-6, min={min}/0, max={max}/1");

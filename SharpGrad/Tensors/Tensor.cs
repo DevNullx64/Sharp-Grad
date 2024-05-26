@@ -43,19 +43,12 @@ namespace SharpGrad.Tensors
                 throw new ArgumentException($"Expected gradient shape {shape}, got {gradient.shape}");
 
             if (gradients != null)
-            {
-                for (int i = 0; i < gradients.Length; i++)
-                    gradients[i] += gradient.Data.CPUData[i];
-            }
+                ExecGpu(AddOp<TType>.Apply, gradients, gradient.Data, gradients);
         }
 
         public static Tensor<TType> operator +(Tensor<TType> left, Tensor<TType> right) => ExecGpu(AddOp<TType>.Apply, left, right);
-
         public static Tensor<TType> operator -(Tensor<TType> left, Tensor<TType> right) => ExecGpu(SubOp<TType>.Apply, left, right);
-
         public static Tensor<TType> operator *(Tensor<TType> left, Tensor<TType> right) => ExecGpu(MulOp<TType>.Apply, left, right);
-
         public static Tensor<TType> operator /(Tensor<TType> left, Tensor<TType> right) => ExecGpu(DivOp<TType>.Apply, left, right);
-
     }
 }
