@@ -1,22 +1,25 @@
 ﻿using ILGPU;
 using System.Numerics;
+using System.Threading;
 
 namespace SharpGrad.Tensors
 {
-    public struct NegOp<TType> : IBackwardOne<TType>
-        where TType : unmanaged, IFloatingPoint<TType>
+    public struct NegOp<TType, TGrad> : IBackwardOne<TType, TGrad>
+        where TType : unmanaged, INumber<TType>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         public static TType ApplyCpu(TType left) => -left;
 
         public static void ApplyGpu(Index1D idx, ArrayView<TType> left, ArrayView<TType> output) => output[idx] = ApplyCpu(left[idx]);
 
-        public static TType BackwardCpu(TType grad, TType left) => -grad;
+        public static TGrad BackwardCpu(TGrad grad, TType left) => -grad;
 
-        public static void BackwardGpu(Index1D idx, ArrayView<TType> grad, ArrayView<TType> left, ArrayView<TType> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
+        public static void BackwardGpu(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
     }
 
-    public struct ReLUOp<TType> : IBackwardOne<TType>
-        where TType : unmanaged, IFloatingPoint<TType>
+    public struct ReLUOp<TType, TGrad> : IBackwardOne<TType, TGrad>
+        where TType : unmanaged, INumber<TType>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         public static TType ApplyCpu(TType left)
             => left > TType.Zero ? left : TType.Zero;
@@ -24,14 +27,11 @@ namespace SharpGrad.Tensors
          public static void ApplyGpu(Index1D idx, ArrayView<TType> left, ArrayView<TType> output)
             => output[idx] = ApplyCpu(left[idx]);
 
-        public static TType BackwardCpu(TType grad, TType left) => left > TType.Zero ? grad : TType.Zero;
+        public static TGrad BackwardCpu(TGrad grad, TType left) => left > TType.Zero ? grad : TGrad.Zero;
 
-        public static void Apply(Index1D idx, ArrayView<TType> left, ArrayView<TType> output)
-            => output[idx] = ApplyCpu(left[idx]);
-
-        public static void BackwardGpu(Index1D idx, ArrayView<TType> grad, ArrayView<TType> left, ArrayView<TType> leftGrad)
+        public static void BackwardGpu(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad)
         {
-            var l = ReLUOp<TType>.BackwardCpu(grad[idx], left[idx]);
+            var l = ReLUOp<TType, TGrad>.BackwardCpu(grad[idx], left[idx]);
             leftGrad[idx] += l;
         }
     }

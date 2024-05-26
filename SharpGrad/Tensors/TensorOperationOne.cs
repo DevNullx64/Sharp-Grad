@@ -6,16 +6,18 @@ using System.Formats.Tar;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SharpGrad.Tensors
 {
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class TensorOperationOne<T, TOp>(Tensor<T> left) : TensorBase<T>(left.Shape)
-        where T : unmanaged, IFloatingPoint<T>
-        where TOp : struct, IBackwardOne<T>
+    internal class TensorOperationOne<T, TOp, TGrad>(Tensor<T, TGrad> left) : TensorBase<T, TGrad>(left.Shape)
+        where T : unmanaged, INumber<T> 
+        where TOp : struct, IBackwardOne<T, TGrad>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
-        public readonly TensorBase<T> LeftOperand = left;
+        public readonly TensorBase<T, TGrad> LeftOperand = left;
 
         private readonly AcceleratorBuffer<T> data = new(left.Length);
         internal override AcceleratorBuffer<T> Data
@@ -37,23 +39,26 @@ namespace SharpGrad.Tensors
     }
 
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class NegOperation<T>(Tensor<T> left) : TensorOperationOne<T, NegOp<T>>(left)
-        where T : unmanaged, IFloatingPoint<T>
+    internal class NegOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperationOne<T, NegOp<T, TGrad>, TGrad>(left)
+        where T : unmanaged, INumber<T>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
 
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class ReLUOperation<T>(Tensor<T> left) : TensorOperationOne<T, ReLUOp<T>>(left)
-        where T : unmanaged, IFloatingPoint<T>
+    internal class ReLUOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperationOne<T, ReLUOp<T, TGrad>, TGrad>(left)
+        where T : unmanaged, INumber<T>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
 
 
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class TensorOperationTwo<T, Top>(Tensor<T> left, Tensor<T> right) : TensorBase<T>(left.Shape)
-        where T : unmanaged, IFloatingPoint<T>
-        where Top : struct, IBackwardTwo<T>
+    internal class TensorOperationTwo<T, Top, TGrad>(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) : TensorBase<T, TGrad>(left.Shape)
+        where T : unmanaged, INumber<T>
+        where Top : struct, IBackwardTwo<T, TGrad>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
-        public readonly TensorBase<T> LeftOperand = left.Length == right.Length ? left : throw new ArgumentException($"Expected shapes {left.Shape}, got {right.Shape}");
-        public readonly TensorBase<T> RightOperand = right;
+        public readonly TensorBase<T, TGrad> LeftOperand = left.Length == right.Length ? left : throw new ArgumentException($"Expected shapes {left.Shape}, got {right.Shape}");
+        public readonly TensorBase<T, TGrad> RightOperand = right;
 
         private readonly AcceleratorBuffer<T> data = new(left.Length);
         internal override AcceleratorBuffer<T> Data

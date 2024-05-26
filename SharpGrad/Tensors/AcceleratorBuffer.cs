@@ -40,7 +40,7 @@ namespace SharpGrad.Tensors
     /// </summary>
     /// <typeparam name="T"The type of the data </typeparam>
     public interface IAcceleratorBuffer<T> : IReadOnlyList<T>
-        where T : unmanaged, IFloatingPoint<T>
+        where T : unmanaged, INumber<T>
     {
         /// <summary>
         /// Retrun the current location of the data.
@@ -96,7 +96,7 @@ namespace SharpGrad.Tensors
     /// <param name="length">The length of the data</param>
     /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
     public class AcceleratorBuffer<T>(long length) : IAcceleratorBuffer<T>
-        where T : unmanaged, IFloatingPoint<T>
+        where T : unmanaged, INumber<T>
     {
         public long LastAccess { get; set; } = DateTime.UtcNow.Ticks;
 

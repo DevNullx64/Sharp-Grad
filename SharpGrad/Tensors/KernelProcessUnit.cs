@@ -1,11 +1,13 @@
 ﻿using ILGPU;
 using ILGPU.Runtime;
 using System.Numerics;
+using System.Threading;
 
 namespace SharpGrad.Tensors
 {
-    public static class KernelProcessUnit<TType>
-        where TType : unmanaged, IFloatingPoint<TType>
+    public static class KernelProcessUnit<TType, TGrad>
+        where TType : unmanaged, INumber<TType>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         /// <summary>
         /// Kernel Processing Unit
@@ -19,10 +21,10 @@ namespace SharpGrad.Tensors
             switch (operation)
             {
                 case OpCode.Load: result = left; break;
-                case OpCode.Add: result += AddOp<TType>.ApplyCpu(left, right); break;
-                case OpCode.Sub: result += SubOp<TType>.ApplyCpu(left, right); break;
-                case OpCode.Mul: result += MulOp<TType>.ApplyCpu(left, right); break;
-                case OpCode.Div: result += DivOp<TType>.ApplyCpu(left, right); break;
+                case OpCode.Add: result += AddOp<TType, TGrad>.ApplyCpu(left, right); break;
+                case OpCode.Sub: result += SubOp<TType, TGrad>.ApplyCpu(left, right); break;
+                case OpCode.Mul: result += MulOp<TType, TGrad>.ApplyCpu(left, right); break;
+                case OpCode.Div: result += DivOp<TType, TGrad>.ApplyCpu(left, right); break;
                 default: result = TType.Zero; break;
             }
         }

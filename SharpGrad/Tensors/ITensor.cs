@@ -12,6 +12,7 @@ namespace SharpGrad.Tensors
         IMultiplyOperators<TSelf, TSelf, TSelf>,
         IDivisionOperators<TSelf, TSelf, TSelf>
         where TSelf : ITensor<TSelf, TType>
+        where TType : unmanaged, INumber<TType>
     {
         TType this[params int[] indices] { get; set; }
     }
