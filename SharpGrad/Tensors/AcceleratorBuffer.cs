@@ -13,41 +13,69 @@ using System.Threading;
 namespace SharpGrad.Tensors
 {
     /// <summary>
-    /// Interface to manage data on the RAM and a device (GPU).
+    /// The location of the data.
+    /// </summary>
+    public enum BufferLocation
+    {
+        /// <summary>
+        /// No data is available.
+        /// </summary>
+        Empty,
+        /// <summary>
+        /// Data is available on the RAM.
+        /// </summary>
+        Ram,
+        /// <summary>
+        /// Data is available on the shared memory.
+        /// </summary>
+        SharedMemory,
+        /// <summary>
+        /// Data is available on the <see cref="ILGPU.Runtime.Accelerator"/>.
+        /// </summary>
+        Accelerator
+    }
+
+    /// <summary>
+    /// Interface to manage data on the RAM and a <see cref="Accelerator"/> (GPU).
     /// </summary>
     /// <typeparam name="T"The type of the data </typeparam>
     public interface IDeviceBuffer<T> : IReadOnlyList<T>
         where T : unmanaged, IFloatingPoint<T>
     {
         /// <summary>
+        /// Retrun the current location of the data.
+        /// </summary>
+        BufferLocation Location { get; }
+
+        /// <summary>
         /// Return the C# managed data.
         /// </summary>
-        /// <remarks>If data is not available on the RAM, it will be copied from the device. Than, the shared memory and the device data will be disposed.</remarks>
+        /// <remarks>If data is not available on the RAM, it will be copied from the <see cref="Accelerator"/>. Than, the shared memory and the <see cref="Accelerator"/> data will be disposed.</remarks>
         T[] CPUData { get; set; }
         /// <summary>
         /// Return the shared memory data.
         /// </summary>
-        /// <remarks>If data is not available on the shared memory, it will be copied from the CPU or the device. Then, the RAM and the device data will be disposed.</remarks>
+        /// <remarks>If data is not available on the shared memory, it will be copied from the CPU or the <see cref="Accelerator"/>. Then, the RAM and the <see cref="Accelerator"/> data will be disposed.</remarks>
         ArrayView<T> SharedData { get; }
         /// <summary>
-        /// Return the device data view from <see cref="DeviceData"/> or <see cref="SharedData"/>.
+        /// Return the <see cref="Accelerator"/> data view from <see cref="AcceleratorData"/> or <see cref="SharedData"/>.
         /// </summary>
         /// <remarks>No movement of data will be done. If no data is available, SharedData will be initialized to 0 and returned.</remarks>
-        ArrayView<T> View { get; }
+        ArrayView<T> CurrentView { get; }
         /// <summary>
-        /// Return the device data.
+        /// Return the <see cref="Accelerator"/> data.
         /// </summary>
-        /// <remarks>If data is not available on the device, it will be copied from <see cref="CPUData"/> or <see cref="SharedData"/>. Then, the RAM and the shared memory data will be disposed.</remarks>
-        MemoryBuffer1D<T, Stride1D.Dense> DeviceData { get; set; }
+        /// <remarks>If data is not available on the <see cref="Accelerator"/>, it will be copied from <see cref="CPUData"/> or <see cref="SharedData"/>. Then, the RAM and the shared memory data will be disposed.</remarks>
+        MemoryBuffer1D<T, Stride1D.Dense> AcceleratorData { get; set; }
     }
 
     /// <summary>
-    /// A structure that manages data on the RAM and a device (GPU). It free the RAM data when the data is available on the device. And vice versa.
+    /// A structure that manages data on the RAM and a <see cref="Accelerator"/> (GPU). It free the RAM data when the data is available on the <see cref="Accelerator"/>. And vice versa.
     /// </summary>
     /// <typeparam name="T">The type of the data</typeparam>
     /// <param name="length">The length of the data</param>
-    /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the device. Data will be allocated and set to zero at the first access.</remarks>
-    public class DeviceBuffer<T>(long length) : IDeviceBuffer<T>
+    /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
+    public class AcceleratorBuffer<T>(long length) : IDeviceBuffer<T>
         where T : unmanaged, IFloatingPoint<T>
     {
         public long LastAccess { get; set; } = DateTime.UtcNow.Ticks;
@@ -64,7 +92,7 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// Get or set the data on the RAM.
         /// </summary>
-        /// <remarks>If data is not available on the RAM, it will be copied from the device. and the device data will be disposed.</remarks>
+        /// <remarks>If data is not available on the RAM, it will be copied from the <see cref="Accelerator"/>. and the <see cref="Accelerator"/> data will be disposed.</remarks>
         public T[] CPUData
         {
             get
@@ -72,16 +100,16 @@ namespace SharpGrad.Tensors
                 if (cpuData is null)
                 {
                     cpuData = new T[Length];
-                    if(shared is not null)
+                    if(sharedData is not null)
                     {
-                        shared.Value.CopyToCPU(cpuData);
-                        shared = null;
+                        sharedData.Value.CopyToCPU(cpuData);
+                        sharedData = null;
                         deviceData?.Dispose();
                         deviceData = null;
                     } else if (deviceData is not null)
                     {
                         deviceData.CopyToCPU(cpuData);
-                        shared = null;
+                        sharedData = null;
                         deviceData.Dispose();
                         deviceData = null;
                     }
@@ -93,40 +121,40 @@ namespace SharpGrad.Tensors
                 if (value.Length != Length)
                     throw new ArgumentException($"Expected length {Length}, got {value.Length}");
                 cpuData = value;
-                shared = null;
+                sharedData = null;
                 deviceData?.Dispose();
                 deviceData = null;
             }
         }
 
-        private ArrayView<T>? shared;
+        private ArrayView<T>? sharedData = null;
         public ArrayView<T> SharedData
         {
             get
             {
-                if (shared is null)
+                if (sharedData is null)
                 {
-                    shared = SharedMemory.Allocate1D<T>((int)Length);
+                    sharedData = SharedMemory.Allocate1D<T>((int)Length);
                     if (cpuData is not null)
                     {
-                        shared.Value.CopyFromCPU(cpuData);
+                        sharedData.Value.CopyFromCPU(cpuData);
                         cpuData = null;
                         deviceData?.Dispose();
                         deviceData = null;
                     }
                     else if (deviceData is not null)
                     {
-                        shared.Value.CopyFrom(deviceData.AsArrayView<T>(0, Length));
+                        sharedData.Value.CopyFrom(deviceData.AsArrayView<T>(0, Length));
                         cpuData = null;
                         deviceData.Dispose();
                         deviceData = null;
                     }
                     else
                     {
-                        shared.Value.MemSetToZero();
+                        sharedData.Value.MemSetToZero();
                     }
                 }
-                return shared.Value;
+                return sharedData.Value;
             }
             set
             {
@@ -136,20 +164,20 @@ namespace SharpGrad.Tensors
                     throw new ArgumentException($"Expected length {Length}, got {value.Length}");
 
                 cpuData = null;
-                shared = value;
+                sharedData = value;
                 deviceData = null;
             }
         }
         
-        public ArrayView<T> View => deviceData is not null ? (ArrayView<T>)DeviceData.View : SharedData;
+        public ArrayView<T> CurrentView => deviceData is not null ? (ArrayView<T>)AcceleratorData.View : SharedData;
 
-        // The data on the device.
+        // The data on the Accelerator.
         private MemoryBuffer1D<T, Stride1D.Dense>? deviceData = null;
         /// <summary>
-        /// Get or set the data on the device.
+        /// Get or set the data on the <see cref="Accelerator"/>.
         /// </summary>
-        /// <remarks>If data is not available on the device, it will be copied from the RAM. and the RAM data will be disposed.</remarks>
-        public MemoryBuffer1D<T, Stride1D.Dense> DeviceData
+        /// <remarks>If data is not available on the <see cref="Accelerator"/>, it will be copied from the RAM. and the RAM data will be disposed.</remarks>
+        public MemoryBuffer1D<T, Stride1D.Dense> AcceleratorData
         {
             get
             {
@@ -160,13 +188,13 @@ namespace SharpGrad.Tensors
                     {
                         deviceData = Tensors.Accelerator.Allocate1D(CPUData);
                         cpuData = null;
-                        shared = null;
+                        sharedData = null;
                     }
-                    else if (shared is not null)
+                    else if (sharedData is not null)
                     {
-                        shared.Value.CopyTo(deviceData.AsArrayView<T>(0, Length));
+                        sharedData.Value.CopyTo(deviceData.AsArrayView<T>(0, Length));
                         cpuData = null;
-                        shared = null;
+                        sharedData = null;
                     }
                     else
                         deviceData.MemSetToZero();
@@ -185,7 +213,17 @@ namespace SharpGrad.Tensors
         // Implementing and hide the IReadOnlyList<TType> interface.
         int IReadOnlyCollection<T>.Count => (int)Length;
 
-        public bool IsEmpty => cpuData is null && shared is null && deviceData is null;
+        public bool IsEmpty => cpuData is null && sharedData is null && deviceData is null;
+        public bool IsOnRAM => cpuData is not null;
+        public bool IsOnSharedMemory => sharedData is not null;
+        public bool IsOnDevice => deviceData is not null;
+        public BufferLocation Location => IsOnRAM
+            ? BufferLocation.Ram
+            : IsOnSharedMemory
+                ? BufferLocation.SharedMemory
+                : IsOnDevice
+                    ? BufferLocation.Accelerator
+                    : BufferLocation.Empty;
 
         // Implementing and hide the IReadOnlyList<TType> interface.
         public T this[int index]
@@ -198,16 +236,16 @@ namespace SharpGrad.Tensors
         /// Create a new DeviceBuffer with the specified length.
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
-        /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the device.</remarks>
-        public DeviceBuffer(T[] data)
+        /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
+        public AcceleratorBuffer(T[] data)
             : this(data.Length) { cpuData = data; }
 
         /// <summary>
         /// Create a new DeviceBuffer with the specified length.
         /// </summary>
-        /// <param name="data">The data to be copied to the device.</param>
+        /// <param name="data">The data to be copied to the <see cref="Accelerator"/>.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the RAM.</remarks>
-        public DeviceBuffer(MemoryBuffer1D<T, Stride1D.Dense> data)
+        public AcceleratorBuffer(MemoryBuffer1D<T, Stride1D.Dense> data)
             : this(data.Length) { deviceData = data; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -215,7 +253,7 @@ namespace SharpGrad.Tensors
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public static implicit operator T[](DeviceBuffer<T> gpu) => gpu.CPUData;
-        public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(DeviceBuffer<T> gpu) => gpu.DeviceData;
+        public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
+        public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
     }
 }

@@ -9,7 +9,7 @@ namespace SharpGrad.Tensors
         where T : unmanaged, IFloatingPoint<T>
     {
         public static readonly TensorBase<T> Empty = new Tensor<T>();
-        internal abstract DeviceBuffer<T> Data { get; }
+        internal abstract AcceleratorBuffer<T> Data { get; }
 
         protected readonly Shape shape = shape;
         public Shape Shape => shape;
@@ -40,7 +40,7 @@ namespace SharpGrad.Tensors
         public static void ExecGpu(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
             TensorBase<T> left, TensorBase<T> right, TensorBase<T> result)
-            => ExecGpu(func, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
+            => ExecGpu(func, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
 
         public static Tensor<T> ExecTensorOnGpu(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
@@ -75,7 +75,7 @@ namespace SharpGrad.Tensors
         public static void DynGpu(
             OpCode[] operations,
             Tensor<T> left, Tensor<T> right, Tensor<T> result)
-            => DynGpu(operations, left.Data.DeviceData, right.Data.DeviceData, result.Data.DeviceData);
+            => DynGpu(operations, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
 
         public static TensorBase<T> operator +(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(AddOp<T>.ApplyGpu, left, right);
         public static TensorBase<T> operator -(TensorBase<T> left, TensorBase<T> right) => ExecTensorOnGpu(SubOp<T>.Apply, left, right);

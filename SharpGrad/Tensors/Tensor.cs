@@ -17,9 +17,9 @@ namespace SharpGrad.Tensors
         IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
         where T : unmanaged, IFloatingPoint<T>
     {
-        private readonly DeviceBuffer<T> data = new(shape.Size);
-        internal override DeviceBuffer<T> Data { get => data; }
-        private readonly DeviceBuffer<T> gradients = new(shape.Size);
+        private readonly AcceleratorBuffer<T> data = new(shape.Size);
+        internal override AcceleratorBuffer<T> Data { get => data; }
+        private readonly AcceleratorBuffer<T> gradients = new(shape.Size);
 
         public override T this[params int[] indices]
         {
