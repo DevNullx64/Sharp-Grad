@@ -10,34 +10,31 @@ using System.Threading.Tasks;
 
 namespace SharpGrad.Tensors
 {
-    public partial class Tensor<TType>: ITensor<TType>
+    public partial class Tensor<TType>(Shape shape) : TensorBase<TType>(shape), ITensor<Tensor<TType>, TType>,
+        IAdditionOperators<Tensor<TType>, Tensor<TType>, Tensor<TType>>,
+        ISubtractionOperators<Tensor<TType>, Tensor<TType>, Tensor<TType>>,
+        IMultiplyOperators<Tensor<TType>, Tensor<TType>, Tensor<TType>>,
+        IDivisionOperators<Tensor<TType>, Tensor<TType>, Tensor<TType>>
         where TType : unmanaged, IFloatingPoint<TType>
     {
-        private readonly DeviceBuffer<TType> data_;
-        private readonly DeviceBuffer<TType> gradients;
-        private readonly Shape shape;
+        private readonly DeviceBuffer<TType> data = new(shape.Size);
+        protected override DeviceBuffer<TType> Data { get => data; }
+        private readonly DeviceBuffer<TType> gradients = new(shape.Size);
         public Shape Shape => shape;
-
-        public bool IsOnGpu => false;
 
         public TType this[params int[] indices]
         {
-            get => data_.CPUData[shape.GetFlattenedIndex(indices)];
-            set => data_.CPUData[shape.GetFlattenedIndex(indices)] = value;
+            get => Data.CPUData[shape.GetFlattenedIndex(indices)];
+            set => Data.CPUData[shape.GetFlattenedIndex(indices)] = value;
         }
 
 
-        public Tensor(Shape shape, TType[] data)
+        public Tensor(Shape shape, TType[] data) : this(shape)
         {
             if (data.Length != shape.Aggregate(1, (a, b) => a * b))
                 throw new ArgumentException($"Expected data length {shape.Aggregate(1, (a, b) => a * b)}, got {data.Length}");
-
-            var deviceBuffer = new DeviceBuffer<TType>(data.Length);
-            data_ = deviceBuffer;
-            gradients = new DeviceBuffer<TType>(data.Length);
-            this.shape = shape;
         }
-        public Tensor(Shape shape) : this(shape, new TType[shape.Aggregate(1, (a, b) => a * b)]) { }
+
         public Tensor(params Dim[] shape) : this(new Shape(shape)) { }
 
         public void AddGradient(Tensor<TType> gradient)
@@ -48,8 +45,17 @@ namespace SharpGrad.Tensors
             if (gradients != null)
             {
                 for (int i = 0; i < gradients.Length; i++)
-                    gradients[i] += gradient.data_.CPUData[i];
+                    gradients[i] += gradient.Data.CPUData[i];
             }
         }
+
+        public static Tensor<TType> operator +(Tensor<TType> left, Tensor<TType> right) => ExecGpu(AddOp<TType>.Apply, left, right);
+
+        public static Tensor<TType> operator -(Tensor<TType> left, Tensor<TType> right) => ExecGpu(SubOp<TType>.Apply, left, right);
+
+        public static Tensor<TType> operator *(Tensor<TType> left, Tensor<TType> right) => ExecGpu(MulOp<TType>.Apply, left, right);
+
+        public static Tensor<TType> operator /(Tensor<TType> left, Tensor<TType> right) => ExecGpu(DivOp<TType>.Apply, left, right);
+
     }
 }
