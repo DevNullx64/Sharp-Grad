@@ -2,14 +2,9 @@ using System.Numerics;
 
 namespace SharpGrad.DifEngine
 {
-    public class SigmoidValue<TType> : Value<TType>
+    public class SigmoidValue<TType>(Value<TType> value) : Value<TType>(TType.One / (TType.One + TType.Exp(-value.Data)), "sigmoid", value)
         where TType : IBinaryFloatingPointIeee754<TType>
     {
-        public SigmoidValue(Value<TType> value)
-            : base(TType.One / (TType.One + TType.Exp(-value.Data)), "sigmoid", value)
-        {
-        }
-
         protected override void Backward()
         {
             var sigmoid = Data;
