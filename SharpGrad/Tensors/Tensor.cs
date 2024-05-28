@@ -10,11 +10,7 @@ using System.Threading.Tasks;
 
 namespace SharpGrad.Tensors
 {
-    public partial class Tensor<T, TGrad>(Shape shape) : TensorBase<T, TGrad>(shape), ITensor<Tensor<T, TGrad>, T>,
-        IAdditionOperators<Tensor<T, TGrad>, Tensor<T, TGrad>, Tensor<T, TGrad>>,
-        ISubtractionOperators<Tensor<T, TGrad>, Tensor<T, TGrad>, Tensor<T, TGrad>>,
-        IMultiplyOperators<Tensor<T, TGrad>, Tensor<T, TGrad>, Tensor<T, TGrad>>,
-        IDivisionOperators<Tensor<T, TGrad>, Tensor<T, TGrad>, Tensor<T, TGrad>>
+    public partial class Tensor<T, TGrad>(Shape shape) : TensorBase<T, TGrad>(shape), ITensor<Tensor<T, TGrad>, T, TGrad>
         where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
@@ -47,11 +43,13 @@ namespace SharpGrad.Tensors
                 ExecAccelerator(AddOp<T, TGrad>.ApplyGpu, gradients, gradient.Data, gradients);
         }
 
-        public static Tensor<T, TGrad> operator +(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(AddOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator -(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(SubOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator *(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(MulOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator /(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(DivOp<T, TGrad>.ApplyGpu, left, right);
+        public static TensorBase<T, TGrad> operator +(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => new TensorOperationTwo<T, AddOp<T, TGrad>, TGrad>(left, right);
+
+        public static TensorBase<T, TGrad> operator -(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => new TensorOperationTwo<T, SubOp<T, TGrad>, TGrad>(left, right);
+
+        public static TensorBase<T, TGrad> operator *(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => new TensorOperationTwo<T, MulOp<T, TGrad>, TGrad>(left, right);
+
+        public static TensorBase<T, TGrad> operator /(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => new TensorOperationTwo<T, DivOp<T, TGrad>, TGrad>(left, right);
     }
 
-    //public class Tensor<T> : Tensor<T, float> where T : unmanaged, INumber<T> { }
 }

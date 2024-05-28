@@ -74,12 +74,39 @@ namespace SharpGrad.Tensors
             }
         }
 
-        protected T GetData(int[] indices) => data.CPUData[shape.GetFlattenedIndex(indices)];
-
         public override T this[params int[] indices]
         {
-            get => GetData(indices);
+            get => Top.ApplyCpu(LeftOperand[indices], RightOperand[indices]);
             set => throw new NotImplementedException($"Cannot set value to {GetType().Name}");
         }
     }
+
+    /*
+    [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
+    internal class TensorOperationTwo<T, Top>(TensorBase<T> left, TensorBase<T> right) : TensorBase<T>(left.Shape)
+        where T : unmanaged, INumber<T>
+        where Top : struct, IApplyOpTwo<T>
+    {
+        public readonly TensorBase<T> LeftOperand = left.Length == right.Length ? left : throw new ArgumentException($"Expected shapes {left.Shape}, got {right.Shape}");
+        public readonly TensorBase<T> RightOperand = right;
+
+        private readonly AcceleratorBuffer<T> data = new(left.Length);
+        internal override AcceleratorBuffer<T> Data
+        {
+            get
+            {
+                if (data.IsEmpty)
+                {
+                    ExecAccelerator(Top.ApplyGpu, LeftOperand.Data.AcceleratorData, RightOperand.Data.AcceleratorData, data.AcceleratorData);
+                }
+                return data;
+            }
+        }
+
+        public override T this[params int[] indices]
+        {
+            get => Top.ApplyCpu(LeftOperand[indices], RightOperand[indices]);
+            set => throw new NotImplementedException($"Cannot set value to {GetType().Name}");
+        }
+    */
 }

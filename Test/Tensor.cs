@@ -16,7 +16,7 @@ namespace Test
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
-        public static void Fill(Tensor<T, TGrad> result, Func<int, int, int, T> fnc)
+        public static void Fill(TensorBase<T, TGrad> result, Func<int, int, int, T> fnc)
         {
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
@@ -34,7 +34,7 @@ namespace Test
             return result;
         }
 
-        public static (T Mean, T Min, T Max) Test(Tensor<T, TGrad> tc, Tensor<T, TGrad> ty)
+        public static (T Mean, T Min, T Max) Test(TensorBase<T, TGrad> tc, TensorBase<T, TGrad> ty)
         {
             T diff = T.Zero;
             T min = T.CreateTruncating(double.MaxValue);
@@ -85,10 +85,10 @@ namespace Test
         {
             Tensors.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new(256, 256, 256);
-            Tensor<T, TGrad> ty = new(256, 256, 256);
+            TensorBase<T, TGrad> ta = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tb = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tc = new Tensor<T, TGrad>(256, 256, 256);
+            TensorBase<T, TGrad> ty = new Tensor<T, TGrad>(256, 256, 256);
 
             // Test dynamic operations
             Fill(ty, (i, j, k) =>
@@ -110,14 +110,13 @@ namespace Test
         {
             Tensors.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new(256, 256, 256);
+            TensorBase<T, TGrad> ta = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tb = NewRandom(256, 256, 256);
 
             Tensor<T, TGrad> ty = new(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
-            tc = ta + tb;
+            TensorBase<T, TGrad> tc = ta + tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -127,14 +126,13 @@ namespace Test
         {
             Tensors.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new(256, 256, 256);
+            TensorBase<T, TGrad> ta = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new(256, 256, 256);
+            TensorBase<T, TGrad> ty = new Tensor<T, TGrad>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
-            tc = ta - tb;
+            TensorBase<T, TGrad> tc = ta - tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -144,14 +142,13 @@ namespace Test
         {
             Tensors.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new(256, 256, 256);
+            TensorBase<T, TGrad> ta = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new(256, 256, 256);
+            TensorBase<T, TGrad> ty = new Tensor<T, TGrad>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
-            tc = ta * tb;
+            TensorBase<T, TGrad> tc = ta * tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -161,14 +158,13 @@ namespace Test
         {
             Tensors.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new(256, 256, 256);
+            TensorBase<T, TGrad> ta = NewRandom(256, 256, 256);
+            TensorBase<T, TGrad> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new(256, 256, 256);
+            TensorBase<T, TGrad> ty = new Tensor<T, TGrad>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
-            tc = ta / tb;
+            TensorBase<T, TGrad> tc = ta / tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
