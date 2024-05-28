@@ -39,7 +39,7 @@ namespace SharpGrad.Tensors
     /// Interface to manage data on the RAM and a <see cref="Accelerator"/> (GPU).
     /// </summary>
     /// <typeparam name="T"The type of the data </typeparam>
-    public interface IAcceleratorBuffer<T> : IReadOnlyList<T>
+    public interface IAcceleratorBuffer<T> : IReadOnlyList<T>, IDisposable
         where T : unmanaged, INumber<T>
     {
         /// <summary>
@@ -272,6 +272,15 @@ namespace SharpGrad.Tensors
         public IEnumerator<T> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void Dispose()
+        {
+            cpuData = null;
+            sharedData = null;
+            acceleratorData?.Dispose();
+            acceleratorData = null;
+            GC.SuppressFinalize(this);
+        }
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
