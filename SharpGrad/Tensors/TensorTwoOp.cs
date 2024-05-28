@@ -2,23 +2,6 @@
 
 namespace SharpGrad.Tensors
 {
-    public interface IBackwardable { }
-    public interface IBackwardableOne<TType, TGrad, TOp>: IBackwardable
-        where TType : unmanaged, INumber<TType>
-        where TGrad : unmanaged, IFloatingPoint<TGrad>
-        where TOp : IBackwardOne<TType, TGrad>
-    {
-        public void BackwardCpu();
-    }
-
-    public interface IBackwardableTwo<TType, TGrad, TOp> : IBackwardable
-        where TType : unmanaged, INumber<TType>
-        where TGrad : unmanaged, IFloatingPoint<TGrad>
-        where TOp : IBackwardTwo<TType, TGrad>
-    {
-        public void Backward();
-    }
-
     internal class TensorOneOp<TType, TGrad, TOp>(Shape shape, TensorBase<TType, TGrad> left) : TensorBase<TType, TGrad>(shape), IBackwardableOne<TType, TGrad, TOp>
         where TType : unmanaged, INumber<TType>
         where TGrad : unmanaged, IFloatingPoint<TGrad>

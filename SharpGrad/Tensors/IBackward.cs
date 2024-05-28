@@ -5,6 +5,10 @@ namespace SharpGrad.Tensors
 {
     public interface IBackward { }
 
+
+    public interface IBackwardable { }
+    
+
     public interface IBackwardOneOnly<TType, TGrad> : IBackward
         where TType : unmanaged, INumber<TType>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
@@ -16,6 +20,14 @@ namespace SharpGrad.Tensors
         where TType : unmanaged, INumber<TType>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
+
+    public interface IBackwardableOne<TType, TGrad, TOp> : IBackwardable
+        where TType : unmanaged, INumber<TType>
+        where TGrad : unmanaged, IFloatingPoint<TGrad>
+        where TOp : IBackwardOne<TType, TGrad>
+    {
+        public void BackwardCpu();
+    }
 
 
     public interface IBackwardTwoOnly<TType, TGrad> : IBackward
@@ -30,5 +42,14 @@ namespace SharpGrad.Tensors
         where TType : unmanaged, INumber<TType>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
+
+    public interface IBackwardableTwo<TType, TGrad, TOp> : IBackwardable
+    where TType : unmanaged, INumber<TType>
+    where TGrad : unmanaged, IFloatingPoint<TGrad>
+    where TOp : IBackwardTwo<TType, TGrad>
+    {
+        public void Backward();
+    }
+
 
 }
