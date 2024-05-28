@@ -282,6 +282,19 @@ namespace SharpGrad.Tensors
             GC.SuppressFinalize(this);
         }
 
+        public void Fill(T value)
+        {
+            Array.Fill(CPUData, value);
+        }
+        public void MemSetToZero()
+        {
+            if(IsOnRAM)
+                Array.Clear(CPUData, 0, CPUData.Length);
+            else if (IsOnSharedMemory)
+                SharedData.MemSetToZero();
+            else if (IsOnAccelerator)
+                AcceleratorData.MemSetToZero();
+        }
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
     }

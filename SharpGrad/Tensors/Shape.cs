@@ -5,8 +5,13 @@ using System.Linq;
 
 namespace SharpGrad
 {
-    public readonly struct Shape(params Dim[] dims) : IReadOnlyList<Dim>, IEquatable<Shape>
-    { 
+    public interface IShape : IReadOnlyList<Dim>, IEquatable<Shape>
+    {
+        bool IsScalar { get; }
+    }
+
+    public readonly struct Shape(params Dim[] dims) : IShape, IEquatable<Shape>
+    {
         public static readonly Shape Empty = new();
 
         private readonly Dim[] dims = dims;
@@ -16,10 +21,9 @@ namespace SharpGrad
 
         public long Size => dims.Aggregate(1L, (a, b) => a * b);
 
-        public int GetFlattenedIndex(params int[] indices)
-        {
-            return FlattenFrom(this, indices);
-        }
+        public bool IsScalar { get => Size == 1; }
+
+        public int GetFlattenedIndex(params int[] indices) => FlattenFrom(this, indices);
         public int[] GetIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Size)

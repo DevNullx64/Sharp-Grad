@@ -10,7 +10,7 @@ namespace SharpGrad.Tensors
         public static TType ApplyCpu(TType left)
             => left > TType.Zero ? left : TType.Zero;
 
-         public static void ApplyGpu(Index1D idx, ArrayView<TType> left, ArrayView<TType> output)
+         public static void ApplyAccelerator(Index1D idx, ArrayView<TType> left, ArrayView<TType> output)
             => output[idx] = ApplyCpu(left[idx]);
 
         public static TGrad BackwardCpu(TGrad grad, TType left) => left > TType.Zero ? grad : TGrad.Zero;

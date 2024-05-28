@@ -26,7 +26,7 @@ namespace SharpGrad.Tensors
         /// <param name="idx"><see cref="Accelerator"/> index.</param>
         /// <param name="left">Operand.</param>
         /// <param name="output">Result of the negation.</param>
-        public static void ApplyGpu(Index1D idx, ArrayView<TType> left, ArrayView<TType> output) => output[idx] = ApplyCpu(left[idx]);
+        public static void ApplyAccelerator(Index1D idx, ArrayView<TType> left, ArrayView<TType> output) => output[idx] = ApplyCpu(left[idx]);
 
         /// <summary>
         /// Calculates the gradients of the negation operator.
