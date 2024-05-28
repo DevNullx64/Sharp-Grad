@@ -43,6 +43,6 @@ namespace SharpGrad.Tensors
         /// <param name="grad">Gradients to backpropagate.</param>
         /// <param name="left">Operands.</param>
         /// <param name="leftGrad">Gradients of the negations operator.</param>
-        public static void BackwardGpu(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
+        public static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
     }
 }

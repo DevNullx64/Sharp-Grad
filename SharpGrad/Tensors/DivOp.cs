@@ -20,7 +20,7 @@ namespace SharpGrad.Tensors
             return (grad / r, -grad * l / (r * r));
         }
 
-        public static void BackwardGpu(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TType> right, ArrayView<TGrad> leftGrad, ArrayView<TGrad> rightGrad)
+        public static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TType> right, ArrayView<TGrad> leftGrad, ArrayView<TGrad> rightGrad)
         {
             var (l, r) = DivOp<TType, TGrad>.BackwardCpu(grad[idx], right[idx], left[idx]);
             leftGrad[idx] += l;

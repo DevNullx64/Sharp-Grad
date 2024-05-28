@@ -15,7 +15,7 @@ namespace SharpGrad.Tensors
 
         public static TGrad BackwardCpu(TGrad grad, TType left) => left > TType.Zero ? grad : TGrad.Zero;
 
-        public static void BackwardGpu(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad)
+        public static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad)
         {
             var l = ReLUOp<TType, TGrad>.BackwardCpu(grad[idx], left[idx]);
             leftGrad[idx] += l;
