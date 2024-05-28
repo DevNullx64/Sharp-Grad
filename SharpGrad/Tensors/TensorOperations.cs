@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace SharpGrad.Tensors
 {
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class TensorOperationOne<T, TOp, TGrad>(Tensor<T, TGrad> left) : TensorBase<T, TGrad>(left.Shape)
+    internal class TensorOperations<T, TOp, TGrad>(Tensor<T, TGrad> left) : TensorBase<T, TGrad>(left.Shape)
         where T : unmanaged, INumber<T> 
         where TOp : struct, IBackwardOne<T, TGrad>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
@@ -26,7 +26,7 @@ namespace SharpGrad.Tensors
             {
                 if (data.IsEmpty)
                 {
-                    ExecGpu(TOp.ApplyGpu, LeftOperand.Data.AcceleratorData, data.AcceleratorData);
+                    ExecAccelerator(TOp.ApplyGpu, LeftOperand.Data.AcceleratorData, data.AcceleratorData);
                 }
                 return data;
             }
@@ -38,14 +38,15 @@ namespace SharpGrad.Tensors
         }
     }
 
+
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class NegOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperationOne<T, NegOp<T, TGrad>, TGrad>(left)
+    internal class NegOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperations<T, NegOp<T, TGrad>, TGrad>(left)
         where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
 
     [SuppressMessage("Usage", "CA2260:Use the correct type parameter", Justification = "Take into account in the architecture. A bad T type should be impossible.")]
-    internal class ReLUOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperationOne<T, ReLUOp<T, TGrad>, TGrad>(left)
+    internal class ReLUOperation<T, TGrad>(Tensor<T, TGrad> left) : TensorOperations<T, ReLUOp<T, TGrad>, TGrad>(left)
         where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
@@ -67,7 +68,7 @@ namespace SharpGrad.Tensors
             {
                 if (data.IsEmpty)
                 {
-                    ExecGpu(Top.ApplyGpu, LeftOperand.Data.AcceleratorData, RightOperand.Data.AcceleratorData, data.AcceleratorData);
+                    ExecAccelerator(Top.ApplyGpu, LeftOperand.Data.AcceleratorData, RightOperand.Data.AcceleratorData, data.AcceleratorData);
                 }
                 return data;
             }

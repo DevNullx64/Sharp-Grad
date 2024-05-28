@@ -44,12 +44,14 @@ namespace SharpGrad.Tensors
                 throw new ArgumentException($"Expected gradient shape {shape}, got {gradient.shape}");
 
             if (gradients != null)
-                ExecGpu(AddOp<T, TGrad>.ApplyGpu, gradients, gradient.Data, gradients);
+                ExecAccelerator(AddOp<T, TGrad>.ApplyGpu, gradients, gradient.Data, gradients);
         }
 
-        public static Tensor<T, TGrad> operator +(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecTensorOnGpu(AddOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator -(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecTensorOnGpu(SubOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator *(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecTensorOnGpu(MulOp<T, TGrad>.ApplyGpu, left, right);
-        public static Tensor<T, TGrad> operator /(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecTensorOnGpu(DivOp<T, TGrad>.ApplyGpu, left, right);
+        public static Tensor<T, TGrad> operator +(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(AddOp<T, TGrad>.ApplyGpu, left, right);
+        public static Tensor<T, TGrad> operator -(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(SubOp<T, TGrad>.ApplyGpu, left, right);
+        public static Tensor<T, TGrad> operator *(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(MulOp<T, TGrad>.ApplyGpu, left, right);
+        public static Tensor<T, TGrad> operator /(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => ExecAccelerator(DivOp<T, TGrad>.ApplyGpu, left, right);
     }
+
+    //public class Tensor<T> : Tensor<T, float> where T : unmanaged, INumber<T> { }
 }

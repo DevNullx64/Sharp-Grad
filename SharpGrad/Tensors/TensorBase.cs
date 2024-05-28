@@ -20,7 +20,7 @@ namespace SharpGrad.Tensors
         public abstract T this[params int[] indices] { get; set; }
 
 
-        public static void ExecGpu(
+        public static void ExecAccelerator(
             Action<Index1D, ArrayView<T>, ArrayView<T>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
@@ -29,7 +29,7 @@ namespace SharpGrad.Tensors
             Tensors.Accelerator.Synchronize();
         }
 
-        public static void ExecGpu(
+        public static void ExecAccelerator(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
@@ -39,32 +39,32 @@ namespace SharpGrad.Tensors
         }
 
 
-        public static void ExecGpu(
+        public static void ExecAccelerator(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
             TensorBase<T, TGrad> left, TensorBase<T, TGrad> right, TensorBase<T, TGrad> result)
-            => ExecGpu(func, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
+            => ExecAccelerator(func, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
 
-        public static Tensor<T, TGrad> ExecTensorOnGpu(
+        public static Tensor<T, TGrad> ExecAccelerator(
             Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
             TensorBase<T, TGrad> left, TensorBase<T, TGrad> right)
         {
             if (left.shape != right.shape)
                 throw new ArgumentException($"Expected shapes {left.shape}, got {right.shape}");
             var result = new Tensor<T, TGrad>(left.shape);
-            ExecGpu(func, left, right, result);
+            ExecAccelerator(func, left, right, result);
             return result;
         }
 
-        public static void ExecGpu(
+        public static void ExecAccelerator(
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
             if(left.Length != right.Length || left.Length != result.Length)
                 throw new ArgumentException($"Length mismatch: {nameof(left)}:{left.Length}, {nameof(right)}:{right.Length}, {nameof(result)}:{result.Length}");
-            ExecGpu(operations, left, right, result);
+            ExecAccelerator(operations, left, right, result);
         }
 
-        public static void DynGpu(
+        public static void DynAccelerator(
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
@@ -74,15 +74,15 @@ namespace SharpGrad.Tensors
             Tensors.Accelerator.Synchronize();
         }
 
-        public static void DynGpu(
+        public static void DynAccelerator(
             OpCode[] operations,
             Tensor<T, TGrad> left, Tensor<T, TGrad> right, Tensor<T, TGrad> result)
-            => DynGpu(operations, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
+            => DynAccelerator(operations, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
 
-        public static TensorBase<T, TGrad> operator +(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecTensorOnGpu(AddOp<T, TGrad>.ApplyGpu, left, right);
-        public static TensorBase<T, TGrad> operator -(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecTensorOnGpu(SubOp<T, TGrad>.ApplyGpu, left, right);
-        public static TensorBase<T, TGrad> operator *(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecTensorOnGpu(MulOp<T, TGrad>.ApplyGpu, left, right);
-        public static TensorBase<T, TGrad> operator /(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecTensorOnGpu(DivOp<T, TGrad>.ApplyGpu, left, right);
+        public static TensorBase<T, TGrad> operator +(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecAccelerator(AddOp<T, TGrad>.ApplyGpu, left, right);
+        public static TensorBase<T, TGrad> operator -(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecAccelerator(SubOp<T, TGrad>.ApplyGpu, left, right);
+        public static TensorBase<T, TGrad> operator *(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecAccelerator(MulOp<T, TGrad>.ApplyGpu, left, right);
+        public static TensorBase<T, TGrad> operator /(TensorBase<T, TGrad> left, TensorBase<T, TGrad> right) => ExecAccelerator(DivOp<T, TGrad>.ApplyGpu, left, right);
 
     }
 }

@@ -99,7 +99,7 @@ namespace Test
                 ty[i, j, k] += ta[i, j, k] / tb[i, j, k];
                 return ty[i, j, k];
             });
-            Tensor<T, TGrad>.DynGpu([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb, tc);
+            Tensor<T, TGrad>.DynAccelerator([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb, tc);
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
