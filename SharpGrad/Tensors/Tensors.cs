@@ -3,7 +3,6 @@ using ILGPU.Runtime;
 using System;
 using System.Diagnostics;
 using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Tensors
 {
