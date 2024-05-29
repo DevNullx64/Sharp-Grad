@@ -61,8 +61,8 @@ namespace SharpGrad.Tensors
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
-            Action<Index1D, ArrayView<OpCode>, ArrayView<T>, ArrayView<T>, ArrayView<T>> loadedKernel =
-                Acc.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<T>, ArrayView<T>, ArrayView<T>>(KernelProcessUnit<T, TGrad>.Dynamic);
+            Action<Index1D, ArrayView<OpCode>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel =
+                Acc.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>>(KernelProcessUnit<T, TGrad>.Dynamic);
             loadedKernel(left.IntExtent, Acc.Accelerator.Allocate1D(operations).View, left.View, right.View, result.View);
             Acc.Accelerator.Synchronize();
         }

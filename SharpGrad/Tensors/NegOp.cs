@@ -26,7 +26,7 @@ namespace SharpGrad.Tensors
         /// <param name="idx"><see cref="Accelerator"/> index.</param>
         /// <param name="left">Operand.</param>
         /// <param name="output">Result of the negation.</param>
-        public static void ApplyAccelerator(Index1D idx, ArrayView<TType> left, ArrayView<TType> output) => output[idx] = ApplyCpu(left[idx]);
+        public static void ApplyAccelerator(Index1D idx, ArrayView1D<TType, Stride1D.Dense> left, ArrayView1D<TType, Stride1D.Dense> output) => output[idx] = ApplyCpu(left[idx]);
 
         /// <summary>
         /// Calculates the gradients of the negation operator.
@@ -43,6 +43,6 @@ namespace SharpGrad.Tensors
         /// <param name="grad">Gradients to backpropagate.</param>
         /// <param name="left">Operands.</param>
         /// <param name="leftGrad">Gradients of the negations operator.</param>
-        public static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
+        public static void BackwardAccelerator(Index1D idx, ArrayView1D<TGrad, Stride1D.Dense> grad, ArrayView1D<TType, Stride1D.Dense> left, ArrayView1D<TGrad, Stride1D.Dense> leftGrad) => leftGrad[idx] += BackwardCpu(grad[idx], left[idx]);
     }
 }

@@ -37,7 +37,7 @@ namespace SharpGrad.Tensors
         /// <param name="left">Left operands</param>
         /// <param name="right">Right operands</param>
         /// <param name="output">Results of the operations</param>
-        public static void Dynamic(Index1D idx, ArrayView<OpCode> ops, ArrayView<TType> left, ArrayView<TType> right, ArrayView<TType> output)
+        public static void Dynamic(Index1D idx, ArrayView<OpCode> ops, ArrayView1D<TType, Stride1D.Dense> left, ArrayView1D<TType, Stride1D.Dense> right, ArrayView1D<TType, Stride1D.Dense> output)
         {
             for (int i = 0; i < ops.Length; i++)
                 KPU(ops[i], ref left[idx], ref right[idx], ref output[idx]);

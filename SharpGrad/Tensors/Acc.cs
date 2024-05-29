@@ -45,28 +45,28 @@ namespace SharpGrad.Tensors
         }
 
         public static void Exec<T>(
-            Action<Index1D, ArrayView<T>, ArrayView<T>> func,
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged, INumber<T>
         {
-            Action<Index1D, ArrayView<T>, ArrayView<T>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.IntExtent, left.View, result.View);
             Accelerator.Synchronize();
         }
 
         public static void Exec<T>(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged, INumber<T>
         {
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.IntExtent, left.View, right.View, result.View);
             Accelerator.Synchronize();
         }
 
 
         public static void Exec<T, TGrad>(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
         Tensor<T, TGrad> left, Tensor<T, TGrad> right, Tensor<T, TGrad> result)
             where T : unmanaged, INumber<T>
             where TGrad : unmanaged, IFloatingPoint<TGrad>
@@ -78,7 +78,7 @@ namespace SharpGrad.Tensors
         }
 
         public static DataTensor<T, TGrad> Exec<T, TGrad>(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             Tensor<T, TGrad> left, Tensor<T, TGrad> right)
             where T : unmanaged, INumber<T>
             where TGrad : unmanaged, IFloatingPoint<TGrad>

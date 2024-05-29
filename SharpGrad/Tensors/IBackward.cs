@@ -1,4 +1,5 @@
 ﻿using ILGPU;
+using ILGPU.Runtime;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
@@ -14,7 +15,7 @@ namespace SharpGrad.Tensors
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         abstract static TGrad BackwardCpu(TGrad grad, TType left);
-        abstract static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TGrad> leftGrad);
+        abstract static void BackwardAccelerator(Index1D idx, ArrayView1D<TGrad, Stride1D.Dense> grad, ArrayView1D<TType, Stride1D.Dense> left, ArrayView1D<TGrad, Stride1D.Dense> leftGrad);
     }
     public interface IBackwardOne<TType, TGrad> : IApplyOpOne<TType>, IBackwardOneOnly<TType, TGrad>
         where TType : unmanaged, INumber<TType>
@@ -35,7 +36,7 @@ namespace SharpGrad.Tensors
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         abstract static (TGrad Left, TGrad Right) BackwardCpu(TGrad grad, TType left, TType right);
-        abstract static void BackwardAccelerator(Index1D idx, ArrayView<TGrad> grad, ArrayView<TType> left, ArrayView<TType> right, ArrayView<TGrad> leftGrad, ArrayView<TGrad> rightGrad);
+        abstract static void BackwardAccelerator(Index1D idx, ArrayView1D<TGrad, Stride1D.Dense> grad, ArrayView1D<TType, Stride1D.Dense> left, ArrayView1D<TType, Stride1D.Dense> right, ArrayView1D<TGrad, Stride1D.Dense> leftGrad, ArrayView1D<TGrad, Stride1D.Dense> rightGrad);
     }
 
     public interface IBackwardTwo<TType, TGrad> : IApplyOpTwo<TType>, IBackwardTwoOnly<TType, TGrad>
