@@ -76,12 +76,12 @@ namespace SharpGrad.Tensors
         /// Return the shared memory data.
         /// </summary>
         /// <remarks>If data is not available on the shared memory, it will be copied from the CPU or the <see cref="Accelerator"/>. Then, the RAM and the <see cref="Accelerator"/> data will be disposed.</remarks>
-        ArrayView<T> SharedData { get; }
+        ArrayView1D<T, Stride1D.Dense> SharedData { get; }
         /// <summary>
         /// Return the <see cref="Accelerator"/> data view from <see href="AcceleratorData"> or <see href="SharedData"/>.
         /// </summary>
         /// <remarks>No movement of data will be done. If no data is available, SharedData will be initialized to 0 and returned.</remarks>
-        ArrayView<T> CurrentView { get; }
+        ArrayView1D<T, Stride1D.Dense> CurrentView { get; }
         /// <summary>
         /// Return the <see cref="Accelerator"/> data.
         /// </summary>
@@ -147,8 +147,8 @@ namespace SharpGrad.Tensors
             }
         }
 
-        private ArrayView<T>? sharedData = null;
-        public ArrayView<T> SharedData
+        private ArrayView1D<T, Stride1D.Dense>? sharedData = null;
+        public ArrayView1D<T, Stride1D.Dense> SharedData
         {
             get
             {
@@ -189,7 +189,7 @@ namespace SharpGrad.Tensors
             }
         }
         
-        public ArrayView<T> CurrentView => acceleratorData is not null ? (ArrayView<T>)AcceleratorData.View : SharedData;
+        public ArrayView1D<T, Stride1D.Dense> CurrentView => acceleratorData is not null ? AcceleratorData.View : SharedData;
 
         // The data on the Accelerator.
         private MemoryBuffer1D<T, Stride1D.Dense>? acceleratorData = null;
