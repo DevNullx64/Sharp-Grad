@@ -5,11 +5,6 @@ using System.Linq;
 
 namespace SharpGrad
 {
-    public interface IShape : IReadOnlyList<Dim>, IEquatable<Shape>
-    {
-        bool IsScalar { get; }
-    }
-
     public readonly struct Shape(params Dim[] dims) : IShape, IEquatable<Shape>
     {
         public static readonly Shape Empty = new();

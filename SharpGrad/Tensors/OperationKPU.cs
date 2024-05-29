@@ -29,7 +29,7 @@ namespace SharpGrad.Tensors
     /// <param name="right">Right operand</param>
     /// <param name="result">Result of the operation</param>
     /// <remarks>Operations are performed in-place</remarks>
-    public interface IOpeartion<TType>
+    public interface IOpeartion<T>
     {
         /// <summary>
         /// Operation to perform
@@ -38,15 +38,15 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// Left operand
         /// </summary>
-        TType Left { get; }
+        T Left { get; }
         /// <summary>
         /// Right operand
         /// </summary>
-        TType Right { get; }
+        T Right { get; }
         /// <summary>
         /// Result of the operation
         /// </summary>
-        TType Result { get; }
+        T Result { get; }
     }
 
     /// <summary>
