@@ -28,6 +28,12 @@ namespace SharpGrad.Tensors
 #pragma warning restore CS8604
         }
 
+        public void ResetGradients()
+        {
+            if (IsGradients)
+                gradients?.MemSetToZero();
+        }
+
         public bool IsGradients
         {
             get => gradients is not null;
@@ -119,12 +125,6 @@ namespace SharpGrad.Tensors
                 gradients = null;
             }
             GC.SuppressFinalize(this);
-        }
-
-        public void ResetGradients()
-        {
-            if (IsGradients)
-                gradients?.MemSetToZero();
         }
 
         public static Tensor<T, TGrad> operator +(Tensor<T, TGrad> left, Tensor<T, TGrad> right) => new TensorOperationTwo<T, AddOp<T, TGrad>, TGrad>(left, right);

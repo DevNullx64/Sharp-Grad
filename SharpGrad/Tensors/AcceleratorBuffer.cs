@@ -284,7 +284,7 @@ namespace SharpGrad.Tensors
 
         public void Fill(T value)
         {
-            Array.Fill(CPUData, value);
+                Array.Fill(CPUData, value);
         }
         public void MemSetToZero()
         {
