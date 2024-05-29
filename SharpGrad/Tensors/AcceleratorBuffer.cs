@@ -203,10 +203,10 @@ namespace SharpGrad.Tensors
             {
                 if (acceleratorData is null)
                 {
-                    acceleratorData = Tensors.Accelerator.Allocate1D<T>(Length);
+                    acceleratorData = Acc.Accelerator.Allocate1D<T>(Length);
                     if (cpuData is not null)
                     {
-                        acceleratorData = Tensors.Accelerator.Allocate1D(CPUData);
+                        acceleratorData = Acc.Accelerator.Allocate1D(CPUData);
                         cpuData = null;
                         sharedData = null;
                     }

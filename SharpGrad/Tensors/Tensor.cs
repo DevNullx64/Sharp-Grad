@@ -18,13 +18,13 @@ namespace SharpGrad.Tensors
         internal abstract AcceleratorBuffer<T> Data { get; }
 
         internal AcceleratorBuffer<T>? gradients = isGrad ? new(shape.Size) : null;
-        public void AddGradient(DataTensor<T, TGrad> gradient)
+        public void AddGradient(AcceleratorBuffer<T> gradient)
         {
-            if (gradient.shape != shape)
-                throw new ArgumentException($"Expected gradient shape {shape}, got {gradient.shape}");
+            if (Length != gradient.Length)
+                throw new ArgumentException($"Expected length {Length}, got {gradient.Length}");
             if (IsGradients)
 #pragma warning disable CS8604 // Checked by IsGrad
-                ExecAccelerator(AddOp<T, TGrad>.ApplyAccelerator, gradients, gradient.Data, gradients);
+                Acc.Exec<T>(AddOp<T, float>.ApplyAccelerator, gradients, gradient, gradients);
 #pragma warning restore CS8604
         }
 
@@ -57,59 +57,14 @@ namespace SharpGrad.Tensors
 
         public abstract T this[params int[] indices] { get; set; }
 
-
-        public static void ExecAccelerator(
-            Action<Index1D, ArrayView<T>, ArrayView<T>> func,
-            MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> result)
-        {
-            Action<Index1D, ArrayView<T>, ArrayView<T>> loadedKernel = Tensors.Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left.View, result.View);
-            Tensors.Accelerator.Synchronize();
-        }
-
-        public static void ExecAccelerator(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
-            MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
-        {
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> loadedKernel = Tensors.Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left.View, right.View, result.View);
-            Tensors.Accelerator.Synchronize();
-        }
-
-
-        public static void ExecAccelerator(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
-            Tensor<T, TGrad> left, Tensor<T, TGrad> right, Tensor<T, TGrad> result)
-            => ExecAccelerator(func, left.Data.AcceleratorData, right.Data.AcceleratorData, result.Data.AcceleratorData);
-
-        public static DataTensor<T, TGrad> ExecAccelerator(
-            Action<Index1D, ArrayView<T>, ArrayView<T>, ArrayView<T>> func,
-            Tensor<T, TGrad> left, Tensor<T, TGrad> right)
-        {
-            if (left.shape != right.shape)
-                throw new ArgumentException($"Expected shapes {left.shape}, got {right.shape}");
-            var result = new DataTensor<T, TGrad>(left.shape);
-            ExecAccelerator(func, left, right, result);
-            return result;
-        }
-
-        public static void ExecAccelerator(
-            OpCode[] operations,
-            MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
-        {
-            if(left.Length != right.Length || left.Length != result.Length)
-                throw new ArgumentException($"Length mismatch: {nameof(left)}:{left.Length}, {nameof(right)}:{right.Length}, {nameof(result)}:{result.Length}");
-            ExecAccelerator(operations, left, right, result);
-        }
-
         public static void DynAccelerator(
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
         {
             Action<Index1D, ArrayView<OpCode>, ArrayView<T>, ArrayView<T>, ArrayView<T>> loadedKernel =
-                Tensors.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<T>, ArrayView<T>, ArrayView<T>>(KernelProcessUnit<T, TGrad>.Dynamic);
-            loadedKernel(left.IntExtent, Tensors.Accelerator.Allocate1D(operations).View, left.View, right.View, result.View);
-            Tensors.Accelerator.Synchronize();
+                Acc.Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OpCode>, ArrayView<T>, ArrayView<T>, ArrayView<T>>(KernelProcessUnit<T, TGrad>.Dynamic);
+            loadedKernel(left.IntExtent, Acc.Accelerator.Allocate1D(operations).View, left.View, right.View, result.View);
+            Acc.Accelerator.Synchronize();
         }
 
         public static void DynAccelerator(

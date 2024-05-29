@@ -26,7 +26,7 @@ namespace SharpGrad.Tensors
             {
                 if (data.IsEmpty)
                 {
-                    ExecAccelerator(TOp.ApplyAccelerator, LeftOperand.Data.AcceleratorData, data.AcceleratorData);
+                    Acc.Exec(TOp.ApplyAccelerator, LeftOperand.Data.AcceleratorData, data.AcceleratorData);
                 }
                 return data;
             }
@@ -66,7 +66,7 @@ namespace SharpGrad.Tensors
             {
                 if (data.IsEmpty)
                 {
-                    ExecAccelerator(TOp.ApplyAccelerator, LeftOperand.Data.AcceleratorData, RightOperand.Data.AcceleratorData, data.AcceleratorData);
+                    Acc.Exec(TOp.ApplyAccelerator, LeftOperand.Data.AcceleratorData, RightOperand.Data.AcceleratorData, data.AcceleratorData);
                 }
                 return data;
             }

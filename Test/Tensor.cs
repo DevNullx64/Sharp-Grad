@@ -83,7 +83,7 @@ namespace Test
         [TestMethod]
         public static void Dynamic()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
+            Acc.Accelerator.PrintInformation(Console.Out);
 
             Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
             Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
@@ -108,7 +108,7 @@ namespace Test
 
         public static void Addition()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
+            Acc.Accelerator.PrintInformation(Console.Out);
 
             Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
             Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
@@ -124,7 +124,7 @@ namespace Test
         }
         public static void Subtraction()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
+            Acc.Accelerator.PrintInformation(Console.Out);
 
             Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
             Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
@@ -140,7 +140,7 @@ namespace Test
         }
         public static void Multiplication()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
+            Acc.Accelerator.PrintInformation(Console.Out);
 
             Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
             Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
@@ -156,7 +156,7 @@ namespace Test
         }
         public static void Division()
         {
-            Tensors.Accelerator.PrintInformation(Console.Out);
+            Acc.Accelerator.PrintInformation(Console.Out);
 
             Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
             Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
