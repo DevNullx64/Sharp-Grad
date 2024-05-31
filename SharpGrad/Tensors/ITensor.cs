@@ -1,34 +1,28 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public interface ITensor {
-        Shape Shape { get; }
-        bool IsGradients { get; set; }
 
-        void ResetGradients();
-    }
+    public interface ITensor<TSelf, T> : ITensorBase<T>,
+        IAdditionOperators<TSelf, Tensor<T>, Tensor<T>>,
+        ISubtractionOperators<TSelf, Tensor<T>, Tensor<T>>,
+        IMultiplyOperators<TSelf, Tensor<T>, Tensor<T>>,
+        IDivisionOperators<TSelf, Tensor<T>, Tensor<T>>
+        where TSelf : ITensor<TSelf, T>
+        where T : unmanaged, INumber<T>
+    { }
 
-    public interface ITensor<TSelf, TType> : ITensor,
-        IAdditionOperators<TSelf, TSelf, Tensor<TType, float>>,
-        ISubtractionOperators<TSelf, TSelf, Tensor<TType, float>>,
-        IMultiplyOperators<TSelf, TSelf, Tensor<TType, float>>,
-        IDivisionOperators<TSelf, TSelf, Tensor<TType, float>>
-        where TSelf : ITensor<TSelf, TType>
-        where TType : unmanaged, INumber<TType>
-    {
-        TType this[params int[] indices] { get; set; }
-    }
-    public interface ITensor<TSelf, TType, TGrad> : ITensor,
-        IAdditionOperators<TSelf, TSelf, Tensor<TType, TGrad>>,
-        ISubtractionOperators<TSelf, TSelf, Tensor<TType, TGrad>>,
-        IMultiplyOperators<TSelf, TSelf, Tensor<TType, TGrad>>,
-        IDivisionOperators<TSelf, TSelf, Tensor<TType, TGrad>>
-        where TSelf : ITensor<TSelf, TType, TGrad>
-        where TType : unmanaged, INumber<TType>
+    public interface ITensor<TSelf, T, TGrad> : ITensor<TSelf, T>, IGradient<TGrad>,
+        IAdditionOperators<TSelf, Tensor<T>, Tensor<T, TGrad>>,
+        IAdditionOperators<TSelf, Tensor<T, TGrad>, Tensor<T, TGrad>>,
+        ISubtractionOperators<TSelf, Tensor<T>, Tensor<T, TGrad>>,
+        ISubtractionOperators<TSelf, Tensor<T, TGrad>, Tensor<T, TGrad>>,
+        IMultiplyOperators<TSelf, Tensor<T>, Tensor<T, TGrad>>,
+        IMultiplyOperators<TSelf, Tensor<T, TGrad>, Tensor<T, TGrad>>,
+        IDivisionOperators<TSelf, Tensor<T>, Tensor<T, TGrad>>,
+        IDivisionOperators<TSelf, Tensor<T, TGrad>, Tensor<T, TGrad>>
+        where TSelf : ITensor<TSelf, T, TGrad>
+        where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
-    {
-        TType this[params int[] indices] { get; set; }
-    }
+    { }
 }
