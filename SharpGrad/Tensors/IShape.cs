@@ -5,7 +5,8 @@ namespace SharpGrad
 {
     public interface IShape : IEnumerable<Dim>
     {
-        Dim this[int index] { get; }
+        Dim this[Index index] { get; }
+        Dim[] this[Range range] { get; }
         int Count { get; }
         long Size { get; }
         bool IsScalar { get; }

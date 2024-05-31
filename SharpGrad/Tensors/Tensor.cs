@@ -19,12 +19,14 @@ namespace SharpGrad.Tensors
 
         internal abstract ArrayView1D<T, Stride1D.Dense> GetArrayView1D();
 
-        public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOp<T, AddOp<T>>(left, right);
+        public static Tensor<T> operator +(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, AddOp<T>>(operand1, operand2);
 
-        public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new TensorOp<T, SubOp<T>>(left, right);
+        public static Tensor<T> operator -(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, SubOp<T>>(operand1, operand2);
 
-        public static Tensor<T> operator *(Tensor<T> left, Tensor<T> right) => new TensorOp<T, MulOp<T>>(left, right);
+        public static Tensor<T> operator -(Tensor<T> operand1) => new TensorOp1<T, NegOp<T>>(operand1);
 
-        public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new TensorOp<T, DivOp<T>>(left, right);
+        public static Tensor<T> operator *(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, MulOp<T>>(operand1, operand2);
+
+        public static Tensor<T> operator /(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, DivOp<T>>(operand1, operand2);
     }
 }
