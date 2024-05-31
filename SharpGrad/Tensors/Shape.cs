@@ -18,8 +18,8 @@ namespace SharpGrad
 
         public bool IsScalar { get => Size == 1; }
 
-        public int GetFlattenedIndex(params int[] indices) => FlattenFrom(this, indices);
-        public int[] GetIndices(int flattenedIndex)
+        public int GetFlattenedIndex(params Index[] indices) => FlattenFrom(this, indices);
+        public Index[] GetIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Size)
                 throw new ArgumentOutOfRangeException(nameof(flattenedIndex));
@@ -29,23 +29,28 @@ namespace SharpGrad
         public IEnumerator<Dim> GetEnumerator() => ((IEnumerable<Dim>)dims).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => dims.GetEnumerator();
 
-        public static int FlattenFrom(Shape Shape, params int[] indices)
+        public static int FlattenFrom(Shape Shape, params Index[] indices)
         {
             if (indices.Length != Shape.Count)
                 throw new ArgumentException($"Expected {Shape.Count} indices, got {indices.Length}");
 
-            int flattenedIndex = indices[0];
+            int flattenedIndex = indices[0].IsFromEnd
+                ? Shape[0] - indices[0].Value
+                : indices[0].Value;
+
             for (int i = 1; i < indices.Length; i++)
             {
                 flattenedIndex *= Shape[i];
-                flattenedIndex += indices[i];
+                flattenedIndex += indices[i].IsFromEnd
+                    ? Shape[i] - indices[i].Value
+                    : indices[i].Value;
             }
 
             return flattenedIndex;
         }
-        public static int[] IndicesFrom(Shape shape, int flattenedIndex)
+        public static Index[] IndicesFrom(Shape shape, int flattenedIndex)
         {
-            int[] indices = new int[shape.Count];
+            Index[] indices = new Index[shape.Count];
             for (int i = shape.Count - 1; i >= 0; i--)
             {
                 indices[i] = flattenedIndex % shape[i];

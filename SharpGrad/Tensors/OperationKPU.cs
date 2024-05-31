@@ -84,7 +84,7 @@ namespace SharpGrad.Tensors
     /// <param name="right">Right operand</param>
     /// <param name="result">Result of the operation</param>
     /// <remarks>Operations are performed in-place</remarks>
-    public readonly struct Operation<TView>(OpCode opCode, TView left, TView right, TView result) : IOpeartion<TView>
+    public readonly struct Operation2<TView>(OpCode opCode, TView left, TView right, TView result) : IOpeartion<TView>
         where TView: struct, IArrayView
     {
         /// <inheritdoc/>
