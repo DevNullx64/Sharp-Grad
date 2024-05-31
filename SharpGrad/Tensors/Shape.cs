@@ -18,7 +18,7 @@ namespace SharpGrad
 
         public bool IsScalar { get => Size == 1; }
 
-        public int GetFlattenedIndex(params Index[] indices) => FlattenFrom(this, indices);
+        public int GetFlattenIndex(params Index[] indices) => FlattenFrom(this, indices);
         public Index[] GetIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Size)

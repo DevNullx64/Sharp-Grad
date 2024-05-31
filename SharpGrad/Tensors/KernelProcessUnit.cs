@@ -5,9 +5,8 @@ using System.Threading;
 
 namespace SharpGrad.Tensors
 {
-    public static class KernelProcessUnit<T, TGrad>
+    public static class KernelProcessUnit<T>
         where T : unmanaged, INumber<T>
-        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         /// <summary>
         /// Kernel Processing Unit
@@ -21,10 +20,10 @@ namespace SharpGrad.Tensors
             switch (operation)
             {
                 case OpCode.Load: result = left; break;
-                case OpCode.Add: result += AddOp<T, TGrad>.ApplyCpu(left, right); break;
-                case OpCode.Sub: result += SubOp<T, TGrad>.ApplyCpu(left, right); break;
-                case OpCode.Mul: result += MulOp<T, TGrad>.ApplyCpu(left, right); break;
-                case OpCode.Div: result += DivOp<T, TGrad>.ApplyCpu(left, right); break;
+                case OpCode.Add: result += AddOp<T>.Exec(left, right); break;
+                case OpCode.Sub: result += SubOp<T>.Exec(left, right); break;
+                case OpCode.Mul: result += MulOp<T>.Exec(left, right); break;
+                case OpCode.Div: result += DivOp<T>.Exec(left, right); break;
                 default: result = T.Zero; break;
             }
         }

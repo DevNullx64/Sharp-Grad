@@ -9,14 +9,13 @@ namespace Test
 {
     [TestClass]
 
-    public class Operators<T, TGrad>
+    public class Operators<T>
         where T : unmanaged, INumber<T>
-        where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
-        public static void Fill(Tensor<T, TGrad> result, Func<int, int, int, T> fnc)
+        public static void Fill(Tensor<T> result, Func<int, int, int, T> fnc)
         {
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
@@ -24,9 +23,9 @@ namespace Test
                         result[i, j, k] = fnc(i, j, k);
         }
 
-        public static DataTensor<T, TGrad> NewRandom(params Dim[] dims)
+        public static DataTensor<T> NewRandom(params Dim[] dims)
         {
-            DataTensor<T, TGrad> result = new(dims);
+            DataTensor<T> result = new(dims);
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
@@ -34,7 +33,7 @@ namespace Test
             return result;
         }
 
-        public static (T Mean, T Min, T Max) Test(Tensor<T, TGrad> tc, Tensor<T, TGrad> ty)
+        public static (T Mean, T Min, T Max) Test(Tensor<T> tc, Tensor<T> ty)
         {
             T diff = T.Zero;
             T min = T.CreateTruncating(double.MaxValue);
@@ -58,65 +57,17 @@ namespace Test
             return (factor == T.Zero ? diff : diff / factor, min, max);
         }
 
-        [TestMethod]
-        public void TestKPU()
-        {
-            // Test KPU
-            //OperationKPU[] ops =
-            //    [
-            //        new(OpCode.Add, 0, 1, -1),
-            //        new(OpCode.Mul, -1, 1, -1),
-            //        new(OpCode.Add, 0, -1, -1),
-            //        new(OpCode.Save, -1, -1, 2)
-            //    ];
-            //Fill(ty, (i, j, k) =>
-            //{
-            //    float value = ta[i, j, k] + tb[i, j, k];
-            //    value *= tb[i, j, k];
-            //    value += ta[i, j, k];
-            //    return value;
-            //});
-            //tc = Tensor<float>.ExecGpu(ops, ta, tb, tc);
-
-        }
-
-        [TestMethod]
-        public static void Dynamic()
-        {
-            Acc.Accelerator.PrintInformation(Console.Out);
-
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tc = new DataTensor<T, TGrad>(256, 256, 256);
-            Tensor<T, TGrad> ty = new DataTensor<T, TGrad>(256, 256, 256);
-
-            // Test dynamic operations
-            Fill(ty, (i, j, k) =>
-            {
-                ty[i, j, k] += ta[i, j, k] - tb[i, j, k];
-                ty[i, j, k] += ta[i, j, k] + tb[i, j, k];
-                ty[i, j, k] += ta[i, j, k] * tb[i, j, k];
-                ty[i, j, k] += ta[i, j, k] / tb[i, j, k];
-                return ty[i, j, k];
-            });
-            DataTensor<T, TGrad>.DynAccelerator([OpCode.Sub, OpCode.Add, OpCode.Mul, OpCode.Div], ta, tb, tc);
-
-            (T mean, T min, T max) = Test(tc, ty);
-            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"dynamic test passed for type {typeof(T).Name} with error mean={mean}, min={min}, max={max}");
-        }
-
         public static void Addition()
         {
             Acc.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(256, 256, 256);
+            Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T, TGrad> ty = new(256, 256, 256);
+            DataTensor<T> ty = new(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
-            Tensor<T, TGrad> tc = ta + tb;
+            Tensor<T> tc = ta + tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -126,13 +77,13 @@ namespace Test
         {
             Acc.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(256, 256, 256);
+            Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new DataTensor<T, TGrad>(256, 256, 256);
+            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
-            Tensor<T, TGrad> tc = ta - tb;
+            Tensor<T> tc = ta - tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -142,13 +93,13 @@ namespace Test
         {
             Acc.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(256, 256, 256);
+            Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new DataTensor<T, TGrad>(256, 256, 256);
+            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
-            Tensor<T, TGrad> tc = ta * tb;
+            Tensor<T> tc = ta * tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -158,13 +109,13 @@ namespace Test
         {
             Acc.Accelerator.PrintInformation(Console.Out);
 
-            Tensor<T, TGrad> ta = NewRandom(256, 256, 256);
-            Tensor<T, TGrad> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(256, 256, 256);
+            Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T, TGrad> ty = new DataTensor<T, TGrad>(256, 256, 256);
+            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
-            Tensor<T, TGrad> tc = ta / tb;
+            Tensor<T> tc = ta / tb;
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
@@ -184,13 +135,11 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
     */
 
     [TestClass]
-    public class OperatorsFloat : Operators<float, float>
+    public class OperatorsFloat : Operators<float>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -200,12 +149,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsDouble : Operators<double, float>
+    public class OperatorsDouble : Operators<double>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -215,12 +162,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsByte : Operators<byte, float>
+    public class OperatorsByte : Operators<byte>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -230,12 +175,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsSByte : Operators<sbyte, float>
+    public class OperatorsSByte : Operators<sbyte>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -245,12 +188,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsShort : Operators<short, float>
+    public class OperatorsShort : Operators<short>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -260,12 +201,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsUShort : Operators<ushort, float>
+    public class OperatorsUShort : Operators<ushort>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -275,12 +214,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsInt : Operators<int, float>
+    public class OperatorsInt : Operators<int>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -290,12 +227,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsUInt : Operators<uint, float>
+    public class OperatorsUInt : Operators<uint>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -305,12 +240,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsLong : Operators<long, float>
+    public class OperatorsLong : Operators<long>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -320,12 +253,10 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 
     [TestClass]
-    public class OperatorsULong : Operators<ulong, float>
+    public class OperatorsULong : Operators<ulong>
     {
         [TestMethod]
         public void TestAddition() => Addition();
@@ -335,7 +266,5 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
-        [TestMethod]
-        public void TestDynamic() => Dynamic();
     }
 }

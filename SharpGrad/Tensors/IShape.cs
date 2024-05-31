@@ -9,7 +9,7 @@ namespace SharpGrad
         int Count { get; }
         long Size { get; }
         bool IsScalar { get; }
-        int GetFlattenedIndex(params Index[] indices);
+        int GetFlattenIndex(params Index[] indices);
         Index[] GetIndices(int flattenedIndex);
     }
 }
