@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public interface IOperation1<T>
+    public interface IOperation11_1<T>
         where T : unmanaged, INumber<T>
     {
         abstract static Shape ResultingShape(Shape operand1);

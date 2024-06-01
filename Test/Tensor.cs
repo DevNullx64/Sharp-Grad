@@ -1,4 +1,5 @@
 using ILGPU.Algorithms;
+using ILGPU.Util;
 using SharpGrad;
 using SharpGrad.Tensors;
 using System.Diagnostics;
@@ -266,5 +267,92 @@ namespace Test
         public void TestMultiplication() => Multiplication();
         [TestMethod]
         public void TestDivision() => Division();
+    }
+
+    [TestClass]
+    public class CastTestOperatorsULong : Operators<double>
+    {
+        private bool Test<T>(Tensor<T> tensor)
+            where T : unmanaged, INumber<T>
+        {
+            for(int i =0;i < tensor.Shape[0]; i++)
+                for(int j = 0; j < tensor.Shape[1]; j++)
+                    for(int k = 0; k < tensor.Shape[2]; k++)
+                        if(tensor[i, j, k] != T.One)
+                            return false;
+            return true;
+        }
+        [TestMethod]
+        public void CastDoubleToFloat()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<double> tDouble = Tensor<double>.CastTo<double>(ta);
+            Assert.IsTrue(Test(tDouble), $"double to double casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToULong()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<ulong> tULong = Tensor<double>.CastTo<ulong>(ta);
+            Assert.IsTrue(Test(tULong), $"double to ulong casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToLong()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<long> tLong = Tensor<double>.CastTo<long>(ta);
+            Assert.IsTrue(Test(tLong), $"double to long casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToUInt()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<uint> tUInt = Tensor<double>.CastTo<uint>(ta);
+            Assert.IsTrue(Test(tUInt), $"double to uint casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToInt()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<int> tInt = Tensor<double>.CastTo<int>(ta);
+            Assert.IsTrue(Test(tInt), $"double to int casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToUShort()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<ushort> tUShort = Tensor<double>.CastTo<ushort>(ta);
+            Assert.IsTrue(Test(tUShort), $"double to ushort casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToShort()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<short> tShort = Tensor<double>.CastTo<short>(ta);
+            Assert.IsTrue(Test(tShort), $"double to short casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToByte()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<byte> tByte = Tensor<double>.CastTo<byte>(ta);
+            Assert.IsTrue(Test(tByte), $"double to byte casting failed");
+        }
+        [TestMethod]
+        public void CastDoubleToSByte()
+        {
+            Tensor<double> ta = NewRandom(256, 256, 256);
+            Fill(ta, (i, j, k) => 1);
+            Tensor<sbyte> tSByte = Tensor<double>.CastTo<sbyte>(ta);
+            Assert.IsTrue(Test(tSByte), $"double to sbyte casting failed");
+        }
     }
 }

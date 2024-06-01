@@ -7,6 +7,32 @@ using System.Threading;
 
 namespace SharpGrad.Tensors
 {
+    public enum CastCombination: int
+    {
+        // From
+        FromDouble = 1,
+        FromFloat = 2,
+        FromLong = 3,
+        FromULong = 4,
+        FromInt = 5,
+        FromUInt = 6,
+        FromShort = 7,
+        FromUShort = 8,
+        FromByte = 9,
+        FromSByte = 10,
+        // To
+        ToDouble = FromDouble << 4,
+        ToFloat = FromFloat << 4,
+        ToLong = FromLong << 4,
+        ToULong = FromULong << 4,
+        ToInt = FromInt << 4,
+        ToUInt = FromUInt << 4,
+        ToShort = FromShort << 4,
+        ToUShort = FromUShort << 4,
+        ToByte = FromByte << 4,
+        ToSByte = FromSByte << 4,
+    }
+
     public static class Acc
     {
         private static Context GetContext()
@@ -27,6 +53,17 @@ namespace SharpGrad.Tensors
         public static readonly Accelerator Accelerator = device.CreateAccelerator(context);
 
         #region Exec
+        public static void Exec<T, U>(
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> func,
+            ArrayView1D<T, Stride1D.Dense> left,
+            ArrayView1D<U, Stride1D.Dense> result)
+            where T : unmanaged, INumber<T>
+            where U : unmanaged, INumber<U>
+        {
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
+            loadedKernel(left.IntExtent, left, result);
+            Accelerator.Synchronize();
+        }
         public static void Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             ArrayView1D<T, Stride1D.Dense> left,
@@ -54,7 +91,7 @@ namespace SharpGrad.Tensors
             MemoryBuffer1D<T, Stride1D.Dense> left,
             MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged, INumber<T>
-            => Exec(func, left.View, result.View);
+            => Exec<T>(func, left.View, result.View);
 
         public static void Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
@@ -70,7 +107,7 @@ namespace SharpGrad.Tensors
             Tensor<T> left,
             Tensor<T> result)
             where T : unmanaged, INumber<T>
-            => Exec(func, left.GetArrayView1D(), result.GetArrayView1D());
+            => Exec<T>(func, left.GetArrayView1D(), result.GetArrayView1D());
 
         public static void Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
@@ -122,6 +159,426 @@ namespace SharpGrad.Tensors
         public static void Fill<T>(this DataTensor<T> tensor, T value)
             where T : unmanaged, INumber<T>
             => Fill(tensor.GetArrayView1D(), value);
+        #endregion
+
+        #region CastKernel
+        private static void CastKernel<T, U>(Index1D idx, ArrayView1D<T, Stride1D.Dense> from, ArrayView1D<U, Stride1D.Dense> to, SpecializedValue<byte> castToDo)
+            where T : unmanaged, INumber<T>
+            where U : unmanaged, INumber<U>
+        {
+            int toDo = castToDo.Value;
+            int f = toDo & 0xF;
+            int t = toDo >> 4;
+            switch (f)
+            {
+                case 1: // FromDouble
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(double)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(long)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 2: // FromFloat
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(float)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(long)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 3: // FromLong
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(long)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(long)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 4: // FromULong
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(ulong)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 5: // FromInt
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(int)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 6: // FromUInt
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(uint)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 7: // FromShort
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(short)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 8: // FromUShort
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(ushort)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 9: // FromByte
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(byte)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                    }
+                    break;
+                case 10: // FromSByte
+                    switch (t)
+                    {
+                        case 1: // ToDouble
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 2: // ToFloat
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 3: // ToLong
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 4: // ToULong
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 5: // ToInt
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 6: // ToUInt
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 7: // ToShort
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 8: // ToUShort
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 9: // ToByte
+                            to[idx] = (U)(object)(sbyte)(object)from[idx];
+                            break;
+                        case 10: // ToSByte
+                            to[idx] = (U)(object)from[idx];
+                            break;
+                    }
+                    break;
+            }
+        }
+
+        public static void Cast<T, U>(this ArrayView1D<T, Stride1D.Dense> from, ArrayView1D<U, Stride1D.Dense> to)
+            where T : unmanaged, INumber<T>
+            where U : unmanaged, INumber<U>
+        {
+            int toDo = 0;
+
+            {
+                if (typeof(T) == typeof(double))
+                    toDo = (int)CastCombination.FromDouble;
+                else if (typeof(T) == typeof(float))
+                    toDo = (int)CastCombination.FromFloat;
+                else if (typeof(T) == typeof(ulong))
+                    toDo = (int)CastCombination.FromULong;
+                else if (typeof(T) == typeof(long))
+                    toDo = (int)CastCombination.FromLong;
+                else if (typeof(T) == typeof(uint))
+                    toDo = (int)CastCombination.FromUInt;
+                else if (typeof(T) == typeof(int))
+                    toDo = (int)CastCombination.FromInt;
+                else if (typeof(T) == typeof(ushort))
+                    toDo = (int)CastCombination.FromUShort;
+                else if (typeof(T) == typeof(short))
+                    toDo = (int)CastCombination.FromShort;
+                else if (typeof(T) == typeof(byte))
+                    toDo = (int)CastCombination.FromByte;
+                else if (typeof(T) == typeof(sbyte))
+                    toDo = (int)CastCombination.FromSByte;
+            }
+            {
+                if (typeof(U) == typeof(double))
+                    toDo = (int)CastCombination.ToDouble;
+                else if (typeof(U) == typeof(ulong))
+                    toDo = (int)CastCombination.ToULong;
+                else if (typeof(U) == typeof(long))
+                    toDo = (int)CastCombination.ToLong;
+                else if (typeof(U) == typeof(uint))
+                    toDo = (int)CastCombination.ToUInt;
+                else if (typeof(U) == typeof(int))
+                    toDo = (int)CastCombination.ToInt;
+                else if (typeof(U) == typeof(ushort))
+                    toDo = (int)CastCombination.ToUShort;
+                else if (typeof(U) == typeof(short))
+                    toDo = (int)CastCombination.ToShort;
+                else if (typeof(U) == typeof(byte))
+                    toDo = (int)CastCombination.ToByte;
+                else if (typeof(U) == typeof(sbyte))
+                    toDo = (int)CastCombination.ToSByte;
+                else if (typeof(U) == typeof(float))
+                    toDo = (int)CastCombination.ToFloat;
+            }
+
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>, SpecializedValue<byte>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>, SpecializedValue<byte>>(CastKernel);
+            loadedKernel(from.IntExtent, from, to, new SpecializedValue<byte>((byte)toDo));
+            Accelerator.Synchronize();
+        }
         #endregion
     }
 }

@@ -5,12 +5,11 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class TensorOp2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2) : Tensor<T>(TOp.ResultingShape(operand1.Shape, operand2.Shape))
+    internal class TensorOp1<T, TOp>(Tensor<T> operand1) : Tensor<T>(TOp.ResultingShape(operand1.Shape))
         where T : unmanaged, INumber<T>
-        where TOp : IOperation11_2<T>
+        where TOp : IOperation11_1<T>
     {
         public readonly Tensor<T> Operand1 = operand1;
-        public readonly Tensor<T> Operand2 = operand2;
 
         private AcceleratorBuffer<T>? data = null;
         internal AcceleratorBuffer<T> Data {
@@ -19,7 +18,7 @@ namespace SharpGrad.Tensors
                 if (data is null)
                 {
                     data = new(Shape.Size);
-                    Acc.Exec(TOp.Exec, Operand1.GetArrayView1D(), Operand2.GetArrayView1D(), GetArrayView1D());
+                    Acc.Exec<T>(TOp.Exec, Operand1.GetArrayView1D(), GetArrayView1D());
                 }
                 return data;
             }
