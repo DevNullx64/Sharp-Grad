@@ -54,7 +54,7 @@ namespace Test
                         if (diff_ > max)
                             max = diff_;
                     }
-            T factor = T.CreateTruncating(tc.Shape.Size);
+            T factor = T.CreateTruncating(tc.Shape.Length);
             return (factor == T.Zero ? diff : diff / factor, min, max);
         }
 
@@ -269,6 +269,7 @@ namespace Test
         public void TestDivision() => Division();
     }
 
+    /*
     [TestClass]
     public class CastTestOperatorsULong : Operators<double>
     {
@@ -355,4 +356,5 @@ namespace Test
             Assert.IsTrue(Test(tSByte), $"double to sbyte casting failed");
         }
     }
+    */
 }

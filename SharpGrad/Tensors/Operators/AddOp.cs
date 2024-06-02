@@ -5,7 +5,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class AddOp<T> : IOperation11_2<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, INumber<T>, IAdditionOperators<T, T, T>
     {
         public static Shape ResultingShape(Shape operand1, Shape operand2) => operand1;
 

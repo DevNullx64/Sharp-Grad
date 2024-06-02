@@ -9,9 +9,10 @@ namespace SharpGrad.Tensors
         where T : unmanaged, INumber<T>
     {
         public Shape Shape { get; } = shape;
+        public long Length => Shape.Length;
 
         public abstract T this[params Index[] indices] { get;set; }
-        public virtual T[] this[params Range[] ranges] 
+        public virtual T[,] this[params Range[] ranges] 
         {
             get => throw new NotImplementedException(); 
             set => throw new NotImplementedException(); 

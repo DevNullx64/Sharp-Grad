@@ -18,7 +18,7 @@ namespace SharpGrad.Tensors
             {
                 if (data is null)
                 {
-                    data = new(Shape.Size);
+                    data = new(Shape.Length);
                     Acc.Exec(TOp.Exec, Operand1.GetArrayView1D(), Operand2.GetArrayView1D(), GetArrayView1D());
                 }
                 return data;

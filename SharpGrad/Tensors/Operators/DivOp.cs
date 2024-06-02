@@ -5,7 +5,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class DivOp<T> : IOperation11_2<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, INumber<T>, IDivisionOperators<T, T, T>
     {
         public static Shape ResultingShape(Shape operand1, Shape operand2) => operand1;
         public static T Exec(T left, T right) => left / right;

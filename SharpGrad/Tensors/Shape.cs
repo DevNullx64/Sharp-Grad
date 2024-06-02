@@ -41,11 +41,11 @@ namespace SharpGrad
                 int end = range.End.IsFromEnd ? Count - range.End.Value : range.End.Value;
 
                 if(start < 0 || start >= Count)
-                    throw new ArgumentOutOfRangeException(nameof(range.Start));
+                    throw new ArgumentOutOfRangeException(nameof(range), start, "Start index out of range.");
                 if(end < 0 || end >= Count)
-                    throw new ArgumentOutOfRangeException(nameof(range.End));
+                    throw new ArgumentOutOfRangeException(nameof(range), end, "End index out of range.");
                 if(start > end)
-                    (start, end) = (end, start);
+                    throw new ArgumentOutOfRangeException(nameof(range), "Start index is greater than end index.");
 
                 Dim[] result = new Dim[end - start];
                 for (int i = start; i < end; i++)
@@ -55,19 +55,22 @@ namespace SharpGrad
             }
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Gets the number of dimensions in the tensor.
+        /// </summary>
         public int Count => dims.Length;
 
+        private readonly long length = dims.Aggregate(1L, (a, b) => a * b);
         /// <summary>
         /// Gets the total number of elements in the tensor.
         /// </summary>
-        public long Size => dims.Aggregate(1L, (a, b) => a * b);
+        public long Length => length;
 
 
         /// <summary>
         /// Gets a value indicating whether the tensor is a scalar.
         /// </summary>
-        public bool IsScalar { get => Size == 1; }
+        public bool IsScalar { get => Length == 1; }
 
         /// <summary>
         /// Gets the flattened index from the specified indices.
@@ -84,7 +87,7 @@ namespace SharpGrad
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public Index[] GetIndices(int flattenedIndex)
         {
-            if (flattenedIndex < 0 || flattenedIndex >= Size)
+            if (flattenedIndex < 0 || flattenedIndex >= Length)
                 throw new ArgumentOutOfRangeException(nameof(flattenedIndex));
             return IndicesFrom(this, flattenedIndex);
         }

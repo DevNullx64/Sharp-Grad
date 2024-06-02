@@ -8,7 +8,7 @@ namespace SharpGrad
         Dim this[Index index] { get; }
         Dim[] this[Range range] { get; }
         int Count { get; }
-        long Size { get; }
+        long Length { get; }
         bool IsScalar { get; }
         int GetFlattenIndex(params Index[] indices);
         Index[] GetIndices(int flattenedIndex);
