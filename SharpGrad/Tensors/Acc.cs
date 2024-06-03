@@ -54,17 +54,17 @@ namespace SharpGrad.Tensors
         public static readonly Accelerator Accelerator = device.CreateAccelerator(context);
 
         #region Exec
-        public static void Exec<T, U>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> func,
-            ArrayView1D<T, Stride1D.Dense> left,
-            ArrayView1D<U, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
-            where U : unmanaged, INumber<U>
-        {
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left, result);
-            Accelerator.Synchronize();
-        }
+        //public static void Exec<T, U>(
+        //    Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> func,
+        //    ArrayView1D<T, Stride1D.Dense> left,
+        //    ArrayView1D<U, Stride1D.Dense> result)
+        //    where T : unmanaged, INumber<T>
+        //    where U : unmanaged, INumber<U>
+        //{
+        //    Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
+        //    loadedKernel(left.IntExtent, left, result);
+        //    Accelerator.Synchronize();
+        //}
         public static void Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             ArrayView1D<T, Stride1D.Dense> left,
@@ -146,14 +146,14 @@ namespace SharpGrad.Tensors
             where T : unmanaged, INumber<T>
             => Exec(func, left.GetArrayView1D(), right, result.GetArrayView1D());
 
-        public static DataTensor<T> Exec<T>(
+        public static TensorData<T> Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             Tensor<T> left, Tensor<T> right)
             where T : unmanaged, INumber<T>
         {
             if (left.Shape != right.Shape)
                 throw new ArgumentException($"Expected shapes {left.Shape}, got {right.Shape}");
-            var result = new DataTensor<T>(left.Shape);
+            var result = new TensorData<T>(left.Shape);
             Exec(func, left, right, result);
             return result;
         }
@@ -190,7 +190,7 @@ namespace SharpGrad.Tensors
             where T : unmanaged, INumber<T>
             => Fill(mem.View, value);
 
-        public static void Fill<T>(this DataTensor<T> tensor, T value)
+        public static void Fill<T>(this TensorData<T> tensor, T value)
             where T : unmanaged, INumber<T>
             => Fill(tensor.GetArrayView1D(), value);
         #endregion

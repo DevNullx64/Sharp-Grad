@@ -24,9 +24,9 @@ namespace Test
                         result[i, j, k] = fnc(i, j, k);
         }
 
-        public static DataTensor<T> NewRandom(params Dim[] dims)
+        public static TensorData<T> NewRandom(params Dim[] dims)
         {
-            DataTensor<T> result = new(dims);
+            TensorData<T> result = new(dims);
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
@@ -65,7 +65,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = new(256, 256, 256);
+            TensorData<T> ty = new(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
             Tensor<T> tc = ta + tb;
@@ -81,7 +81,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            Tensor<T> ty = new TensorData<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
             Tensor<T> tc = ta - tb;
@@ -97,7 +97,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            Tensor<T> ty = new TensorData<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
             Tensor<T> tc = ta * tb;
@@ -113,7 +113,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            Tensor<T> ty = new TensorData<T>(256, 256, 256);
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;

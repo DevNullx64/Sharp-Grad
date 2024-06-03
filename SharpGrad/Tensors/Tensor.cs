@@ -29,9 +29,5 @@ namespace SharpGrad.Tensors
         public static Tensor<T> operator *(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, MulOp<T>>(operand1, operand2);
 
         public static Tensor<T> operator /(Tensor<T> operand1, Tensor<T> operand2) => new TensorOp2<T, DivOp<T>>(operand1, operand2);
-
-        //public static Tensor<U> CastTo<U>(Tensor<T> operand1)
-        //    where U : unmanaged, INumber<U>
-        //    => new CastOp<T, U>(operand1);
     }
 }
