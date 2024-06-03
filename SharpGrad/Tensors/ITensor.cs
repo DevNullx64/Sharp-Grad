@@ -19,9 +19,14 @@ namespace SharpGrad.Tensors
         where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
-        public void AddGrad(AcceleratorBuffer<TGrad> grad);
+        public void AddGrad(AcceleratorBuffer<T> grad);
         public void ApplyGrad(TGrad lr);
     }
+
+    public interface ITensorGrad<T> : ITensorGrad<T, T>
+        where T : unmanaged, IFloatingPoint<T>
+    { }
+
 
     public interface ITensorOpBackward<T, TGrad>: ITensorGrad<T, TGrad>
         where T : unmanaged, INumber<T>

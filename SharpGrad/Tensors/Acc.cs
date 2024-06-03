@@ -88,6 +88,18 @@ namespace SharpGrad.Tensors
         }
 
         public static void Exec<T>(
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> func,
+            ArrayView1D<T, Stride1D.Dense> left,
+            T right,
+            ArrayView1D<T, Stride1D.Dense> result)
+            where T : unmanaged, INumber<T>
+        {
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
+            loadedKernel(left.IntExtent, left, right, result);
+            Accelerator.Synchronize();
+        }
+
+        public static void Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left,
             MemoryBuffer1D<T, Stride1D.Dense> result)
@@ -101,6 +113,14 @@ namespace SharpGrad.Tensors
             MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged, INumber<T>
             => Exec(func, left.View, right.View, result.View);
+
+        public static void Exec<T>(
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> func,
+            MemoryBuffer1D<T, Stride1D.Dense> left,
+            T right,
+            MemoryBuffer1D<T, Stride1D.Dense> result)
+            where T : unmanaged, INumber<T>
+            => Exec(func, left.View, right, result.View);
 
 
         public static void Exec<T>(
@@ -117,6 +137,14 @@ namespace SharpGrad.Tensors
             Tensor<T> result)
             where T : unmanaged, INumber<T>
             => Exec(func, left.GetArrayView1D(), right.GetArrayView1D(), result.GetArrayView1D());
+
+        public static void Exec<T>(
+            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> func,
+            Tensor<T> left,
+            T right,
+            Tensor<T> result)
+            where T : unmanaged, INumber<T>
+            => Exec(func, left.GetArrayView1D(), right, result.GetArrayView1D());
 
         public static DataTensor<T> Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
@@ -139,6 +167,11 @@ namespace SharpGrad.Tensors
                 throw new ArgumentException($"Length mismatch: {nameof(left)}:{left.Length}, {nameof(right)}:{right.Length}, {nameof(result)}:{result.Length}");
             Exec(operations, left, right, result);
         }
+        public static void Exec<T>(
+            OpCode[] operations,
+            MemoryBuffer1D<T, Stride1D.Dense> left, T right, MemoryBuffer1D<T, Stride1D.Dense> result)
+            where T : unmanaged, INumber<T>
+            => Exec(operations, left, right, result);
         #endregion
 
         #region FillKernel

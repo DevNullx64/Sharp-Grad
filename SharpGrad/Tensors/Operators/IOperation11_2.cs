@@ -1,6 +1,7 @@
 ﻿using ILGPU;
 using ILGPU.Runtime;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace SharpGrad.Tensors
 {
@@ -9,9 +10,17 @@ namespace SharpGrad.Tensors
         where T2 : unmanaged, INumber<T2>
         where TTo : unmanaged, INumber<TTo>
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         abstract static Shape ResultingShape(Shape operand1, Shape operand2);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         abstract static TTo Exec(T1 operand1, T2 operand2);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         abstract static void Exec(Index1D idx, ArrayView1D<T1, Stride1D.Dense> operand1, ArrayView1D<T2, Stride1D.Dense> operand2, ArrayView1D<TTo, Stride1D.Dense> result);
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        abstract static void Exec(Index1D idx, ArrayView1D<T1, Stride1D.Dense> operand1, T2 operand2, ArrayView1D<TTo, Stride1D.Dense> result);
     }
 
     public interface IOperation11_2<T>: IOperation11_2_mixed<T, T, T>
