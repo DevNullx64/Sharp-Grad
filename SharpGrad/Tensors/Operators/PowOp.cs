@@ -9,6 +9,7 @@ namespace SharpGrad.Tensors
     internal class PowOp<T> : IOperation11_2<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Shape ResultingShape(Shape operand1, Shape operand2) => operand1;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
