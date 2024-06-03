@@ -320,62 +320,6 @@ namespace SharpGrad.Tensors
         private static void CastKernel(Index1D idx, ArrayView1D<sbyte, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
         #endregion
 
-
-        public static void Cast<T, U>(this ArrayView1D<T, Stride1D.Dense> from, ArrayView1D<U, Stride1D.Dense> to)
-            where T : unmanaged, INumber<T>
-            where U : unmanaged, INumber<U>
-        {
-            int toDo = 0;
-
-            {
-                if (typeof(T) == typeof(double))
-                    toDo = (int)CastCombination.FromDouble;
-                else if (typeof(T) == typeof(float))
-                    toDo = (int)CastCombination.FromFloat;
-                else if (typeof(T) == typeof(ulong))
-                    toDo = (int)CastCombination.FromULong;
-                else if (typeof(T) == typeof(long))
-                    toDo = (int)CastCombination.FromLong;
-                else if (typeof(T) == typeof(uint))
-                    toDo = (int)CastCombination.FromUInt;
-                else if (typeof(T) == typeof(int))
-                    toDo = (int)CastCombination.FromInt;
-                else if (typeof(T) == typeof(ushort))
-                    toDo = (int)CastCombination.FromUShort;
-                else if (typeof(T) == typeof(short))
-                    toDo = (int)CastCombination.FromShort;
-                else if (typeof(T) == typeof(byte))
-                    toDo = (int)CastCombination.FromByte;
-                else if (typeof(T) == typeof(sbyte))
-                    toDo = (int)CastCombination.FromSByte;
-            }
-            {
-                if (typeof(U) == typeof(double))
-                    toDo = (int)CastCombination.ToDouble;
-                else if (typeof(U) == typeof(ulong))
-                    toDo = (int)CastCombination.ToULong;
-                else if (typeof(U) == typeof(long))
-                    toDo = (int)CastCombination.ToLong;
-                else if (typeof(U) == typeof(uint))
-                    toDo = (int)CastCombination.ToUInt;
-                else if (typeof(U) == typeof(int))
-                    toDo = (int)CastCombination.ToInt;
-                else if (typeof(U) == typeof(ushort))
-                    toDo = (int)CastCombination.ToUShort;
-                else if (typeof(U) == typeof(short))
-                    toDo = (int)CastCombination.ToShort;
-                else if (typeof(U) == typeof(byte))
-                    toDo = (int)CastCombination.ToByte;
-                else if (typeof(U) == typeof(sbyte))
-                    toDo = (int)CastCombination.ToSByte;
-                else if (typeof(U) == typeof(float))
-                    toDo = (int)CastCombination.ToFloat;
-            }
-
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>, SpecializedValue<byte>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<U, Stride1D.Dense>, SpecializedValue<byte>>(CastKernel);
-            loadedKernel(from.IntExtent, from, to, new SpecializedValue<byte>((byte)toDo));
-            Accelerator.Synchronize();
-        }
         #endregion
     }
 }

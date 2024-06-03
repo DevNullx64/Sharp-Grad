@@ -9,7 +9,7 @@ namespace SharpGrad.Tensors
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static double ToDouble(ushort from) => from;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static short ToInt16(ushort from) => from;
+        public static short ToInt16(ushort from) => (short)from;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int ToInt32(ushort from) => from;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
