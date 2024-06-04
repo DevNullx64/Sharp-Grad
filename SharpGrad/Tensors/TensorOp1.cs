@@ -19,7 +19,7 @@ namespace SharpGrad.Tensors
                 if (data is null)
                 {
                     data = Acc.GetAcceleratorBuffer<T>(Shape.Length);
-                    Acc.Exec<T>(TOp.Exec, Operand1.GetArrayView1D(), GetArrayView1D());
+                    Acc.Exec(TOp.Exec, Operand1.GetArrayView1D(), GetArrayView1D());
                 }
                 return data;
             }
