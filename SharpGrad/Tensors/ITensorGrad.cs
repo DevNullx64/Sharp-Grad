@@ -6,5 +6,7 @@ namespace SharpGrad.Tensors
         where T : unmanaged, INumber<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     { }
-
+    public interface ITensorGrad<T> : ITensor<T>, IGradient<T>
+    where T : unmanaged, IFloatingPoint<T>
+    { }
 }

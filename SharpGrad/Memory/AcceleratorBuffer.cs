@@ -118,9 +118,16 @@ namespace SharpGrad.Memory
         // Implementing and hide the IReadOnlyList<TType> interface.
         int IReadOnlyCollection<T>.Count => (int)Length;
 
+        // Implementing and hide the IReadOnlyList<TType> interface.
         private bool IsOnRAM => cpuData is not null;
+
+        // Implementing and hide the IReadOnlyList<TType> interface.
         private bool IsOnAccelerator => acceleratorData is not null;
 
+        /// <summary>
+        /// Get or set the location of the data.
+        /// </summary>
+        /// <remarks>Set <see cref="BufferLocation.Empty"/> to free the ressources.</remarks>
         public override BufferLocation Location {
             get {
                 return IsOnRAM
@@ -164,7 +171,12 @@ namespace SharpGrad.Memory
             }
         }
 
-        // Implementing and hide the IReadOnlyList<TType> interface.
+        /// <summary>
+        /// Get the data at the specified index.
+        /// </summary>
+        /// <param name="index">The index of the data.</param>
+        /// <returns>The data at the specified index.</returns>
+        /// <remarks>Accessing the data will set the <see cref="Location"/> to <see cref="BufferLocation.Ram"/>.</remarks>
         public T this[int index]
         {
             get => CPUData[index];
@@ -178,7 +190,9 @@ namespace SharpGrad.Memory
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
         protected AcceleratorBuffer(long length)
             : base(length) { }
-        public static AcceleratorBuffer<T> Create(long length) => new AcceleratorBuffer<T>(length);
+
+        // Create a new DeviceBuffer with the specified length.
+        internal static AcceleratorBuffer<T> Create(long length) => new(length);
 
         /// <summary>
         /// Create a new DeviceBuffer with the specified length.
@@ -187,7 +201,9 @@ namespace SharpGrad.Memory
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
         protected AcceleratorBuffer(T[] data)
             : this(data.Length) { cpuData = data; }
-        public static AcceleratorBuffer<T> Create(T[] data) => new AcceleratorBuffer<T>(data);
+
+        // Create a new DeviceBuffer with the specified length.
+        internal static AcceleratorBuffer<T> Create(T[] data) => new(data);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IEnumerator<T> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
@@ -205,6 +221,10 @@ namespace SharpGrad.Memory
             }
         }
 
+        /// <summary>
+        /// Fill the data with the specified value.
+        /// </summary>
+        /// <param name="value">The value to fill the data with.</param>
         public void Fill(T value)
         {
             if (Location == BufferLocation.Ram)
@@ -213,6 +233,10 @@ namespace SharpGrad.Memory
                 Acc.Fill(AcceleratorData, value);
 
         }
+
+        /// <summary>
+        /// Set all the data to zero.
+        /// </summary>
         public void MemSetToZero()
         {
             if (IsOnRAM)

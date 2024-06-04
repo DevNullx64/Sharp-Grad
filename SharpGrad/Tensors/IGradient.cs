@@ -10,5 +10,8 @@ namespace SharpGrad.Tensors
         public void AddGrad(AcceleratorBuffer<T> grad);
         public void ApplyGrad(TGrad lr);
     }
+    public interface IGradient<T> : IGradient<T, T>
+        where T : unmanaged, IFloatingPoint<T>
+    { }
 
 }
