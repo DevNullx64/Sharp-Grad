@@ -60,7 +60,7 @@ namespace Test
 
         public static void Addition()
         {
-            Acc.Accelerator.PrintInformation(Console.Out);
+            Acc.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
@@ -76,7 +76,7 @@ namespace Test
         }
         public static void Subtraction()
         {
-            Acc.Accelerator.PrintInformation(Console.Out);
+            Acc.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
@@ -92,7 +92,7 @@ namespace Test
         }
         public static void Multiplication()
         {
-            Acc.Accelerator.PrintInformation(Console.Out);
+            Acc.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
@@ -108,7 +108,7 @@ namespace Test
         }
         public static void Division()
         {
-            Acc.Accelerator.PrintInformation(Console.Out);
+            Acc.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);

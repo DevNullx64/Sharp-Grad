@@ -1,5 +1,6 @@
 ﻿using ILGPU;
 using ILGPU.Runtime;
+using SharpGrad.Memory;
 using System;
 using System.Numerics;
 
@@ -18,7 +19,7 @@ namespace SharpGrad.Tensors
             {
                 if (data is null)
                 {
-                    data = new(Shape.Length);
+                    data = Acc.GetAcceleratorBuffer<T>(Shape.Length);
                     Acc.Exec(TOp.Exec, Operand1.GetArrayView1D(), Operand2.GetArrayView1D(), GetArrayView1D());
                 }
                 return data;

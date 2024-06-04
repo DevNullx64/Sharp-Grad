@@ -1,7 +1,11 @@
 ﻿using ILGPU;
 using ILGPU.Runtime;
+using SharpGrad.Memory;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -51,7 +55,10 @@ namespace SharpGrad.Tensors
             return result;
         }
         private static readonly Device device = GetDevice(context);
-        public static readonly Accelerator Accelerator = device.CreateAccelerator(context);
+        private static readonly Accelerator Accelerator = device.CreateAccelerator(context);
+
+        public static void PrintInformation(TextWriter writer) { Accelerator.PrintInformation(writer); }
+
 
         #region Exec
         //public static void Exec<T, U>(
@@ -320,6 +327,94 @@ namespace SharpGrad.Tensors
         private static void CastKernel(Index1D idx, ArrayView1D<sbyte, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
         #endregion
 
+        #endregion
+
+        #region Memory Managment
+        private static readonly HashSet<IAcceleratorBuffer> AcceleratorBuffers = [];
+        private static readonly HashSet<MemoryBuffer> MemoryBuffers = [];
+        internal static void Dispose(AcceleratorBuffer acceleratorBuffer)
+            => AcceleratorBuffers.Remove(acceleratorBuffer);
+
+        internal static void Dispose<T>(AcceleratorBuffer<T> acceleratorBuffer)
+            where T : unmanaged, INumber<T>
+            => AcceleratorBuffers.Remove(acceleratorBuffer);
+
+        public static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(long length)
+            where T : unmanaged
+        {
+            bool oom = false;
+            try
+            {
+                Stride1D.Dense stride = default;
+                MemoryBuffer1D<T, Stride1D.Dense> buffer = Accelerator.Allocate1D<T, Stride1D.Dense>(length, stride);
+                MemoryBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                oom = true;
+            }
+
+            oom = false;
+            long count = length;
+            foreach (var a in AcceleratorBuffers.Where(e => e.Location == BufferLocation.Accelerator).OrderBy(e => e.LastAccess))
+            {
+                if (count <= 0)
+                    break;
+                a.Location = BufferLocation.Ram;
+                count -= a.Length;
+            }
+            return Allocate1D<T>(length);
+        }
+        public static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(T[] data)
+            where T : unmanaged, INumber<T>
+        {
+            try
+            {
+                MemoryBuffer1D<T, Stride1D.Dense> buffer = Allocate1D<T>(data.LongLength);
+                buffer.CopyFromCPU(data);
+                MemoryBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+
+        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(long length)
+            where T : unmanaged, INumber<T>
+        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(length);
+                AcceleratorBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+
+        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(T[] data)
+            where T : unmanaged, INumber<T>
+        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(data);
+                AcceleratorBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
         #endregion
     }
 }
