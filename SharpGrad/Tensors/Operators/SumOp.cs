@@ -6,7 +6,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class SumOp<T> : IOperationN1_1<T>
-        where T : unmanaged, INumber<T>, IAdditionOperators<T, T, T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>, IAdditionOperators<T, T, T>
     {
         public static Shape ResultingShape(Shape operand) => operand.Count > 1 
             ? new (operand[..^1])
@@ -28,5 +28,16 @@ namespace SharpGrad.Tensors
             result[idx] = sum;
         }
 
+        public static void Backward(Index1D idx, ArrayView1D<T, Stride1D.Dense> grad, ArrayView2D<T, Stride2D.DenseY> operand1, ArrayView2D<T, Stride2D.DenseY> grad1)
+        {
+            for (int i = 0; i < grad1.Length; i++)
+                grad1[idx, i] += grad[idx];
+
+        }
+
+        public static void Backward(TensorGrad<T> @this, TensorGrad<T> operand)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
