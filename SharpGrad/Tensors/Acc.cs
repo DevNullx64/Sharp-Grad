@@ -76,7 +76,7 @@ namespace SharpGrad.Tensors
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             ArrayView1D<T, Stride1D.Dense> left,
             ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.IntExtent, left, result);
@@ -87,7 +87,7 @@ namespace SharpGrad.Tensors
             ArrayView1D<T, Stride1D.Dense> left,
             ArrayView1D<T, Stride1D.Dense> right,
             ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.IntExtent, left, right, result);
@@ -99,7 +99,7 @@ namespace SharpGrad.Tensors
             ArrayView1D<T, Stride1D.Dense> left,
             T right,
             ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
             loadedKernel(left.IntExtent, left, right, result);
@@ -110,7 +110,7 @@ namespace SharpGrad.Tensors
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             MemoryBuffer1D<T, Stride1D.Dense> left,
             MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec<T>(func, left.View, result.View);
 
         public static void Exec<T>(
@@ -118,7 +118,7 @@ namespace SharpGrad.Tensors
             MemoryBuffer1D<T, Stride1D.Dense> left,
             MemoryBuffer1D<T, Stride1D.Dense> right,
             MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec(func, left.View, right.View, result.View);
 
         public static void Exec<T>(
@@ -126,7 +126,7 @@ namespace SharpGrad.Tensors
             MemoryBuffer1D<T, Stride1D.Dense> left,
             T right,
             MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec(func, left.View, right, result.View);
 
 
@@ -134,7 +134,7 @@ namespace SharpGrad.Tensors
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             Tensor<T> left,
             Tensor<T> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec<T>(func, left.GetArrayView1D(), result.GetArrayView1D());
 
         public static void Exec<T>(
@@ -142,7 +142,7 @@ namespace SharpGrad.Tensors
             Tensor<T> left,
             Tensor<T> right,
             Tensor<T> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec(func, left.GetArrayView1D(), right.GetArrayView1D(), result.GetArrayView1D());
 
         public static void Exec<T>(
@@ -150,13 +150,13 @@ namespace SharpGrad.Tensors
             Tensor<T> left,
             T right,
             Tensor<T> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec(func, left.GetArrayView1D(), right, result.GetArrayView1D());
 
         public static TensorData<T> Exec<T>(
             Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
             Tensor<T> left, Tensor<T> right)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             if (left.Shape != right.Shape)
                 throw new ArgumentException($"Expected shapes {left.Shape}, got {right.Shape}");
@@ -168,7 +168,7 @@ namespace SharpGrad.Tensors
         public static void Exec<T>(
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, MemoryBuffer1D<T, Stride1D.Dense> right, MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             if (left.Length != right.Length || left.Length != result.Length)
                 throw new ArgumentException($"Length mismatch: {nameof(left)}:{left.Length}, {nameof(right)}:{right.Length}, {nameof(result)}:{result.Length}");
@@ -177,7 +177,7 @@ namespace SharpGrad.Tensors
         public static void Exec<T>(
             OpCode[] operations,
             MemoryBuffer1D<T, Stride1D.Dense> left, T right, MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Exec(operations, left, right, result);
         #endregion
 
@@ -198,7 +198,7 @@ namespace SharpGrad.Tensors
             => Fill(mem.View, value);
 
         public static void Fill<T>(this TensorData<T> tensor, T value)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => Fill(tensor.GetArrayView1D(), value);
         #endregion
 
@@ -336,7 +336,7 @@ namespace SharpGrad.Tensors
             => AcceleratorBuffers.Remove(acceleratorBuffer);
 
         internal static void Dispose<T>(AcceleratorBuffer<T> acceleratorBuffer)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
             => AcceleratorBuffers.Remove(acceleratorBuffer);
 
         public static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(long length)
@@ -385,7 +385,7 @@ namespace SharpGrad.Tensors
         }
 
         public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(long length)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             try
             {
@@ -401,7 +401,22 @@ namespace SharpGrad.Tensors
         }
 
         public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(T[] data)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
+        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(data);
+                AcceleratorBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(AcceleratorBuffer<T> data)
+            where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         {
             try
             {

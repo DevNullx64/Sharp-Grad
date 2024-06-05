@@ -4,7 +4,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     public interface IOpBackward<T, TGrad>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
         public void Backward();
@@ -12,7 +12,7 @@ namespace SharpGrad.Tensors
     }
 
     public interface IOpBackward<T> : IOpBackward<T, T>
-        where T : unmanaged, IFloatingPoint<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     { }
 
 }

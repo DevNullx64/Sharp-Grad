@@ -66,7 +66,7 @@ namespace SharpGrad.Memory
     /// <typeparam name="T">The type of the data</typeparam>
     /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
     public class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
         // The data on the RAM.
         private T[]? cpuData = null;
@@ -204,6 +204,17 @@ namespace SharpGrad.Memory
 
         // Create a new DeviceBuffer with the specified length.
         internal static AcceleratorBuffer<T> Create(T[] data) => new(data);
+        internal static AcceleratorBuffer<T> Create(AcceleratorBuffer<T> data) {
+            AcceleratorBuffer<T> buffer = new(data.Length)
+            {
+                Location = data.Location
+            };
+            if (buffer.IsOnRAM)
+                Array.Copy(data.CPUData, buffer.CPUData, data.CPUData.Length);
+            else if (buffer.IsOnAccelerator)
+                buffer.AcceleratorData.CopyFrom(data.AcceleratorData);
+            return buffer;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public IEnumerator<T> GetEnumerator() => CPUData.AsEnumerable().GetEnumerator();
@@ -243,6 +254,41 @@ namespace SharpGrad.Memory
                 Array.Clear(CPUData, 0, CPUData.Length);
             else if (IsOnAccelerator)
                 AcceleratorData.MemSetToZero();
+        }
+
+        public static AcceleratorBuffer<T> operator +(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(AddOp<T>.Exec, left.AcceleratorData, right.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
+        public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(SubOp<T>.Exec, left.AcceleratorData, right.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
+        public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(NegOp<T>.Exec, left.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
+        public static AcceleratorBuffer<T> operator *(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(MulOp<T>.Exec, left.AcceleratorData, right.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
+        public static AcceleratorBuffer<T> operator /(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(DivOp<T>.Exec, left.AcceleratorData, right.AcceleratorData, result.AcceleratorData);
+            return result;
         }
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;

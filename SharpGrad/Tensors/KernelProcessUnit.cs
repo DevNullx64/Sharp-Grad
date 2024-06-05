@@ -6,7 +6,7 @@ using System.Threading;
 namespace SharpGrad.Tensors
 {
     public static class KernelProcessUnit<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
         /// <summary>
         /// Kernel Processing Unit

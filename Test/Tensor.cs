@@ -11,7 +11,7 @@ namespace Test
     [TestClass]
 
     public class Operators<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
         static readonly Random rnd = new();
 
@@ -165,6 +165,7 @@ namespace Test
         public void TestDivision() => Division();
     }
 
+    /*
     [TestClass]
     public class OperatorsByte : Operators<byte>
     {
@@ -268,6 +269,7 @@ namespace Test
         [TestMethod]
         public void TestDivision() => Division();
     }
+    */
 
     /*
     [TestClass]

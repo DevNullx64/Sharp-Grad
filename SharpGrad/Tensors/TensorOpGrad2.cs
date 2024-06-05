@@ -5,7 +5,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class TensorOpGrad2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2) : TensorGrad<T>(TOp.ResultingShape(operand1.Shape, operand2.Shape)), ITensorOpBackward<T>
-        where T : unmanaged, IFloatingPoint<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IOperation11_2<T>
         {
         public readonly Tensor<T> Operand1 = operand1;
