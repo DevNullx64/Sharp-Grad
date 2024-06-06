@@ -9,8 +9,10 @@ namespace SharpGrad
     /// Represents the shape of a tensor.
     /// </summary>
     /// <param name="dims">The dimensions of the tensor.</param>
-    public readonly struct Shape(params Dim[] dims) : IShape, IEquatable<Shape>
+    public readonly struct Shape(IEnumerable<Dim> dims) : IShape, IEquatable<Shape>
     {
+        public Shape(params Dim[] dims) : this((IEnumerable<Dim>)dims) { }
+
         /// <summary>
         /// An empty shape.
         /// </summary>
@@ -19,7 +21,7 @@ namespace SharpGrad
         /// <summary>
         /// The dimensions of the tensor.
         /// </summary>
-        private readonly Dim[] dims = dims;
+        private readonly Dim[] dims = dims.ToArray();
 
         /// <summary>
         /// Gets the dimension at the specified index.

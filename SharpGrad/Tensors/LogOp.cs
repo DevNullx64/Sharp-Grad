@@ -16,8 +16,21 @@ namespace SharpGrad.Tensors
         public static void Exec(Index1D idx, ArrayView1D<T, Stride1D.Dense> left, ArrayView1D<T, Stride1D.Dense> result)
             => result[idx] = Exec(left[idx]);
         public static void Backward(TensorGrad<T> @this, TensorGrad<T> operand1)
-            => operand1.AddGrad(@this.Gradients / operand1.data);
+        {
+            if (operand1 is TensorGrad<T> grad1)
+                grad1.AddGrad(@this.Gradients / operand1.data);
+        }
+
         public static void Backward(Index1D idx, ArrayView1D<T, Stride1D.Dense> grad, ArrayView1D<T, Stride1D.Dense> operand1, ArrayView1D<T, Stride1D.Dense> grad1)
-            => grad1[idx] += grad[idx] / operand1[idx];
+        {
+            if (grad1.Length == 1)
+            {
+                // TODO : Implement scalar backward
+            }
+            else if (grad1.Length > 1)
+            {
+                grad1[idx] += grad[idx] / operand1[idx];
+            }
+        }
     }
 }

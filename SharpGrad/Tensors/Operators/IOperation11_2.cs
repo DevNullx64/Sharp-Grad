@@ -11,6 +11,7 @@ namespace SharpGrad.Tensors
         where TTo : unmanaged, INumber<TTo>
         where TGrad : unmanaged, IFloatingPoint<TGrad>
     {
+        abstract static string Name { get; }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         abstract static Shape ResultingShape(Shape operand1, Shape operand2);
 
@@ -21,8 +22,6 @@ namespace SharpGrad.Tensors
         abstract static void Exec(Index1D idx, ArrayView1D<T1, Stride1D.Dense> operand1, ArrayView1D<T2, Stride1D.Dense> operand2, ArrayView1D<TTo, Stride1D.Dense> result);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        abstract static void Exec(Index1D idx, ArrayView1D<T1, Stride1D.Dense> operand1, T2 operand2, ArrayView1D<TTo, Stride1D.Dense> result);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         abstract static void Backward(Index1D idx, ArrayView1D<TGrad, Stride1D.Dense> grad, ArrayView1D<T1, Stride1D.Dense> operand1, ArrayView1D<T2, Stride1D.Dense> operand2, ArrayView1D<TGrad, Stride1D.Dense> grad1, ArrayView1D<TGrad, Stride1D.Dense> grad2);
     }
 
@@ -30,6 +29,6 @@ namespace SharpGrad.Tensors
         where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        abstract static void Backward(TensorGrad<T> @this, TensorGrad<T> operand1, TensorGrad<T> operand2);
+        abstract static void Backward(TensorGrad<T> @this, Tensor<T> operand1, Tensor<T> operand2);
     }
 }

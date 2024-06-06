@@ -291,7 +291,23 @@ namespace SharpGrad.Memory
             return result;
         }
 
+        public static AcceleratorBuffer<T> Pow(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(left.Length);
+            Acc.Exec(PowOp<T>.Exec, left.AcceleratorData, right.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
+        public static AcceleratorBuffer<T> Log(AcceleratorBuffer<T> value)
+        {
+            var result = Acc.GetAcceleratorBuffer<T>(value.Length);
+            Acc.Exec(LogOp<T>.Exec, value.AcceleratorData, result.AcceleratorData);
+            return result;
+        }
+
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
+        public static explicit operator T(AcceleratorBuffer<T> gpu) => gpu.Length == 1 ? gpu.CPUData[0] : throw new InvalidCastException($"Cannot cast a buffer of length {gpu.Length} to a scalar.");
+        public static implicit operator AcceleratorBuffer<T>(T cpu) => new([cpu]);
     }
 }

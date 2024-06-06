@@ -6,19 +6,19 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class SuMulOp<T> : IOperationN1_1<T>
+    internal class SuMulOp<T> : IOperation11_2<T>
         where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>, IAdditionOperators<T, T, T>
     {
-        public static Shape ResultingShape(Shape operand) => operand.Count > 1 
-            ? new (operand[..^1])
-            : throw new ArgumentException("At least two dimensions are required.");
-
-        public static T Exec(T[] operand)
+        public static Shape ResultingShape(Shape operand1, Shape operand2)
         {
-            T result = operand[0];
-            for (int i = 1; i < operand.Length; i++)
-                result += operand[i];
-            return result;
+            if (operand1[1] != operand2[0])
+                throw new InvalidOperationException($"Invalid shape {operand1} and {operand2}");
+            return new Shape(operand1[0]);
+        }
+
+        public static T Exec(T[] operand1, T[] operand2)
+        {
+
         }
 
         public static void Exec(Index1D idx, ArrayView2D<T, Stride2D.DenseY> operand, int width, ArrayView1D<T, Stride1D.Dense> result)
