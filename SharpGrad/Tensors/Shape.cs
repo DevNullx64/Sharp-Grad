@@ -27,6 +27,7 @@ namespace SharpGrad
         /// Gets the dimension at the specified index.
         /// </summary>
         public Dim this[Index index] => dims[index];
+        Dim IReadOnlyList<Dim>.this[int index] => dims[index];
 
         /// <summary>
         /// Gets the dimensions in the specified range.

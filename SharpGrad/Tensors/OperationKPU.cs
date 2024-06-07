@@ -8,6 +8,24 @@ using System.Runtime.InteropServices.JavaScript;
 
 namespace SharpGrad.Tensors
 {
+    public enum NativeType : int
+    {
+        Unknown = 0,
+        Bits8 = 1, Bits16 = 2, Bits32 = 3, Bits64 = 4,
+        Integer = 8, UInteger = 16, FloatingPoint = 24,
+
+        Double = Bits64 | FloatingPoint,
+        Float = Bits32 | FloatingPoint,
+        Long = Bits64 | Integer,
+        ULong = Bits64 | UInteger,
+        Int = Bits32 | Integer,
+        UInt = Bits32 | UInteger,
+        Short = Bits16 | Integer,
+        UShort = Bits16 | UInteger,
+        Byte = Bits16 | Integer,
+        SByte = Bits16 | Integer,
+    }
+
     /// <summary>
     /// An operation to perform using the KPU
     /// </summary>
