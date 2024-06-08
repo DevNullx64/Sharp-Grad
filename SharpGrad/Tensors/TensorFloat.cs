@@ -23,31 +23,5 @@ namespace SharpGrad.Tensors
     internal class Tensor<T> : ITensor<Tensor<T>, T>
         where T : unmanaged, INumber<T>
     {
-        private readonly AcceleratorBuffer<T> buffer;
-
-        public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static Tensor<T> operator -(Tensor<T> value)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static Tensor<T> operator *(Tensor<T> left, Tensor<T> right)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

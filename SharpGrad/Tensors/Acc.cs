@@ -108,14 +108,6 @@ namespace SharpGrad.Tensors
             Accelerator.Synchronize();
         }
 
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
-            MemoryBuffer1D<T, Stride1D.Dense> left,
-            MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-            => Exec(func, left.View, result.View);
-
-
         private static void ExecKernel<TExec, TOperand1, TResult>(
             Index1D idx,
             ArrayView1D<TOperand1, Stride1D.Dense> operand1,
@@ -138,15 +130,35 @@ namespace SharpGrad.Tensors
 
 
         public static MemoryBuffer1D<TResult, Stride1D.Dense> Exec<TExec, TOperand1, TResult>(
-            MemoryBuffer1D<TOperand1, Stride1D.Dense> operand1)
+            MemoryBuffer1D<TOperand1, Stride1D.Dense> operand1,
+            MemoryBuffer1D<TResult, Stride1D.Dense> result)
             where TExec : IExecutor1<TOperand1, TResult>
             where TOperand1 : unmanaged, INumber<TOperand1>
             where TResult : unmanaged, INumber<TResult>
         {
-            MemoryBuffer1D<TResult, Stride1D.Dense> result = Allocate1D<TResult>(operand1.Length);
+            if (operand1.Length != result.Length)
+                throw new ArgumentException($"Expected same length for {nameof(operand1)}({operand1.Length}) and {nameof(result)}({result.Length})");
             Action<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>, ArrayView1D<TResult, Stride1D.Dense>> loadedKernel
                 = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>,ArrayView1D<TResult, Stride1D.Dense>>(ExecKernel<TExec, TOperand1, TResult>);
             loadedKernel(result.IntExtent, operand1.View, result.View);
+            return result;
+        }
+
+
+        public static MemoryBuffer1D<TResult, Stride1D.Dense> Exec<TExec, TOperand1, TOperand2, TResult>(
+            MemoryBuffer1D<TOperand1, Stride1D.Dense> operand1,
+            MemoryBuffer1D<TOperand2, Stride1D.Dense> operand2,
+            MemoryBuffer1D<TResult, Stride1D.Dense> result)
+            where TExec : IExecutor2<TOperand1, TOperand2, TResult>
+            where TOperand1 : unmanaged, INumber<TOperand1>
+            where TOperand2 : unmanaged, INumber<TOperand2>
+            where TResult : unmanaged, INumber<TResult>
+        {
+            if (operand1.Length != operand2.Length || operand1.Length != result.Length)
+                throw new ArgumentException($"Expected same length for {nameof(operand1)}({operand1.Length}), {nameof(operand2)}({operand2.Length}), and {nameof(result)}({result.Length})");
+            Action<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>, ArrayView1D<TOperand2, Stride1D.Dense>, ArrayView1D<TResult, Stride1D.Dense>> loadedKernel
+                = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>, ArrayView1D<TOperand2, Stride1D.Dense>, ArrayView1D<TResult, Stride1D.Dense>>(ExecKernel<TExec, TOperand1, TOperand2, TResult>);
+            loadedKernel(result.IntExtent, operand1.View, operand2.View, result.View);
             return result;
         }
 
@@ -157,45 +169,29 @@ namespace SharpGrad.Tensors
             where TOperand1 : unmanaged, INumber<TOperand1>
             where TOperand2 : unmanaged, INumber<TOperand2>
             where TResult : unmanaged, INumber<TResult>
-        {
-            if (operand1.Length != operand2.Length)
-                throw new ArgumentException($"Expected {nameof(operand1)} and {nameof(operand2)} to have the same length, got {operand1.Length} and {operand2.Length}");
-            MemoryBuffer1D<TResult, Stride1D.Dense> result = Allocate1D<TResult>(operand1.Length);
-            Action<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>, ArrayView1D<TOperand2, Stride1D.Dense>, ArrayView1D<TResult, Stride1D.Dense>> loadedKernel
-                = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<TOperand1, Stride1D.Dense>, ArrayView1D<TOperand2, Stride1D.Dense>, ArrayView1D<TResult, Stride1D.Dense>>(ExecKernel<TExec, TOperand1, TOperand2, TResult>);
-            loadedKernel(result.IntExtent, operand1.View, operand2.View, result.View);
-            return result;
-        }
+            => Exec<TExec, TOperand1, TOperand2, TResult>(operand1, operand2, Allocate1D<TResult>(operand1.Length));
 
-
+        public static void ExecInPlace<TExec, T>(
+            MemoryBuffer1D<T, Stride1D.Dense> operand1, MemoryBuffer1D<T, Stride1D.Dense> operand2)
+            where TExec : IExecutor2<T, T, T>
+            where T : unmanaged, INumber<T>
+            => Exec<TExec, T, T, T>(operand1, operand2, operand1);
         public static MemoryBuffer1D<T, Stride1D.Dense> Exec<TExec, T>(
             MemoryBuffer1D<T, Stride1D.Dense> operand1, MemoryBuffer1D<T, Stride1D.Dense> operand2)
             where TExec : IExecutor2<T, T, T>
             where T : unmanaged, INumber<T>
             => Exec<TExec, T, T, T>(operand1, operand2);
 
+        public static void ExecInPlace<TExec, T>(
+            MemoryBuffer1D<T, Stride1D.Dense> operand1)
+            where TExec : IExecutor1<T, T>
+            where T : unmanaged, INumber<T>
+            => Exec<TExec, T, T>(operand1, operand1);
         public static MemoryBuffer1D<T, Stride1D.Dense> Exec<TExec, T>(
             MemoryBuffer1D<T, Stride1D.Dense> operand1)
             where TExec : IExecutor1<T, T>
             where T : unmanaged, INumber<T>
-            => Exec<TExec, T, T>(operand1);
-
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
-            MemoryBuffer1D<T, Stride1D.Dense> left,
-            MemoryBuffer1D<T, Stride1D.Dense> right,
-            MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-            => Exec(func, left.View, right.View, result.View);
-
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> func,
-            MemoryBuffer1D<T, Stride1D.Dense> left,
-            T right,
-            MemoryBuffer1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-            => Exec(func, left.View, right, result.View);
-
+            => Exec<TExec, T, T>(operand1, Allocate1D<T>(operand1.Length));
 
         public static void Exec<T>(
             OpCode[] operations,
@@ -228,133 +224,6 @@ namespace SharpGrad.Tensors
         public static void Fill<T>(this MemoryBuffer1D<T, Stride1D.Dense> mem, T value)
             where T : unmanaged, INumber<T>
             => Fill(mem.View, value);
-        #endregion
-
-        #region CastKernel
-
-        #region To double
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(double from) => (float)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(float from) => (double)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static long ToLong(double from) => (long)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<long, Stride1D.Dense> to) => to[idx] = ToLong(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(long from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<long, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong ToULong(double from) => (ulong)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<ulong, Stride1D.Dense> to) => to[idx] = ToULong(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(ulong from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<ulong, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-        
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int ToInt(double from) => (int)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<int, Stride1D.Dense> to) => to[idx] = ToInt(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(int from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<int, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ToUInt(double from) => (uint)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<uint, Stride1D.Dense> to) => to[idx] = ToUInt(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(uint from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<uint, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static short ToShort(double from) => (short)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<short, Stride1D.Dense> to) => to[idx] = ToShort(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(short from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<short, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ushort ToUShort(double from) => (ushort)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<ushort, Stride1D.Dense> to) => to[idx] = ToUShort(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(ushort from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<ushort, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte ToByte(double from) => (byte)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<byte, Stride1D.Dense> to) => to[idx] = ToByte(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(byte from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<byte, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static sbyte ToSByte(double from) => (sbyte)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<double, Stride1D.Dense> from, ArrayView1D<sbyte, Stride1D.Dense> to) => to[idx] = ToSByte(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double ToDouble(sbyte from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<sbyte, Stride1D.Dense> from, ArrayView1D<double, Stride1D.Dense> to) => to[idx] = ToDouble(from[idx]);
-        #endregion
-
-        #region To float
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static long ToLong(float from) => (long)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<long, Stride1D.Dense> to) => to[idx] = ToLong(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(long from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<long, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong ToULong(float from) => (ulong)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<ulong, Stride1D.Dense> to) => to[idx] = ToULong(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(ulong from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<ulong, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-        
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int ToInt(float from) => (int)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<int, Stride1D.Dense> to) => to[idx] = ToInt(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(int from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<int, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ToUInt(float from) => (uint)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<uint, Stride1D.Dense> to) => to[idx] = ToUInt(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(uint from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<uint, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static short ToShort(float from) => (short)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<short, Stride1D.Dense> to) => to[idx] = ToShort(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(short from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<short, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ushort ToUShort(float from) => (ushort)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<ushort, Stride1D.Dense> to) => to[idx] = ToUShort(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(ushort from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<ushort, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte ToByte(float from) => (byte)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<byte, Stride1D.Dense> to) => to[idx] = ToByte(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(byte from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<byte, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static sbyte ToSByte(float from) => (sbyte)from;
-        private static void CastKernel(Index1D idx, ArrayView1D<float, Stride1D.Dense> from, ArrayView1D<sbyte, Stride1D.Dense> to) => to[idx] = ToSByte(from[idx]);
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float ToFloat(sbyte from) => from;
-        private static void CastKernel(Index1D idx, ArrayView1D<sbyte, Stride1D.Dense> from, ArrayView1D<float, Stride1D.Dense> to) => to[idx] = ToFloat(from[idx]);
-        #endregion
-
         #endregion
 
         #region Memory Managment
@@ -428,36 +297,6 @@ namespace SharpGrad.Tensors
             }
         }
 
-        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(T[] data)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            try
-            {
-                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(data);
-                AcceleratorBuffers.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
-        }
-        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(AcceleratorBuffer<T> data)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            try
-            {
-                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(data);
-                AcceleratorBuffers.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
-        }
 
         public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>
