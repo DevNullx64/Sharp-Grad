@@ -263,29 +263,35 @@ namespace SharpGrad.Memory
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
         protected AcceleratorBuffer(T[] data)
-            : this(data.Length) { cpuData = data; }
+            : this(data.Length)
+        {
+            if (data is null)
+                throw new ArgumentNullException(nameof(data));
+            cpuData = data;
+        }
         protected AcceleratorBuffer(MemoryBuffer1D<T, Stride1D.Dense> data)
-            : this(data.Length) { acceleratorData = data; }
+            : this(data.Length) {
+            if (data.IsDisposed)
+                throw new ArgumentException($"The data is disposed.");
+            acceleratorData = data; 
+        }
 
         // Create a new DeviceBuffer with the specified length.
         internal static AcceleratorBuffer<T> Create(long length) => new(length);
         // Create a new DeviceBuffer with the specified data.
         internal static AcceleratorBuffer<T> Create(T[] data) => new(data);
-        // Create a new DeviceBuffer with the specified data.
+        // Create a new DeviceBuffer with the specified data. Act as a copy constructor.
         internal static AcceleratorBuffer<T> Create(AcceleratorBuffer<T> data)
-        {
-            AcceleratorBuffer<T> buffer = new(data.Length)
+            => data.Location switch
             {
-                Location = data.Location
+                BufferLocation.Empty => new(data.Length),
+                BufferLocation.Ram => new(data.CPUData),
+                BufferLocation.Accelerator => new(data.AcceleratorData),
+                _ => throw new ArgumentException($"Unknown location {data.Location}"),
             };
-            if (buffer.IsOnRAM)
-                Array.Copy(data.CPUData, buffer.CPUData, data.CPUData.Length);
-            else if (buffer.IsOnAccelerator)
-                buffer.AcceleratorData.CopyFrom(data.AcceleratorData);
-            return buffer;
-        }
+
         // Create a new DeviceBuffer with the specified data.
-        internal static AcceleratorBuffer<T> Create(MemoryBuffer1D<T,Stride1D.Dense> data)
+        internal static AcceleratorBuffer<T> Create(MemoryBuffer1D<T, Stride1D.Dense> data)
         {
             AcceleratorBuffer<T> buffer = new(data);
             return buffer;

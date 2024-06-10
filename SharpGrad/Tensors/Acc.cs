@@ -41,6 +41,7 @@ namespace SharpGrad.Tensors
 
     public static class Acc
     {
+        public static readonly KernelProcessUnit KPU = new();
         private static Context GetContext()
         {
             Context result = Context.Create(builder => builder.AllAccelerators());
@@ -74,40 +75,6 @@ namespace SharpGrad.Tensors
         //    loadedKernel(left.IntExtent, left, result);
         //    Accelerator.Synchronize();
         //}
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
-            ArrayView1D<T, Stride1D.Dense> left,
-            ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left, result);
-            Accelerator.Synchronize();
-        }
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> func,
-            ArrayView1D<T, Stride1D.Dense> left,
-            ArrayView1D<T, Stride1D.Dense> right,
-            ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left, right, result);
-            Accelerator.Synchronize();
-        }
-
-        public static void Exec<T>(
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> func,
-            ArrayView1D<T, Stride1D.Dense> left,
-            T right,
-            ArrayView1D<T, Stride1D.Dense> result)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            Action<Index1D, ArrayView1D<T, Stride1D.Dense>, T, ArrayView1D<T, Stride1D.Dense>> loadedKernel = Accelerator.LoadAutoGroupedStreamKernel(func);
-            loadedKernel(left.IntExtent, left, right, result);
-            Accelerator.Synchronize();
-        }
-
         private static void ExecKernel<TExec, TOperand1, TResult>(
             Index1D idx,
             ArrayView1D<TOperand1, Stride1D.Dense> operand1,
@@ -236,7 +203,7 @@ namespace SharpGrad.Tensors
             where T : unmanaged, INumber<T>, IPowerFunctions<T>
             => AcceleratorBuffers.Remove(acceleratorBuffer);
 
-        public static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(long length)
+        private static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(long length)
             where T : unmanaged
         {
             bool oom = false;
@@ -264,7 +231,7 @@ namespace SharpGrad.Tensors
             }
             return Allocate1D<T>(length);
         }
-        public static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(T[] data)
+        private static MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(T[] data)
             where T : unmanaged, INumber<T>
         {
             try
@@ -287,6 +254,21 @@ namespace SharpGrad.Tensors
             try
             {
                 AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(length);
+                AcceleratorBuffers.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+        public static AcceleratorBuffer<T> GetAcceleratorBuffer<T>(T[] values)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(values);
                 AcceleratorBuffers.Add(buffer);
                 return buffer;
             }
