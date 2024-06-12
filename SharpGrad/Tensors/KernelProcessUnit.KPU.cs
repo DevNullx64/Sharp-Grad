@@ -21,7 +21,7 @@ namespace SharpGrad.Tensors
         /// <param name="operand">Left operand</param>
         /// <param name="result">Result of the operation</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void KPU<T>(OpCode operation, ref T result, T operand)
+        private static void Exec<T>(OpCode operation, ref T result, T operand)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             result = operation switch
@@ -47,7 +47,7 @@ namespace SharpGrad.Tensors
         /// <param name="ops">Operations to perform</param>
         /// <param name="tensors">Tensors to operate on</param>
         /// <param name="registerCount">Number of registers to use</param>
-        public static void KPU<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors, SpecializedValue<short> registerCount)
+        public static void Exec<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors, SpecializedValue<short> registerCount)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             T[] register = new T[registerCount];
@@ -58,17 +58,17 @@ namespace SharpGrad.Tensors
                 if (op.Index1 >= 0)
                 {
                     if (op.Index2 >= 0)
-                        KPU(op.OpCode, ref tensors[op.Index1, idx], tensors[op.Index2, idx]);
+                        Exec(op.OpCode, ref tensors[op.Index1, idx], tensors[op.Index2, idx]);
                     else
-                        KPU(op.OpCode, ref tensors[op.Index1, idx], register[-op.Index2 - 1]);
+                        Exec(op.OpCode, ref tensors[op.Index1, idx], register[-op.Index2 - 1]);
                     continue;
                 }
                 else
                 {
                     if (op.Index2 >= 0)
-                        KPU(op.OpCode, ref register[-op.Index1 - 1], tensors[op.Index2, idx]);
+                        Exec(op.OpCode, ref register[-op.Index1 - 1], tensors[op.Index2, idx]);
                     else
-                        KPU(op.OpCode, ref register[-op.Index1 - 1], register[-op.Index2 - 1]);
+                        Exec(op.OpCode, ref register[-op.Index1 - 1], register[-op.Index2 - 1]);
                     continue;
                 }
             }
@@ -90,14 +90,10 @@ namespace SharpGrad.Tensors
 
             // TODO : Copy input
 
-            KPU(new Index1D(tensors.IntExtent.Y), ops.View, tensors.View, new SpecializedValue<short>(needAccumulator));
+            Exec(new Index1D(tensors.IntExtent.Y), ops.View, tensors.View, new SpecializedValue<short>(needAccumulator));
 
             // TODO : Return tensor
             return tensors[0];
-        }
-        public MemoryBuffer1D<T, Stride1D.Dense> Exec<T>(IBufferOperation[] operations)
-        {
-
         }
 
     }

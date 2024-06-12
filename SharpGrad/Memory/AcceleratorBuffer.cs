@@ -56,6 +56,7 @@ namespace SharpGrad.Memory
     /// <param name="length">The length of the data.</param>
     public abstract class AcceleratorBuffer(long length) : IAcceleratorBuffer
     {
+        public static KernelProcessUnit DefaultKPU = new();
         /// <summary>
         /// The last time the data was accessed on the <see cref="Accelerator"/>.
         /// </summary>
@@ -88,7 +89,7 @@ namespace SharpGrad.Memory
             {
                 if (disposing)
                 {
-                    Acc.Dispose(this);
+                    DefaultKPU.Dispose(this);
                 }
 
                 // TODO: libérer les ressources non managées (objets non managés) et substituer le finaliseur
@@ -198,17 +199,17 @@ namespace SharpGrad.Memory
                             if (acceleratorData is not null)
                             {
                                 acceleratorData.CopyToCPU(cpuData);
-                                Acc.Synchronize();
+                                DefaultKPU.Synchronize();
                                 acceleratorData.Dispose();
                                 acceleratorData = null;
                             }
                             break;
                         case BufferLocation.Accelerator:
-                            acceleratorData ??= Acc.Allocate1D<T>(Length);
+                            acceleratorData ??= DefaultKPU.MemoryBuffer1D<T>(Length);
                             if (cpuData is not null)
                             {
-                                acceleratorData = Acc.Allocate1D(CPUData);
-                                Acc.Synchronize();
+                                acceleratorData = DefaultKPU.MemoryBuffer1D(CPUData);
+                                DefaultKPU.Synchronize();
                                 cpuData = null;
                             }
                             else
@@ -309,7 +310,7 @@ namespace SharpGrad.Memory
                 cpuData = null;
                 acceleratorData?.Dispose();
                 acceleratorData = null;
-                Acc.Dispose(this);
+                DefaultKPU.Dispose(this);
             }
         }
 
@@ -322,7 +323,7 @@ namespace SharpGrad.Memory
             if (Location == BufferLocation.Ram)
                 Array.Fill(CPUData, value);
             else
-                Acc.Fill(AcceleratorData, value);
+                DefaultKPU.Fill(AcceleratorData, value);
 
         }
 
@@ -344,7 +345,7 @@ namespace SharpGrad.Memory
                 for (int i = 0; i < @this.Length; i++)
                     @this.CPUData[i] = TOP.Exec(@this.CPUData[i]);
             else
-                Acc.ExecInPlace<TOP, T>(@this.AcceleratorData);
+                DefaultKPU.ExecInPlace<TOP, T>(@this.AcceleratorData);
         }
 
 
@@ -361,8 +362,8 @@ namespace SharpGrad.Memory
             {
                 @this.Location = BufferLocation.Accelerator;
                 other.Location = BufferLocation.Accelerator;
-                Acc.Synchronize();
-                Acc.ExecInPlace<TOP, T>(@this.AcceleratorData, other.AcceleratorData);
+                DefaultKPU.Synchronize();
+                DefaultKPU.ExecInPlace<TOP, T>(@this.AcceleratorData, other.AcceleratorData);
             }
         }
         public void Add(AcceleratorBuffer<T> other) => ExecInPlace<AddOp<T>>(this, other);
@@ -372,15 +373,15 @@ namespace SharpGrad.Memory
         public void Div(AcceleratorBuffer<T> other) => ExecInPlace<DivOp<T>>(this, other);
 
         public static AcceleratorBuffer<T> operator +(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<AddOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<AddOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
         public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<SubOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<SubOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
         public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<NegOp<T>, T>(left.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<NegOp<T>, T>(left.AcceleratorData));
         public static AcceleratorBuffer<T> operator *(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<MulOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<MulOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
         public static AcceleratorBuffer<T> operator /(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<DivOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<DivOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
 
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
@@ -411,12 +412,12 @@ namespace SharpGrad.Memory
             else
             {
                 right.Location = BufferLocation.Accelerator;
-                Acc.Synchronize();
-                AcceleratorData = Acc.Exec<PowOp<T>, T>(AcceleratorData, right.AcceleratorData);
+                DefaultKPU.Synchronize();
+                AcceleratorData = DefaultKPU.Exec<PowOp<T>, T>(AcceleratorData, right.AcceleratorData);
             }
         }
         public static AcceleratorBuffer<T> Pow(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<PowOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<PowOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
 
 
         public void Log()
@@ -428,11 +429,11 @@ namespace SharpGrad.Memory
             }
             else
             {
-                AcceleratorData = Acc.Exec<LogOp, T>(AcceleratorData);
+                AcceleratorData = DefaultKPU.Exec<LogOp, T>(AcceleratorData);
             }
         }
         public static AcceleratorBuffer<T> Log(AcceleratorBuffer<T> value)
-            => Acc.GetAcceleratorBuffer(Acc.Exec<LogOp<T>, T>(value.AcceleratorData));
+            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<LogOp<T>, T>(value.AcceleratorData));
 
 
         internal new static AcceleratorBufferReal<T> Create(long length) { return new AcceleratorBufferReal<T>(length); }

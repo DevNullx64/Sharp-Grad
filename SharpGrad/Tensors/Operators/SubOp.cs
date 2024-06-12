@@ -4,6 +4,8 @@ namespace SharpGrad.Tensors.Operators
 {
     internal class SubOp<T> : OpBase2<T>, IExecutor2<T, T, T> where T : unmanaged, INumber<T>
     {
+        public static OpCode OpCode => OpCode.Sub;
+
         public static (T, T) Backward(T operand1, T operand2, T grad) => (grad, -grad);
         public static T Exec(T operand1, T operand2) => operand1 - operand2;
     }

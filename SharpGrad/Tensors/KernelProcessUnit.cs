@@ -58,6 +58,18 @@ namespace SharpGrad.Tensors
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        private void FillKernel<T>(LongIndex1D index1D, ArrayView<T> buffer, T value)
+            where T : unmanaged, INumber<T>
+        { buffer[index1D] = value; }
+
+        public void Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value) where T
+            : unmanaged, INumber<T>, IPowerFunctions<T>
+        {
+            var kernel = Accelerator.LoadAutoGroupedStreamKernel<LongIndex1D, ArrayView<T>, T>(FillKernel);
+            kernel(acceleratorData.Length, acceleratorData.View, value);
+            throw new NotImplementedException();
+        }
         #endregion
     }
 }
