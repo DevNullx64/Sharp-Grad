@@ -67,7 +67,7 @@ namespace SharpGrad.Tensors
         public DataTensor(Shape shape) : base(shape)
         {
             Shape = shape;
-            buffer = DefaultKpu.GetAcceleratorBuffer<T>(shape.Length);
+            buffer = KernelProcessUnit.DefaultKPU.GetBuffer<T>(shape.Length);
         }
 
         public DataTensor(Shape shape, T[] data) : base(shape)
@@ -75,7 +75,7 @@ namespace SharpGrad.Tensors
             if (shape.Length != data.Length)
                 throw new InvalidOperationException($"Invalid data length {data.Length} for shape {shape}");
             Shape = shape;
-            buffer = KernelProcessUnit.GetAcceleratorBuffer(data);
+            buffer = KernelProcessUnit.DefaultKPU.GetBuffer(data);
         }
     }
 

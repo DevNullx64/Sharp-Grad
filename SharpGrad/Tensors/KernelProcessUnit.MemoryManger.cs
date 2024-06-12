@@ -11,30 +11,61 @@ using System.Diagnostics;
 
 namespace SharpGrad.Tensors
 {
-    public partial class KernelProcessUnit
+    public interface ILowLevelMemoryManager
     {
-        private List<AcceleratorBuffer> Allocs = [];
         internal MemoryBuffer1D<T, Stride1D.Dense> MemoryBuffer1D<T>(long length)
-            where T : unmanaged, INumber<T>
-        {
-            try
-            {
-                return Accelerator.Allocate1D<T, Stride1D.Dense>(length, new Stride1D.Dense());
-            }
-            catch { }
-            FreeAcceleratorMemory(length);
-            return MemoryBuffer1D<T>(length);
-        }
+            where T : unmanaged, INumber<T>;
 
         internal MemoryBuffer1D<T, Stride1D.Dense> MemoryBuffer1D<T>(T[] values)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged, INumber<T>;
+        AcceleratorBuffer<T> GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+
+        void Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+    }
+
+    public interface IBufferManager
+    {
+        AcceleratorBuffer<T> GetBuffer<T>(long length)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+
+        AcceleratorBuffer<T> GetBuffer<T>(T[] values)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+
+        void Release(AcceleratorBuffer buffer);
+
+        long OffloadMemory(long length = 0);
+
+        void Synchronize();
+    }
+    public interface IMemoryManager: IBufferManager, ILowLevelMemoryManager
+    { }
+
+
+    public partial class KernelProcessUnit : IMemoryManager
+    {
+        private readonly List<AcceleratorBuffer> Allocs = [];
+        MemoryBuffer1D<T, Stride1D.Dense> ILowLevelMemoryManager.MemoryBuffer1D<T>(long length)
         {
-            var result = MemoryBuffer1D<T>(values.LongLength);
+            int retry = 3;
+            while (retry-- > 0)
+            {
+                try { return Accelerator.Allocate1D<T, Stride1D.Dense>(length, new Stride1D.Dense()); }
+                catch { }
+                ((IMemoryManager)this).OffloadMemory(length);
+            }
+            throw new OutOfMemoryException($"Failed to allocate memory for {length} elements.");
+        }
+
+        MemoryBuffer1D<T, Stride1D.Dense> ILowLevelMemoryManager.MemoryBuffer1D<T>(T[] values)
+        {
+            var result = ((IMemoryManager)this).MemoryBuffer1D<T>(values.LongLength);
             result.CopyFromCPU(values);
             return result;
         }
 
-        public long FreeAcceleratorMemory(long length = 0)
+        long IBufferManager.OffloadMemory(long length)
         {
             lock (Allocs)
             {
@@ -57,96 +88,66 @@ namespace SharpGrad.Tensors
         }
 
         private readonly HashSet<MemoryBuffer> MemoryBuffers = [];
-        internal void Dispose(AcceleratorBuffer acceleratorBuffer)
-            => Allocs.Remove(acceleratorBuffer);
 
-        internal void Dispose<T>(AcceleratorBuffer<T> acceleratorBuffer)
+        public AcceleratorBuffer<T> GetBuffer<T>(long length)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>
-            => Allocs.Remove(acceleratorBuffer);
-
-        private MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(long length)
-            where T : unmanaged
         {
             try
             {
-                Stride1D.Dense stride = default;
-                MemoryBuffer1D<T, Stride1D.Dense> buffer = Accelerator.Allocate1D<T, Stride1D.Dense>(length, stride);
-                MemoryBuffers.Add(buffer);
+                AcceleratorBuffer<T> buffer = new(this, length);
+                Allocs.Add(buffer);
                 return buffer;
             }
             catch (Exception e)
             {
                 Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
             }
-
-            FreeAcceleratorMemory(length);
-            return Allocate1D<T>(length);
         }
-        private MemoryBuffer1D<T, Stride1D.Dense> Allocate1D<T>(T[] data)
+        public AcceleratorBuffer<T> GetBuffer<T>(T[] values)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = new(this, values);
+                Allocs.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+
+
+        AcceleratorBuffer<T> ILowLevelMemoryManager.GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)        {
+            try
+            {
+                AcceleratorBuffer<T> buffer = new(this, data);
+                Allocs.Add(buffer);
+                return buffer;
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                throw new Exception("Failed to create buffer from data.", e);
+            }
+        }
+
+        public void Release(AcceleratorBuffer buffer)
+            => Allocs.Remove(buffer);
+
+        private static void FillKernel<T>(LongIndex1D index1D, ArrayView<T> buffer, T value)
             where T : unmanaged, INumber<T>
-        {
-            try
-            {
-                MemoryBuffer1D<T, Stride1D.Dense> buffer = Allocate1D<T>(data.LongLength);
-                buffer.CopyFromCPU(data);
-                MemoryBuffers.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
-        }
+        { buffer[index1D] = value; }
 
-        public AcceleratorBuffer<T> GetAcceleratorBuffer<T>(long length)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        void ILowLevelMemoryManager.Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)
         {
-            try
-            {
-                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(length);
-                Allocs.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
+            var kernel = Accelerator.LoadAutoGroupedStreamKernel<LongIndex1D, ArrayView<T>, T>(FillKernel);
+            kernel(acceleratorData.Length, acceleratorData.View, value);
+            throw new NotImplementedException();
         }
-        public AcceleratorBuffer<T> GetAcceleratorBuffer<T>(T[] values)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            try
-            {
-                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(values);
-                Allocs.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
-        }
-
-
-        public AcceleratorBuffer<T> GetAcceleratorBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
-        {
-            try
-            {
-                AcceleratorBuffer<T> buffer = AcceleratorBuffer<T>.Create(data);
-                Allocs.Add(buffer);
-                return buffer;
-            }
-            catch (Exception e)
-            {
-                Debug.WriteLine(e.Message);
-                throw new Exception("Failed to create buffer from data.", e);
-            }
-        }
-
 
     }
 }

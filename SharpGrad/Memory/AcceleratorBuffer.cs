@@ -54,9 +54,9 @@ namespace SharpGrad.Memory
     /// A structure that manages data on the RAM and a <see cref="Accelerator"/> (GPU). It free the RAM data when the data is available on the <see cref="Accelerator"/>. And vice versa.
     /// </summary>
     /// <param name="length">The length of the data.</param>
-    public abstract class AcceleratorBuffer(long length) : IAcceleratorBuffer
+    public abstract class AcceleratorBuffer(IMemoryManager memoryManager, long length) : IAcceleratorBuffer
     {
-        public static KernelProcessUnit DefaultKPU = new();
+        protected IMemoryManager MemoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
         /// <summary>
         /// The last time the data was accessed on the <see cref="Accelerator"/>.
         /// </summary>
@@ -89,7 +89,7 @@ namespace SharpGrad.Memory
             {
                 if (disposing)
                 {
-                    DefaultKPU.Dispose(this);
+                    memoryManager.Release(this);
                 }
 
                 // TODO: libérer les ressources non managées (objets non managés) et substituer le finaliseur
@@ -199,17 +199,17 @@ namespace SharpGrad.Memory
                             if (acceleratorData is not null)
                             {
                                 acceleratorData.CopyToCPU(cpuData);
-                                DefaultKPU.Synchronize();
+                                MemoryManager.Synchronize();
                                 acceleratorData.Dispose();
                                 acceleratorData = null;
                             }
                             break;
                         case BufferLocation.Accelerator:
-                            acceleratorData ??= DefaultKPU.MemoryBuffer1D<T>(Length);
+                            acceleratorData ??= MemoryManager.MemoryBuffer1D<T>(Length);
                             if (cpuData is not null)
                             {
-                                acceleratorData = DefaultKPU.MemoryBuffer1D(CPUData);
-                                DefaultKPU.Synchronize();
+                                acceleratorData = MemoryManager.MemoryBuffer1D(CPUData);
+                                MemoryManager.Synchronize();
                                 cpuData = null;
                             }
                             else
@@ -254,8 +254,8 @@ namespace SharpGrad.Memory
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
-        protected AcceleratorBuffer(long length)
-            : base(length) { }
+        public AcceleratorBuffer(IMemoryManager memoryManager, long length)
+            : base(memoryManager, length) { }
 
 
         /// <summary>
@@ -263,39 +263,18 @@ namespace SharpGrad.Memory
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
-        protected AcceleratorBuffer(T[] data)
-            : this(data.Length)
+        public AcceleratorBuffer(IMemoryManager memoryManager, T[] data)
+            : this(memoryManager, data.Length)
         {
             if (data is null)
                 throw new ArgumentNullException(nameof(data));
             cpuData = data;
         }
-        protected AcceleratorBuffer(MemoryBuffer1D<T, Stride1D.Dense> data)
-            : this(data.Length) {
+        public AcceleratorBuffer(IMemoryManager memoryManager, MemoryBuffer1D<T, Stride1D.Dense> data)
+            : this(memoryManager, data.Length) {
             if (data.IsDisposed)
                 throw new ArgumentException($"The data is disposed.");
             acceleratorData = data; 
-        }
-
-        // Create a new DeviceBuffer with the specified length.
-        internal static AcceleratorBuffer<T> Create(long length) => new(length);
-        // Create a new DeviceBuffer with the specified data.
-        internal static AcceleratorBuffer<T> Create(T[] data) => new(data);
-        // Create a new DeviceBuffer with the specified data. Act as a copy constructor.
-        internal static AcceleratorBuffer<T> Create(AcceleratorBuffer<T> data)
-            => data.Location switch
-            {
-                BufferLocation.Empty => new(data.Length),
-                BufferLocation.Ram => new(data.CPUData),
-                BufferLocation.Accelerator => new(data.AcceleratorData),
-                _ => throw new ArgumentException($"Unknown location {data.Location}"),
-            };
-
-        // Create a new DeviceBuffer with the specified data.
-        internal static AcceleratorBuffer<T> Create(MemoryBuffer1D<T, Stride1D.Dense> data)
-        {
-            AcceleratorBuffer<T> buffer = new(data);
-            return buffer;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -310,7 +289,7 @@ namespace SharpGrad.Memory
                 cpuData = null;
                 acceleratorData?.Dispose();
                 acceleratorData = null;
-                DefaultKPU.Dispose(this);
+                MemoryManager.Release(this);
             }
         }
 
@@ -323,7 +302,7 @@ namespace SharpGrad.Memory
             if (Location == BufferLocation.Ram)
                 Array.Fill(CPUData, value);
             else
-                DefaultKPU.Fill(AcceleratorData, value);
+                MemoryManager.Fill(AcceleratorData, value);
 
         }
 
@@ -338,107 +317,19 @@ namespace SharpGrad.Memory
                 AcceleratorData.MemSetToZero();
         }
 
-        public static void ExecInPlace<TOP>(AcceleratorBuffer<T> @this)
-            where TOP : IExecutor1<T, T>
-        {
-            if (@this.Location == BufferLocation.Ram && @this.Length < CopyToAcceleratorThreshold)
-                for (int i = 0; i < @this.Length; i++)
-                    @this.CPUData[i] = TOP.Exec(@this.CPUData[i]);
-            else
-                DefaultKPU.ExecInPlace<TOP, T>(@this.AcceleratorData);
-        }
-
-
-        public static void ExecInPlace<TOP>(AcceleratorBuffer<T> @this, AcceleratorBuffer<T> other)
-            where TOP : IExecutor2<T, T, T>
-        {
-            if (@this.Length != other.Length)
-                throw new ArgumentException($"Expected for same length. {nameof(@this)}.Length = {@this.Length}, {nameof(other)}.Length = {other.Length}");
-
-            if (@this.Location == BufferLocation.Ram && @this.Length < CopyToAcceleratorThreshold)
-                for (int i = 0; i < @this.Length; i++)
-                    @this.CPUData[i] = TOP.Exec(@this.CPUData[i], other.CPUData[i]);
-            else
-            {
-                @this.Location = BufferLocation.Accelerator;
-                other.Location = BufferLocation.Accelerator;
-                DefaultKPU.Synchronize();
-                DefaultKPU.ExecInPlace<TOP, T>(@this.AcceleratorData, other.AcceleratorData);
-            }
-        }
-        public void Add(AcceleratorBuffer<T> other) => ExecInPlace<AddOp<T>>(this, other);
-        public void Sub(AcceleratorBuffer<T> other) => ExecInPlace<SubOp<T>>(this, other);
-        public void Neg() => ExecInPlace<NegOp<T>>(this);
-        public void Mul(AcceleratorBuffer<T> other) => ExecInPlace<MulOp<T>>(this, other);
-        public void Div(AcceleratorBuffer<T> other) => ExecInPlace<DivOp<T>>(this, other);
-
-        public static AcceleratorBuffer<T> operator +(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<AddOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
-        public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<SubOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
-        public static AcceleratorBuffer<T> operator -(AcceleratorBuffer<T> left)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<NegOp<T>, T>(left.AcceleratorData));
-        public static AcceleratorBuffer<T> operator *(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<MulOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
-        public static AcceleratorBuffer<T> operator /(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<DivOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
-
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
         public static explicit operator T(AcceleratorBuffer<T> gpu) => gpu.Length == 1 ? gpu.CPUData[0] : throw new InvalidCastException($"Cannot cast a buffer of length {gpu.Length} to a scalar.");
-        public static implicit operator AcceleratorBuffer<T>(T cpu) => new([cpu]);
     }
 
     public class AcceleratorBufferReal<T> : AcceleratorBuffer<T>
         where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
-        protected AcceleratorBufferReal(long length) : base(length) { }
+        public AcceleratorBufferReal(IMemoryManager memoryManager, long length) : base(memoryManager, length) { }
 
-        protected AcceleratorBufferReal(T[] data) : base(data) { }
+        public AcceleratorBufferReal(IMemoryManager memoryManager, T[] data) : base(memoryManager, data) { }
 
-        protected AcceleratorBufferReal(MemoryBuffer1D<T, Stride1D.Dense> data) : base(data) { }
-
-        public void Pow(AcceleratorBuffer<T> right)
-        {
-            if (right.Length != Length)
-                throw new ArgumentException($"Expected length {Length}, got {right.Length}");
-
-            if (Location == BufferLocation.Ram && Length < CopyToAcceleratorThreshold)
-            {
-                for (int i = 0; i < Length; i++)
-                    CPUData[i] = T.Pow(CPUData[i], right.CPUData[i]);
-            }
-            else
-            {
-                right.Location = BufferLocation.Accelerator;
-                DefaultKPU.Synchronize();
-                AcceleratorData = DefaultKPU.Exec<PowOp<T>, T>(AcceleratorData, right.AcceleratorData);
-            }
-        }
-        public static AcceleratorBuffer<T> Pow(AcceleratorBuffer<T> left, AcceleratorBuffer<T> right)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<PowOp<T>, T>(left.AcceleratorData, right.AcceleratorData));
-
-
-        public void Log()
-        {
-            if (Location == BufferLocation.Ram && Length < CopyToAcceleratorThreshold)
-            {
-                for (int i = 0; i < Length; i++)
-                    CPUData[i] = T.Log(CPUData[i]);
-            }
-            else
-            {
-                AcceleratorData = DefaultKPU.Exec<LogOp, T>(AcceleratorData);
-            }
-        }
-        public static AcceleratorBuffer<T> Log(AcceleratorBuffer<T> value)
-            => DefaultKPU.GetAcceleratorBuffer(DefaultKPU.Exec<LogOp<T>, T>(value.AcceleratorData));
-
-
-        internal new static AcceleratorBufferReal<T> Create(long length) { return new AcceleratorBufferReal<T>(length); }
-        internal new static AcceleratorBufferReal<T> Create(T[] data) { return new AcceleratorBufferReal<T>(data); }
-        internal new static AcceleratorBufferReal<T> Create(MemoryBuffer1D<T, Stride1D.Dense> data) { return new AcceleratorBufferReal<T>(data); }
-
+        public AcceleratorBufferReal(IMemoryManager memoryManager, MemoryBuffer1D<T, Stride1D.Dense> data) : base(memoryManager, data) { }
     }
 }

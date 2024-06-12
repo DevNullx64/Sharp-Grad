@@ -52,6 +52,8 @@ namespace SharpGrad.Tensors
         Pow = 8,
         Log = 9 | Unary,
         Exp = 10 | Unary,
+        Sum = 11 | Unary,
+        Prod = 12 | Unary,
     }
 
     public interface IBufferOperande
