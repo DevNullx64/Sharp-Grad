@@ -35,25 +35,43 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// If set, the operation is commutative. Otherwise, it is not.
         /// </summary>
-        Commutative = 0x80,
+        Commutative = 0x100,
 
         /// <summary>
         /// If set, the operation is unary. Otherwise, it is binary.
         /// </summary>
-        Unary = 0x40,
+        Unary = 0x200,
 
-        Reset = 0 | Unary,
+        /// <summary>
+        /// If set, the operation is a reduction. Otherwise, it is not.
+        /// </summary>
+        Reduction = 0x400,
+
+        Reset = 0,
         Store = 1 | Unary,
-        Add = 2 | Commutative,
-        Sub = 3,
+        Add = 5 | Commutative,
+        Sub = 6,
         Neg = Sub | Unary,
-        Mul = 4 | Commutative,
-        Div = 5,
-        Pow = 8,
-        Log = 9 | Unary,
-        Exp = 10 | Unary,
-        Sum = 11 | Unary,
-        Prod = 12 | Unary,
+        Mul = 7 | Commutative,
+        Div = 8,
+        Pow = 16,
+        Log = 17 | Unary,
+        Exp = 18 | Unary,
+
+        Abs = 19 | Unary,
+        Sqrt = 20 | Unary,
+        Sin = 21 | Unary,
+        Cos = 22 | Unary,
+        Tan = 23 | Unary,
+
+        Sum = 32 | Reduction,
+        Prod = 33 | Reduction,
+        Min = 34 | Reduction,
+        Max = 35 | Reduction,
+        Mean = 36 | Reduction,
+        Var = 37 | Reduction,
+        Std = 38 | Reduction,
+
     }
 
     public interface IBufferOperande
