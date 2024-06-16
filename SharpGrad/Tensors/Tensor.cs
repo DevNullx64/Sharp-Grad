@@ -31,7 +31,7 @@ namespace SharpGrad.Tensors
             }
         }
         public long Length => Shape.Length;
-
+        public abstract long Depth { get; }
         public abstract T this[params Index[] indices] { get; }
 
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new StreamTensor2<T, AddOp<T>>(left, right);

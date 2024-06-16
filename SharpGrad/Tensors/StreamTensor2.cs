@@ -13,6 +13,8 @@ namespace SharpGrad.Tensors
         public Tensor<T> Operand1 => operand1;
         public Tensor<T> Operand2 => operand2;
 
+        public override long Depth => Math.Max(Operand1.Depth, Operand2.Depth) + 1;
+
         public override T this[params Index[] indices] => TOp.Exec(operand1[indices], operand2[indices]);
 
         public override void DepthFirstSearch(List<ITensorOperation<T>> topoSort, int level, Dictionary<Tensor<T>, (int UsageCount, int Level)> visited, Dictionary<Tensor<T>, int> leaf)
