@@ -2,7 +2,8 @@
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class DivOp<T> : OpBase2<T>, IExecutor2<T, T, T> where T : unmanaged, INumber<T>
+    internal class DivOp<T> : OpBase2<T>, IExecutor2<T, T, T>
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>
     {
         public static OpCode OpCode => OpCode.Div;
 

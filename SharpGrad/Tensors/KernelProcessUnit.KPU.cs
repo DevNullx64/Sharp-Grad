@@ -172,20 +172,15 @@ namespace SharpGrad.Tensors
             return tensors[0];
         }
 
-        public class RegisteryContext : List<int>
-        {
-            public int FirstFreeRegister => Find(e => e == -1);
-        }
-
         public Tensor<T> Exec<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             if (tensor is ITensorOperation<T> op)
             {
                 var topo = new List<ITensorOperation<T>>();
-                var visited = new Dictionary<Tensor<T>, int>();
+                var visited = new Dictionary<Tensor<T>, (int UsageCount, int Level)>();
                 var leaf = new Dictionary<Tensor<T>, int>();
-                op.DepthFirstSearch(topo, visited, leaf);
+                op.DepthFirstSearch(topo, 1, visited, leaf);
 
                 int requiredInputs = leaf.Count;
 
@@ -214,15 +209,15 @@ namespace SharpGrad.Tensors
 
 
                 // Use ILGPU to pack operands
-                MemoryBuffer2D<T, Stride2D.DenseY> operandsMatrix = To2D(operands.Select(e => e.view));
+                MemoryBuffer2D<T, Stride2D.DenseY> operandsMatrix = To2D(operands.Select(e => e.View));
 
                 // Create list  of required registers
-                RegisteryContext registry = [];
+                List<ITensorOperation?> registry = [];
                 for (int i = s; i < e; i++)
                 {
                     if (topo[i] is IExecutor1<T, T> executor)
                     {
-                        int p = registry.FirstFreeRegister;
+                        int p = registry.IndexOf(null);
                         if (p == -1)
                         {
                             registry.Add(i);

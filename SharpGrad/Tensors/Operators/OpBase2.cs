@@ -3,7 +3,8 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class OpBase2<T> where T : unmanaged, INumber<T>
+    internal class OpBase2<T>
+        where T : unmanaged, INumber<T>
     {
         /// <summary>
         /// Broadcasts the <see cref="Shape"/>s of the operands.

@@ -13,18 +13,18 @@ namespace SharpGrad.Tensors
     {
         Unknown = 0,
         Bits8 = 1, Bits16 = 2, Bits32 = 3, Bits64 = 4,
-        Integer = 8, UInteger = 16, FloatingPoint = 24,
+        Signed = 8, Unsigned = 16, FloatingPoint = 24,
 
         Double = Bits64 | FloatingPoint,
         Float = Bits32 | FloatingPoint,
-        Long = Bits64 | Integer,
-        ULong = Bits64 | UInteger,
-        Int = Bits32 | Integer,
-        UInt = Bits32 | UInteger,
-        Short = Bits16 | Integer,
-        UShort = Bits16 | UInteger,
-        Byte = Bits16 | Integer,
-        SByte = Bits16 | Integer,
+        Long = Bits64 | Signed,
+        ULong = Bits64 | Unsigned,
+        Int = Bits32 | Signed,
+        UInt = Bits32 | Unsigned,
+        Short = Bits16 | Signed,
+        UShort = Bits16 | Unsigned,
+        Byte = Bits16 | Unsigned,
+        SByte = Bits16 | Signed,
     }
 
     /// <summary>

@@ -6,7 +6,7 @@
     /// <typeparam name="TOperand1">Type of the first operand.</typeparam>
     /// <typeparam name="TOperand2">Type of the second operand.</typeparam>
     /// <typeparam name="TResult">Type of the result.</typeparam>
-    public interface IExecutor2<TOperand1, TOperand2, TResult>: IExecutor
+    public interface IExecutor2<TOperand1, TOperand2, TResult> : IExecutor
     {
         /// <summary>
         /// The resulting <see cref="Shape"/> of the operation.
