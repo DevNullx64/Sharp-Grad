@@ -12,7 +12,7 @@ namespace SharpGrad.Tensors
     {
         public Tensor<T> Operand1 => operand1;
 
-        public override long Depth => operand1.Depth + 1;
+        public override long Depth { get; } = operand1.Depth + 1;
 
         public override T this[params Index[] indices] => TOp.Exec(operand1[indices]);
 
