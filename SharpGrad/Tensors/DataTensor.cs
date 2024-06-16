@@ -12,7 +12,7 @@ namespace SharpGrad.Tensors
         protected readonly AcceleratorBuffer<T> buffer;
         internal ArrayView1D<T, Stride1D.Dense> View => buffer.AcceleratorData.View;
 
-        public override long Depth => 1;
+        public override long Depth => 0;
 
         public override T this[params Index[] indices]
         {
