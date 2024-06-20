@@ -68,24 +68,24 @@ namespace SharpGrad.Tensors
         /// Kernel Processing Unit
         /// </summary>
         /// <param name="operation">Operation to perform</param>
-        /// <param name="operand">Left operand</param>
+        /// <param name="operand1">Left operand</param>
         /// <param name="result">Result of the operation</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void Exec<T>(OpCode operation, ref T result, T operand)
+        private static T Exec<T>(OpCode operation, T operand1, T operand2)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            result = operation switch
+            return operation switch
             {
                 OpCode.Reset => T.Zero,
-                OpCode.Store => operand,
-                OpCode.Add => AddOp<T>.Exec(result, operand),
-                OpCode.Sub => SubOp<T>.Exec(result, operand),
-                OpCode.Mul => MulOp<T>.Exec(result, operand),
-                OpCode.Div => DivOp<T>.Exec(result, operand),
-                OpCode.Pow => PowOp<T>.Exec(result, operand),
-                OpCode.Neg => NegOp<T>.Exec(operand),
-                OpCode.Log => LogOp<T>.Exec(operand),
-                OpCode.Exp => ExpOp<T>.Exec(operand),
+                OpCode.Store => operand1,
+                OpCode.Add => AddOp<T>.Exec(operand1, operand2),
+                OpCode.Sub => SubOp<T>.Exec(operand1, operand2),
+                OpCode.Mul => MulOp<T>.Exec(operand1, operand2),
+                OpCode.Div => DivOp<T>.Exec(operand1, operand2),
+                OpCode.Pow => PowOp<T>.Exec(operand1, operand2),
+                OpCode.Neg => NegOp<T>.Exec(operand1),
+                OpCode.Log => LogOp<T>.Exec(operand1),
+                OpCode.Exp => ExpOp<T>.Exec(operand1),
                 _ => T.Zero,
             };
         }
@@ -105,10 +105,16 @@ namespace SharpGrad.Tensors
             for (int i = 0; i < ops.Length; i++)
             {
                 OperationKPU op = ops[i];
-                if (op.Index1 >= 0)
-                    Exec(op.OpCode, ref tensors[op.Index1, idx], op.Index2 >= 0 ? tensors[op.Index2, idx] : register[-op.Index2 - 1]);
+                var operand1 = op.IndexOperand1 < 0
+                    ? register[-op.IndexOperand1 - 1]
+                    : tensors[op.IndexOperand1, idx];
+                var operand2 = op.IndexOperand2 < 0
+                    ? register[-op.IndexOperand2 - 1]
+                    : tensors[op.IndexOperand2, idx];
+                if (op.IndexResult >= 0)
+                    tensors[op.IndexResult, idx] = Exec(op.OpCode, operand1, operand2);
                 else
-                    Exec(op.OpCode, ref register[-op.Index1 - 1], op.Index2 >= 0 ? tensors[op.Index2, idx] : register[-op.Index2 - 1]);
+                    register[-op.IndexResult - 1] = Exec(op.OpCode, operand1, operand2);
             }
         }
 
@@ -153,7 +159,7 @@ namespace SharpGrad.Tensors
         public MemoryBuffer1D<T, Stride1D.Dense> Exec<T>(OperationKPU[] operations)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            var needAccumulator = operations.Min(e => Math.Min(e.Index1, e.Index2));
+            var needAccumulator = operations.Min(e => Math.Min(e.IndexOperand1, e.IndexOperand2));
             if (needAccumulator < 0)
                 needAccumulator = (short)-needAccumulator;
             else
@@ -162,7 +168,7 @@ namespace SharpGrad.Tensors
             var ops = Accelerator.Allocate1D<OperationKPU, Stride1D.Dense>(operations.Length, new Stride1D.Dense());
             ops.CopyFromCPU(operations);
 
-            var tensors = Accelerator.Allocate2DDenseY<T>(new(operations.Max(e => e.Index1), operations.Length));
+            var tensors = Accelerator.Allocate2DDenseY<T>(new(operations.Max(e => e.IndexOperand1), operations.Length));
 
             // TODO : Copy input
 
@@ -177,61 +183,22 @@ namespace SharpGrad.Tensors
         {
             if (tensor is ITensorOperation<T> op)
             {
-                var topo = new List<ITensorOperation<T>>();
-                var visited = new Dictionary<Tensor<T>, (int UsageCount, int Level)>();
-                var leaf = new Dictionary<Tensor<T>, int>();
-                op.DepthFirstSearch(topo, 1, visited, leaf);
+                var topo = new List<Tensor<T>>();
+                var visited = new HashSet<Tensor<T>>();
+                op.DepthFirstSearch(topo, visited);
 
-                int requiredInputs = leaf.Count;
+                // Get all input (Tensor<T>.Depth == 0) and is number of use
+                var inputs = topo
+                    .Where(e => e.Depth == 0)
+                    .GroupBy(e => e)
+                    .ToDictionary(e => e.Key, e => e.Count());
 
-                // Get every opeartion, from the bagining, an stop at first false, with the same shape
-                int s = 0;
-                Shape current = topo[s].Shape;
-                int e = s + 1;
-                while (e < topo.Count && topo[e].Shape == current)
-                    e++;
-
-                // Get needed operands
-                HashSet<DataTensor<T>> operands = [];
-                for (int i = s; i < e; i++)
-                    if (topo[i] is ITensorOperation1<T> executor)
-                    {
-                        if (executor.Operand1 is DataTensor<T> data)
-                            operands.Add(data);
-                    }
-                    else if (topo[i] is ITensorOperation2<T> executor2)
-                    {
-                        if (executor2.Operand1 is DataTensor<T> data1)
-                            operands.Add(data1);
-                        if (executor2.Operand2 is DataTensor<T> data2)
-                            operands.Add(data2);
-                    }
-
-
-                // Use ILGPU to pack operands
-                MemoryBuffer2D<T, Stride2D.DenseY> operandsMatrix = To2D(operands.Select(e => e.View));
-
-                // Create list  of required registers
-                List<ITensorOperation?> registry = [];
-                for (int i = s; i < e; i++)
-                {
-                    if (topo[i] is IExecutor1<T, T> executor)
-                    {
-                        int p = registry.IndexOf(null);
-                        if (p == -1)
-                        {
-                            registry.Add(i);
-                        }
-                    }
-                    else if (topo[i] is IExecutor2<T, T, T> executor2)
-                    {
-
-                    }
-                }
-
-
+                // Get all output (Tensor<T>.Depth == max) and is number of use
+                var usesOutput = topo
+                    .Where(e => e.Depth == topo.Max(e => e.Depth))
+                    .GroupBy(e => e)
+                    .ToDictionary(e => e.Key, e => e.Count());
             }
-
         }
     }
 }

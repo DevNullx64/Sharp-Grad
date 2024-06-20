@@ -23,19 +23,17 @@ namespace SharpGrad.Tensors
             }
         }
 
-        public DataTensor(Shape shape) : base(shape)
+        protected DataTensor(string name, Shape shape, AcceleratorBuffer<T> buffer) : base(name, shape)
         {
             Shape = shape;
-            buffer = KernelProcessUnit.DefaultKPU.GetBuffer<T>(shape.Length);
+            this.buffer = buffer;
         }
 
-        public DataTensor(Shape shape, T[] data) : base(shape)
-        {
-            if (shape.Length != data.Length)
-                throw new InvalidOperationException($"Invalid data length {data.Length} for shape {shape}");
-            Shape = shape;
-            buffer = KernelProcessUnit.DefaultKPU.GetBuffer(data);
-        }
+        public DataTensor(string name, Shape shape)
+            : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer<T>(shape.Length)) { }
+
+        public DataTensor(string name, Shape shape, T[] data)
+            : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer(data)) { }
 
         public override bool Equals(ITensor? other)
             => other is DataTensor<T> tensor && buffer == tensor.buffer;

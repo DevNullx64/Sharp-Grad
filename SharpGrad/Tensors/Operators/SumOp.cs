@@ -9,6 +9,7 @@ namespace SharpGrad.Tensors.Operators
     internal class SumOp<T> : Aggregator<T>, IAggregator<T, T> where T : unmanaged, INumber<T>
     {
         public static OpCode OpCode => OpCode.Sum;
+        public static string Symbol => "Σ";
 
         public static T Exec(T[] operand1)
         {

@@ -11,7 +11,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Tensors
 {
-    public abstract class Tensor<T>(Shape shape) : ITensor<T>,
+    public abstract class Tensor<T>(string name, Shape shape) : ITensor<T>,
         IAdditionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
         ISubtractionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
         IUnaryNegationOperators<Tensor<T>, Tensor<T>>,
@@ -19,6 +19,16 @@ namespace SharpGrad.Tensors
         IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
     {
+        private static object lockObj = new();
+        private static int nextId = 0;
+        protected static string GetNextName()
+        {
+            lock (lockObj)
+                return $"Tensor{nextId++}";
+        }
+
+        public string Name { get; } = name;
+
         protected Shape Shape_ = shape;
         public virtual Shape Shape
         {
@@ -34,25 +44,37 @@ namespace SharpGrad.Tensors
         public abstract long Depth { get; }
         public abstract T this[params Index[] indices] { get; }
 
-        public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new StreamTensor2<T, AddOp<T>>(left, right);
-        public static Tensor<T> operator -(Tensor<T> value) => new StreamTensor1<T, NegOp<T>>(value);
-        public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new StreamTensor2<T, SubOp<T>>(left, right);
-        public static Tensor<T> operator *(Tensor<T> left, Tensor<T> right) => new StreamTensor2<T, MulOp<T>>(left, right);
-        public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new StreamTensor2<T, DivOp<T>>(left, right);
+        public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);
+        public static Tensor<T> operator -(Tensor<T> value) => new TensorOperation1<T, NegOp<T>>(value);
+        public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, SubOp<T>>(left, right);
+        public static Tensor<T> operator *(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, MulOp<T>>(left, right);
+        public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, DivOp<T>>(left, right);
 
 
-        public static implicit operator Tensor<T>(T[] data) => new DataTensor<T>(new Shape(data.Length), data);
+        public static implicit operator Tensor<T>(T[] data) => new DataTensor<T>(GetNextName(), new Shape(data.Length), data);
+        public static implicit operator Tensor<T>((string Name, T[] Data) tensor) => new DataTensor<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
+        public static implicit operator Tensor<T>((T[] Data, string Name) tensor) => new DataTensor<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
 
         public abstract bool Equals(ITensor? other);
+
+        public virtual void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
+        {
+            if (visited.Add(this))
+                topoSort.Add(this);
+        }
     }
 
-    internal abstract class Tensor<T, TOp>(Shape shape) : Tensor<T>(shape), ITensorOperation<T>
+    internal abstract class Tensor<T, TOp>(Shape shape) : Tensor<T>(TOp.Symbol, shape), ITensorOperation<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
         where TOp : IExecutor
     {
         public OpCode OpCode => TOp.OpCode;
 
-        public abstract void DepthFirstSearch(List<ITensorOperation<T>> topoSort, int level, Dictionary<Tensor<T>, (int UsageCount, int Level)> visited, Dictionary<Tensor<T>, int> leaf);
+        public virtual void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
+        {
+            if (visited.Add(this))
+                topoSort.Add(this);
+        }
         public abstract void Backward();
     }
 }

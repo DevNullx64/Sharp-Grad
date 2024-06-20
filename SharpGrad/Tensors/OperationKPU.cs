@@ -100,23 +100,29 @@ namespace SharpGrad.Tensors
     /// An operation to perform using the KPU
     /// </summary>
     /// <param name="opCode">Operation to perform</param>
-    /// <param name="index1">Left operand</param>
-    /// <param name="index2">Result of the operation</param>
-    /// <remarks>Operations are performed in-place</remarks>
-    public readonly struct OperationKPU(OpCode opCode, short index1, short index2)
+    /// <param name="indexOperand1">Left operand</param>
+    /// <param name="indexOperand2">Result of the operation</param>
+    public readonly struct OperationKPU(OpCode opCode, short result, short indexOperand1, short indexOperand2)
     {
         /// <inheritdoc/>
         public OpCode OpCode => opCode;
 
-        /// <inheritdoc/>
-        /// <remarks>Negative values are used as indices of the accumulator</remarks>
-        public short Index1 => index1;
+        /// <summary>
+        /// Index of the result
+        /// </summary>
+        /// <remarks>Negative values are used as indices of the register</remarks>
+        public short IndexResult => result;
 
-        /// <inheritdoc/>
-        /// <remarks>Negative values are used as indices of the accumulator</remarks>
-        public short Index2 => index2;
+        /// <summary>
+        /// Index of the first operand
+        /// </summary>
+        /// <remarks>Negative values are used as indices of the register</remarks>
+        public short IndexOperand1 => indexOperand1;
 
-        public readonly short MinIndex => Math.Min(index1, index2);
-        public readonly short MaxIndex => Math.Max(index1, index2);
+        /// <summary>
+        /// Index of the second operand
+        /// </summary>
+        /// <remarks>Negative values are used as indices of the register</remarks>
+        public short IndexOperand2 => indexOperand2;
     }
 }

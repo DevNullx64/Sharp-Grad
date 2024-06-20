@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class StreamTensor2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
+    internal class TensorOperation2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
         : Tensor<T, TOp>(operand1.Shape), ITensorOperation2<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
         where TOp : IExecutor2<T, T, T>
@@ -17,33 +17,15 @@ namespace SharpGrad.Tensors
 
         public override T this[params Index[] indices] => TOp.Exec(operand1[indices], operand2[indices]);
 
-        public override void DepthFirstSearch(List<ITensorOperation<T>> topoSort, int level, Dictionary<Tensor<T>, (int UsageCount, int Level)> visited, Dictionary<Tensor<T>, int> leaf)
+        public override void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
         {
-            if (visited.TryGetValue(this, out var count1))
+            if (visited.Add(this))
             {
-                visited[this] = (count1.UsageCount + 1, Math.Max(count1.Level, level));
-            }
-            else
-            {
-                visited.Add(this, (1, level));
+                visited.Add(this);
                 if (Operand1 is ITensorOperation<T> op1)
-                    op1.DepthFirstSearch(topoSort, level + 1, visited, leaf);
-                else
-                {
-                    if (leaf.TryGetValue(Operand1, out var count2))
-                        leaf[Operand1] = count2 + 1;
-                    else
-                        leaf.Add(Operand1, 1);
-                }
+                    op1.DepthFirstSearch(topoSort, visited);
                 if (Operand2 is ITensorOperation<T> op2)
-                    op2.DepthFirstSearch(topoSort, level + 1, visited, leaf);
-                else
-                {
-                    if (leaf.TryGetValue(Operand2, out var count3))
-                        leaf[Operand2] = count3 + 1;
-                    else
-                        leaf.Add(Operand2, 1);
-                }
+                    op2.DepthFirstSearch(topoSort, visited);
                 topoSort.Add(this);
             }
         }
@@ -56,10 +38,22 @@ namespace SharpGrad.Tensors
                 op2.Backward();
         }
 
-        public override bool Equals(ITensor? other) => other is StreamTensor2<T, TOp> tensor &&
+        public override bool Equals(ITensor? other) => other is TensorOperation2<T, TOp> tensor &&
             (
                 Operand1.Equals(tensor.Operand1) && Operand2.Equals(tensor.Operand2) ||
                 TOp.OpCode.HasFlag(OpCode.Commutative) && Operand1.Equals(tensor.Operand2) && Operand2.Equals(tensor.Operand1)
             );
+
+        public override bool Equals(object? obj) => obj is TensorOperation2<T, TOp> tensor && Equals(tensor);
+        public override int GetHashCode(){
+            if (TOp.OpCode.HasFlag(OpCode.Commutative))
+                return ((typeof(TOp).GetHashCode() * 31 + Operand1.GetHashCode()) * 31 + Operand2.GetHashCode()) * 31;
+            return typeof(TOp).GetHashCode() * 31 + (Operand1.GetHashCode() * 31 + Operand2.GetHashCode() * 31) * 31;
+        }
+
+        public override string ToString() => $"({Operand1} {TOp.OpCode} {Operand2})";
+
+        public static bool operator ==(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => left.Equals(right);
+        public static bool operator !=(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => !left.Equals(right);
     }
 }

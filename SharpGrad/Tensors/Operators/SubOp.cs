@@ -6,6 +6,7 @@ namespace SharpGrad.Tensors.Operators
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
     {
         public static OpCode OpCode => OpCode.Sub;
+        public static string Symbol => "-";
 
         public static (T, T) Backward(T operand1, T operand2, T grad) => (grad, -grad);
         public static T Exec(T operand1, T operand2) => operand1 - operand2;
