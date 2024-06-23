@@ -37,5 +37,18 @@ namespace SharpGrad.Tensors
 
         public override bool Equals(ITensor? other)
             => other is DataTensor<T> tensor && buffer == tensor.buffer;
+
+        public override bool Equals(object? obj) => obj is DataTensor<T> tensor && Equals(tensor);
+
+        public override void Backward()
+        {
+            throw new NotImplementedException();
+        }
+
+        public static implicit operator DataTensor<T>((string Name, Shape Shape) tensor) => new(tensor.Name, tensor.Shape);
+        public static implicit operator DataTensor<T>((string Name, Shape Shape, T[] Data) tensor) => new(tensor.Name, tensor.Shape, tensor.Data);
+
+        public static implicit operator DataTensor<T>((Shape Shape, string Name) tensor) => new(tensor.Name, tensor.Shape);
+        public static implicit operator DataTensor<T>((Shape Shape, string Name, T[] Data) tensor) => new(tensor.Name, tensor.Shape, tensor.Data);
     }
 }
