@@ -62,6 +62,14 @@ namespace SharpGrad.Tensors
             if (visited.Add(this))
                 topoSort.Add(this);
         }
+        public abstract void Backward();
+
+        public static bool operator ==(Tensor<T>? left, Tensor<T>? right) => left is null ? right is null : left.Equals(right);
+        public static bool operator ==(ITensor<T>? left, Tensor<T>? right) => left is null ? right is null : left.Equals(right);
+        public static bool operator ==(Tensor<T>? left, ITensor<T>? right) => left is null ? right is null : left.Equals(right);
+        public static bool operator !=(Tensor<T>? left, Tensor<T>? right) => left is null ? right is not null : !left.Equals(right);
+        public static bool operator !=(ITensor<T>? left, Tensor<T>? right) => left is null ? right is not null : !left.Equals(right);
+        public static bool operator !=(Tensor<T>? left, ITensor<T>? right) => left is null ? right is not null : !left.Equals(right);
     }
 
     internal abstract class Tensor<T, TOp>(Shape shape) : Tensor<T>(TOp.Symbol, shape), ITensorOperation<T>
@@ -69,12 +77,5 @@ namespace SharpGrad.Tensors
         where TOp : IExecutor
     {
         public OpCode OpCode => TOp.OpCode;
-
-        public virtual void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
-        {
-            if (visited.Add(this))
-                topoSort.Add(this);
-        }
-        public abstract void Backward();
     }
 }
