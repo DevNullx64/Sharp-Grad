@@ -22,10 +22,20 @@ namespace SharpGrad.Tensors
             if (visited.Add(this))
             {
                 visited.Add(this);
-                if (Operand1 is ITensorOperation<T> op1)
-                    op1.DepthFirstSearch(topoSort, visited);
-                if (Operand2 is ITensorOperation<T> op2)
-                    op2.DepthFirstSearch(topoSort, visited);
+                if (Operand1.Depth >= Operand2.Depth)
+                {
+                    if (Operand1 is ITensorOperation<T> op1)
+                        op1.DepthFirstSearch(topoSort, visited);
+                    if (Operand2 is ITensorOperation<T> op2)
+                        op2.DepthFirstSearch(topoSort, visited);
+                }
+                else
+                {
+                    if (Operand2 is ITensorOperation<T> op2)
+                        op2.DepthFirstSearch(topoSort, visited);
+                    if (Operand1 is ITensorOperation<T> op1)
+                        op1.DepthFirstSearch(topoSort, visited);
+                }
                 topoSort.Add(this);
             }
         }
