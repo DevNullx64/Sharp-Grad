@@ -47,6 +47,7 @@ namespace SharpGrad.Tensors
         /// </summary>
         Reduction = 0x400,
 
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Reset = 0,
         Store = 1 | Unary,
         Add = 5 | Commutative,
@@ -54,22 +55,36 @@ namespace SharpGrad.Tensors
         Neg = Sub | Unary,
         Mul = 7 | Commutative,
         Div = 8,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Pow = 16,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Log = 17 | Unary,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Exp = 18 | Unary,
 
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Abs = 19 | Unary,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Sqrt = 20 | Unary,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Sin = 21 | Unary,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Cos = 22 | Unary,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Tan = 23 | Unary,
 
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Sum = 32 | Reduction,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Prod = 33 | Reduction,
         Min = 34 | Reduction,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Max = 35 | Reduction,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Mean = 36 | Reduction,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Var = 37 | Reduction,
+        [Obsolete("/!\\ Not implemented yet /!\\")]
         Std = 38 | Reduction,
 
     }

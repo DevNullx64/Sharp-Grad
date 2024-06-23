@@ -179,7 +179,7 @@ namespace SharpGrad.Tensors
             return tensors[0];
         }
 
-        public readonly struct KPUContext<T>(List<Tensor<T>> topo)
+        public readonly struct KPUContext<T>(IEnumerable<Tensor<T>> tensors)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             public struct KPURegister(Tensor<T> tensor, int ttl)
@@ -199,7 +199,7 @@ namespace SharpGrad.Tensors
             }
 
             // contains all input tensors and number of use
-            private readonly List<(Tensor<T> Tensor, short TTL)> inputs = topo
+            private readonly List<(Tensor<T> Tensor, short TTL)> inputs = tensors
                 .Where(e => e.Depth == 0)
                 .GroupBy(e => e)
                 .Select(e => (e.Key, (short)e.Count()))
@@ -214,7 +214,7 @@ namespace SharpGrad.Tensors
             public short IndexOfInputs(Tensor<T> tensor) => (short)inputs.IndexOf(inputs.First(e => e.Tensor == tensor));
 
             // contains all operations, and number of use
-            private readonly List<(Tensor<T> Tensor, short TTL)> operations = topo
+            private readonly List<(Tensor<T> Tensor, short TTL)> operations = tensors
                 .Where(e => e.Depth > 0)
                 .GroupBy(e => e)
                 .Select(e => (e.Key, (short)e.Count()))
@@ -252,7 +252,7 @@ namespace SharpGrad.Tensors
             /// </summary>
             /// <param name="tensor">Tensor to get the KPU index</param>
             /// <returns>If the tensor was found in the regitry list or input list, return the  KPU index. Otherwise, return null.</returns>
-            /// <remarks>A KPU index is negative if the tensor is stored in a register. The realy index in the register list is (-index - 1)</remarks>
+            /// <remarks>A KPU index is negative if the tensor is stored in a register. The realy index in the register list is (-index - 1). Otherwise, the index is the index of the input tensor.</remarks>
             public short? GetKpuIndex(Tensor<T> tensor)
             {
                 short regIndex = GetRegisterIndex(tensor);
@@ -309,6 +309,9 @@ namespace SharpGrad.Tensors
                     Use(operation2.Operand2);
                 }
             }
+
+            public void UseAt(short index) => kpuRegisters[index].Use();
+            public void UseAtKpuIndex(short index) => UseAt((short)(-index - 1));
         }
 
         public Tensor<T> Exec<T>(Tensor<T> tensor)
@@ -330,53 +333,48 @@ namespace SharpGrad.Tensors
                 List<OperationKPU> operations = [];
                 foreach (var operation in topo)
                 {
+                    // Ignore input tensors. Input is treated when treat the operands of an operation.
                     if (operation.Depth > 0)
                     {
                         OpCode opCode;
                         // Get the result register
-                        var result = registers.GetKpuIndex(operation);
-                        if(result is null)
-                            result = registers.Store(operation);
+                        var result = registers.GetKpuIndex(operation)
+                            ?? registers.Store(operation);
                         short? iOp1 = OperationKPU.Empty;
                         short? iOp2 = OperationKPU.Empty;
                         if (operation is ITensorOperation1<T> op1)
                         {
                             opCode = op1.OpCode;
-                            // Get the operand register
+                            // Get the operand register / 'unique usage' input tensor index
                             iOp1 = registers.GetKpuIndex(op1.Operand1);
-                            if (iOp1.HasValue)
+                            if (!iOp1.HasValue)
                             {
-                                registers.Use(op1.Operand1);
-                                operations.Add(new OperationKPU(OpCode.Store, registers.Store(op1.Operand1), iOp1.Value, OperationKPU.Empty));
+                                // The operans is a 'multiple usage' input tensor. Need to store it in a register before using it.
+                                if (op1.Operand1.Depth == 0)
+                                {
+                                    iOp1 = registers.Store(op1.Operand1);
+                                    operations.Add(new OperationKPU(OpCode.Store, registers.Store(op1.Operand1), iOp1.Value));
+                                    registers.Use(op1.Operand1);
+                                }
+                                else
+                                    throw new InvalidOperationException($"This operation require the result of another operation. The operand {op1.Operand1} is not stored in a register.");
                             }
-                            else
-                            {
-                                if (op1.Operand1.Depth > 0)
-                                    throw new InvalidOperationException($"This operation require an already computed tensor {op1.Operand1}");
-                                operations.Add(new OperationKPU(OpCode.Store, registers.Store(op1.Operand1), registers.IndexOfInputs(op1.Operand1), OperationKPU.Empty));
-                                iOp1 = registers.Store(op1.Operand1);
-                            }
-
+                            registers.Use(op1.Operand1);
                         }
                         else if (operation is ITensorOperation2<T> op2)
                         {
-                            opCode = op2.OpCode;
-                            // Get the operand registers
-                            iOp1 = registers.GetKpuIndex(op2.Operand1);
-                            iOp2 = registers.GetKpuIndex(op2.Operand2);
+                            throw new NotImplementedException();
                         }
                         else if (operation is ITensorReduce<T> opR)
                         {
-                            opCode = opR.OpCode;
-                            // Get the operand register
-                            iOp1 = registers.GetKpuIndex(opR.Operand1);
+                            throw new NotImplementedException();
                         }
                         else
                         {
                             throw new InvalidOperationException($"Invalid operation {operation}");
                         }
 
-                        operations.Add(new OperationKPU(opCode, result, iOp1, iOp2));
+                        operations.Add(new OperationKPU(opCode, result, iOp1.Value, iOp2.HasValue ? iOp2.Value : OperationKPU.Empty));
                     }
                 }
 
