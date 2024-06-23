@@ -1,4 +1,6 @@
-﻿namespace SharpGrad.Memory
+﻿using System;
+
+namespace SharpGrad.Memory
 {
     /// <summary>
     /// The location of the data.
@@ -10,12 +12,22 @@
         /// </summary>
         Empty,
         /// <summary>
+        /// Data is available on the <see cref="ILGPU.Runtime.Accelerator"/>.
+        /// </summary>
+        Accelerator,
+        /// <summary>
         /// Data is available on the RAM.
         /// </summary>
         Ram,
         /// <summary>
-        /// Data is available on the <see cref="ILGPU.Runtime.Accelerator"/>.
+        /// Data is available on the local storage.
         /// </summary>
-        Accelerator
+        [Obsolete("/!\\ Not implemented /!\\")]
+        LocalStorage,
+        /// <summary>
+        /// Data is available on the distributed hash table.
+        /// </summary>
+        [Obsolete("/!\\ Not implemented /!\\")]
+        DHT,
     }
 }
