@@ -16,11 +16,13 @@ namespace Test
         [TestMethod]
         public void TestOOM()
         {
+            KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+
             List<AcceleratorBuffer<double>> allocs = [];
             int i = 1;
             while (true)
             {
-                AcceleratorBuffer<double> newBlock = Acc.GetAcceleratorBuffer<double>(512 * 1024 * 1024);
+                AcceleratorBuffer<double> newBlock = kpu.GetBuffer<double>(1024 * 1024);
                 newBlock.Location = BufferLocation.Accelerator;
                 newBlock.Fill(i++);
                 allocs.Add(newBlock);

@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class DataTensor<T> : Tensor<T>
+    public class DataTensor<T> : Tensor<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>
     {
         protected readonly AcceleratorBuffer<T> buffer;
@@ -22,18 +22,31 @@ namespace SharpGrad.Tensors
                 return buffer[flattenedIndex];
             }
         }
+        public void Set(T value, params Index[] indices)
+        {
+            var flattenedIndex = Shape.FlattenFrom(Shape, indices);
+            buffer[flattenedIndex] = value;
+        }
 
-        protected DataTensor(string name, Shape shape, AcceleratorBuffer<T> buffer) : base(name, shape)
+        protected DataTensor(string name, Shape shape, AcceleratorBuffer<T> buffer)
+            : base(name, shape)
         {
             Shape = shape;
             this.buffer = buffer;
         }
+        protected DataTensor(Shape shape, AcceleratorBuffer<T> buffer)
+            :this(GetNextName(), shape, buffer) { }
+
 
         public DataTensor(string name, Shape shape)
             : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer<T>(shape.Length)) { }
+        public DataTensor(Shape shape)
+            : this(GetNextName(), shape) { }
 
         public DataTensor(string name, Shape shape, T[] data)
             : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer(data)) { }
+        public DataTensor(Shape shape, T[] data)
+            : this(GetNextName(), shape, data) { }
 
         public override bool Equals(ITensor? other)
             => other is DataTensor<T> tensor && buffer == tensor.buffer;

@@ -16,12 +16,12 @@ namespace Test
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
-        public static void Fill(Tensor<T> result, Func<int, int, int, T> fnc)
+        public static void Fill(DataTensor<T> result, Func<int, int, int, T> fnc)
         {
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
                     for (int k = 0; k < result.Shape[2]; k++)
-                        result[i, j, k] = fnc(i, j, k);
+                        result.Set(fnc(i, j, k), i, j, k);
         }
 
         public static DataTensor<T> NewRandom(params Dim[] dims)
@@ -30,7 +30,7 @@ namespace Test
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
-                        result[i, j, k] = T.CreateTruncating((rnd.NextDouble() + 1) * 2);
+                        result.Set(T.CreateTruncating((rnd.NextDouble() + 1) * 2), i, j, k);
             return result;
         }
 
@@ -60,12 +60,13 @@ namespace Test
 
         public static void Addition()
         {
-            Acc.PrintInformation(Console.Out);
+            KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+            kpu.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = new(256, 256, 256);
+            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
             Tensor<T> tc = ta + tb;
@@ -76,12 +77,13 @@ namespace Test
         }
         public static void Subtraction()
         {
-            Acc.PrintInformation(Console.Out);
+            KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+            kpu.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
             Tensor<T> tc = ta - tb;
@@ -92,12 +94,13 @@ namespace Test
         }
         public static void Multiplication()
         {
-            Acc.PrintInformation(Console.Out);
+            KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+            kpu.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
             Tensor<T> tc = ta * tb;
@@ -108,12 +111,13 @@ namespace Test
         }
         public static void Division()
         {
-            Acc.PrintInformation(Console.Out);
+            KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+            kpu.PrintInformation(Console.Out);
 
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            Tensor<T> ty = new DataTensor<T>(256, 256, 256);
+            DataTensor<T> ty = new DataTensor<T>(nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;

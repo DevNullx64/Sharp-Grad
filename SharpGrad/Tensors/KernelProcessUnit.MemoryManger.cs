@@ -138,15 +138,14 @@ namespace SharpGrad.Tensors
         public void Release(AcceleratorBuffer buffer)
             => Allocs.Remove(buffer);
 
-        private static void FillKernel<T>(LongIndex1D index1D, ArrayView<T> buffer, T value)
+        private static void FillKernel<T>(Index1D index1D, ArrayView<T> buffer, T value)
             where T : unmanaged
         { buffer[index1D] = value; }
 
         void ILowLevelMemoryManager.Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)
         {
-            var kernel = Accelerator.LoadAutoGroupedStreamKernel<LongIndex1D, ArrayView<T>, T>(FillKernel);
-            kernel(acceleratorData.Length, acceleratorData.View, value);
-            throw new NotImplementedException();
+            var kernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<T>, T>(FillKernel);
+            kernel((int)acceleratorData.Length, acceleratorData.View, value);
         }
 
     }
