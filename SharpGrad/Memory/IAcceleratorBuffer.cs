@@ -32,7 +32,7 @@ namespace SharpGrad.Memory
     /// </summary>
     /// <typeparam name="T"The type of the data </typeparam>
     public interface IAcceleratorBuffer<T> : IAcceleratorBuffer, IReadOnlyList<T>
-        where T : unmanaged, INumber<T>
+        where T : unmanaged
     {
         /// <summary>
         /// Return the C# managed data.

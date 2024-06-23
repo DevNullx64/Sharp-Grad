@@ -14,24 +14,24 @@ namespace SharpGrad.Tensors
     public interface ILowLevelMemoryManager
     {
         internal MemoryBuffer1D<T, Stride1D.Dense> MemoryBuffer1D<T>(long length)
-            where T : unmanaged, INumber<T>;
+            where T : unmanaged;
 
         internal MemoryBuffer1D<T, Stride1D.Dense> MemoryBuffer1D<T>(T[] values)
-            where T : unmanaged, INumber<T>;
+            where T : unmanaged;
         AcceleratorBuffer<T> GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+            where T : unmanaged;
 
         void Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+            where T : unmanaged;
     }
 
     public interface IBufferManager
     {
         AcceleratorBuffer<T> GetBuffer<T>(long length)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+            where T : unmanaged;
 
         AcceleratorBuffer<T> GetBuffer<T>(T[] values)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>;
+            where T : unmanaged;
 
         void Release(AcceleratorBuffer buffer);
 
@@ -90,7 +90,7 @@ namespace SharpGrad.Tensors
         private readonly HashSet<MemoryBuffer> MemoryBuffers = [];
 
         public AcceleratorBuffer<T> GetBuffer<T>(long length)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
+            where T : unmanaged
         {
             try
             {
@@ -105,7 +105,7 @@ namespace SharpGrad.Tensors
             }
         }
         public AcceleratorBuffer<T> GetBuffer<T>(T[] values)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>
+            where T : unmanaged
         {
             try
             {
@@ -139,7 +139,7 @@ namespace SharpGrad.Tensors
             => Allocs.Remove(buffer);
 
         private static void FillKernel<T>(LongIndex1D index1D, ArrayView<T> buffer, T value)
-            where T : unmanaged, INumber<T>
+            where T : unmanaged
         { buffer[index1D] = value; }
 
         void ILowLevelMemoryManager.Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)

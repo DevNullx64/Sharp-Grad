@@ -112,7 +112,7 @@ namespace SharpGrad.Memory
     /// <typeparam name="T">The type of the data</typeparam>
     /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
     public class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>, IReadOnlyList<T>
-        where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        where T : unmanaged
     {
         /// <summary>
         /// Get or set the threshold to force the data to be copied to the <see cref="Accelerator"/>.
