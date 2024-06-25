@@ -29,7 +29,7 @@ namespace SharpGrad.Tensors
     /// Interface for a tensor with generic type.
     /// </summary>
     public interface ITensor<T> : ITensor
-    where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         /// <summary>
         /// The name of the tensor.
@@ -46,7 +46,7 @@ namespace SharpGrad.Tensors
         /// </summary>
         /// <param name="topoSort">Topological sort of the graph.</param>
         /// <param name="visited">Set of visited tensors.</param>
-        void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited);
+        void DepthFirstSearch(Dictionary<Tensor<T>, int> topoSort);
 
     }
 }

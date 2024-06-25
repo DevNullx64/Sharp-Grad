@@ -9,7 +9,7 @@ namespace SharpGrad.Tensors
     }
 
     public interface ITensorOperation<T> : ITensorOperation, ITensor<T>
-    where T : unmanaged, INumber<T>, IPowerFunctions<T>
+    where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         void Backward();
     }
