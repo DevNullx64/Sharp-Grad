@@ -317,6 +317,15 @@ namespace SharpGrad.Memory
                 AcceleratorData.MemSetToZero();
         }
 
+        public void CopyTo(AcceleratorBuffer<T> destination)
+        {
+            if (destination.Length != Length)
+                throw new ArgumentException($"Expected length {Length}, got {destination.Length}");
+            if (IsOnRAM)
+                destination.CPUData = CPUData;
+            else if (IsOnAccelerator)
+                destination.AcceleratorData.CopyToCPU(destination.CPUData);
+        }
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;

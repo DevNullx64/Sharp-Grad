@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Tensors
 {
@@ -121,7 +122,8 @@ namespace SharpGrad.Tensors
         }
 
 
-        AcceleratorBuffer<T> ILowLevelMemoryManager.GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)        {
+        AcceleratorBuffer<T> ILowLevelMemoryManager.GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
+        {
             try
             {
                 AcceleratorBuffer<T> buffer = new(this, data);
@@ -133,6 +135,15 @@ namespace SharpGrad.Tensors
                 Debug.WriteLine(e.Message);
                 throw new Exception("Failed to create buffer from data.", e);
             }
+        }
+
+        public AcceleratorBuffer<T> GetBuffer<T>(AcceleratorBuffer<T> buffer)
+            where T : unmanaged
+        {
+            AcceleratorBuffer<T> result = new(this, buffer.Length);
+            Allocs.Add(result);
+            buffer.CopyTo(result);
+            return result;
         }
 
         public void Release(AcceleratorBuffer buffer)

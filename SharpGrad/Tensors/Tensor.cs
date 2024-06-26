@@ -17,14 +17,14 @@ namespace SharpGrad.Tensors
         IUnaryNegationOperators<Tensor<T>, Tensor<T>>,
         IMultiplyOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
         IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
-        where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         private static object lockObj = new();
         private static int nextId = 0;
         protected static string GetNextName()
         {
             lock (lockObj)
-                return $"Tensor{nextId++}";
+                return $"T{nextId++}";
         }
 
         public string Name { get; } = name;
@@ -42,6 +42,9 @@ namespace SharpGrad.Tensors
         }
         public long Length => Shape.Length;
         public abstract long Depth { get; }
+
+        public int OperandCound => 0;
+
         public abstract T this[params Index[] indices] { get; }
 
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);
@@ -51,31 +54,38 @@ namespace SharpGrad.Tensors
         public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, DivOp<T>>(left, right);
 
 
-        public static implicit operator Tensor<T>(T[] data) => new DataTensor<T>(GetNextName(), new Shape(data.Length), data);
-        public static implicit operator Tensor<T>((string Name, T[] Data) tensor) => new DataTensor<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
-        public static implicit operator Tensor<T>((T[] Data, string Name) tensor) => new DataTensor<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
+        public static implicit operator Tensor<T>(T[] data) => new TensorData<T>(GetNextName(), new Shape(data.Length), data);
+        public static implicit operator Tensor<T>((string Name, T[] Data) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
+        public static implicit operator Tensor<T>((T[] Data, string Name) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
 
         public abstract bool Equals(ITensor? other);
 
-        public virtual void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
+        internal virtual void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
         {
-            if (visited.Add(this))
-                topoSort.Add(this);
+            if (!topoSort.TryGetValue(this, out DfsNode<T>? node))
+            {
+                topoSort.Add(this, new(this, topoSort.Count, 1));
+            }
+        }
+
+        public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch()
+        {
+            Dictionary<Tensor<T>, DfsNode<T>> topoSort = new();
+            DepthFirstSearch(topoSort);
+            return topoSort;
         }
         public abstract void Backward();
 
         public static bool operator ==(Tensor<T>? left, Tensor<T>? right) => left is null ? right is null : left.Equals(right);
-        public static bool operator ==(ITensor<T>? left, Tensor<T>? right) => left is null ? right is null : left.Equals(right);
-        public static bool operator ==(Tensor<T>? left, ITensor<T>? right) => left is null ? right is null : left.Equals(right);
         public static bool operator !=(Tensor<T>? left, Tensor<T>? right) => left is null ? right is not null : !left.Equals(right);
-        public static bool operator !=(ITensor<T>? left, Tensor<T>? right) => left is null ? right is not null : !left.Equals(right);
-        public static bool operator !=(Tensor<T>? left, ITensor<T>? right) => left is null ? right is not null : !left.Equals(right);
     }
 
     internal abstract class Tensor<T, TOp>(Shape shape) : Tensor<T>(TOp.Symbol, shape), ITensorOperation<T>
-        where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor
     {
         public OpCode OpCode => TOp.OpCode;
+
+        public abstract int OperandCound { get; }
     }
 }

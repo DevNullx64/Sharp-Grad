@@ -23,6 +23,18 @@ namespace SharpGrad.Tensors
         /// The computational depth of the tensor.
         /// </summary>
         long Depth { get; }
+
+        /// <summary>
+        /// The number of operands used by the tensor.
+        /// </summary>
+        int OperandCound { get; }
+    }
+
+    public class DfsNode<T>(Tensor<T> tensor, int index, int usageCount)
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+    {
+        public Tensor<T> Tensor { get; } = tensor;
+        public int Index { get; } = index;
     }
 
     /// <summary>
@@ -46,7 +58,7 @@ namespace SharpGrad.Tensors
         /// </summary>
         /// <param name="topoSort">Topological sort of the graph.</param>
         /// <param name="visited">Set of visited tensors.</param>
-        void DepthFirstSearch(Dictionary<Tensor<T>, int> topoSort);
+        Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch();
 
     }
 }

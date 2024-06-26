@@ -132,7 +132,7 @@ namespace SharpGrad.Tensors
         private void GetRow<T>(MemoryBuffer2D<T, Stride2D.DenseY> tensor, int row, MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged
         {
-            Action<AcceleratorStream, LongIndex1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<int>> GetRowFnc 
+            Action<AcceleratorStream, LongIndex1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<int>> GetRowFnc
                 = Accelerator.LoadAutoGroupedKernel<LongIndex1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<int>>(GetRowKernel);
             GetRowFnc(Accelerator.DefaultStream, new LongIndex1D(tensor.IntExtent.Y), tensor.View, result.View, new SpecializedValue<int>(row));
         }
@@ -172,21 +172,21 @@ namespace SharpGrad.Tensors
             return result;
         }
 
-        internal Tensor<T> Exec<T>(IEnumerable<OperationKPU> operations, IEnumerable<DataTensor<T>> datas, int registryCount)
+        internal TensorData<T> Exec<T>(IEnumerable<OperationKPU> operations, IEnumerable<TensorData<T>> datas, int registryCount)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
 
             var lastOperation = operations.Last();
             short resultRow = lastOperation.IndexResult;
             if (lastOperation.IndexResult < 0) checked
-            {
-                // The result is stored in a register. Need to allocate a new tensor to store the result.
-                resultRow = (short)datas.Count();
-                DataTensor<T> result = ("Result", new Shape((int)datas.First().Length));
-                datas = datas.Append(result);
-                // Add a store operation to store the result in the result tensor.
-                operations = operations.Append(new OperationKPU(OpCode.Store, resultRow, (short)datas.Count()));
-            }
+                {
+                    // The result is stored in a register. Need to allocate a new tensor to store the result.
+                    resultRow = (short)datas.Count();
+                    TensorData<T> result = ("Result", new Shape((int)datas.First().Length));
+                    datas = datas.Append(result);
+                    // Add a store operation to store the result in the result tensor.
+                    operations = operations.Append(new OperationKPU(OpCode.Store, resultRow, (short)datas.Count()));
+                }
             using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(datas.Select(e => e.View));
 
             AcceleratorBuffer<OperationKPU> ops = GetBuffer(operations.ToArray());
@@ -197,102 +197,20 @@ namespace SharpGrad.Tensors
 
             var resultMemory = GetRow(tensors, resultRow);
             AcceleratorBuffer<T> resultBuffer = ((ILowLevelMemoryManager)this).GetBuffer(resultMemory);
-            return new DataTensor<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
+            return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
         }
 
-        /// <summary>
-        /// Get the KPU index of the tensor. If the tensor is not stored in a register, store it in a register.
-        /// </summary>
-        /// <typeparam name="T">The type of the tensor</typeparam>
-        /// <param name="registers">The KPU context</param>
-        /// <param name="operand">The tensor to get the KPU index</param>
-        /// <param name="iOperand">The KPU index of the tensor</param>
-        /// <returns>False if the tensor is already stored in a register. True if a new register is used as iOperand and need an additional store operation.</returns>
-        /// <exception cref="InvalidOperationException">If the tensor require the result of another operation that wasn't stored in a register yet.</exception>
-        private static bool GetOperandIndex<T>(KPUContext<T> registers, Tensor<T> operand, out short iOperand)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-        {
-            short? iOp = registers.GetKpuIndex(operand);
-            if (iOp.HasValue)
-            {
-                iOperand = iOp.Value;
-                return false;
-            }
-            else
-            {
-                // The operans is a 'multiple usage' input tensor. Need to store it in a register before using it.
-                if (operand.Depth == 0)
-                {
-                    iOperand = registers.Store(operand);
-                    return true;
-                }
-                else
-                    throw new InvalidOperationException($"This operation require the result of another operation. The operand {operand} is not stored in a register.");
-            }
-        }
-
-        public Tensor<T> Exec<T>(Tensor<T> tensor)
+        public TensorData<T> Exec<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             if (tensor is ITensorOperation<T> tensorOperation)
             {
-                var topo = new List<Tensor<T>>();
-                var visited = new HashSet<Tensor<T>>();
-                tensorOperation.DepthFirstSearch(topo, visited);
-
-                KPUContext<T> registers = new(topo);
-
-                // Compile / Convert to Kpu operations
-                List<OperationKPU> operations = [];
-                short result = OperationKPU.Empty;
-                foreach (var operation in topo)
-                {
-                    // Ignore input tensors. Input is treated when treating operands of an operation.
-                    if (operation.Depth > 0)
-                    {
-                        OpCode opCode;
-                        // Get the result register
-                        result = registers.GetKpuIndex(operation)
-                            ?? registers.Store(operation); // No allocation needed. It will assigned at runtime as result.
-                        short iOp1 = OperationKPU.Empty;
-                        short iOp2 = OperationKPU.Empty;
-                        if (operation is ITensorOperation1<T> op1)
-                        {
-                            opCode = op1.OpCode;
-
-                            if (GetOperandIndex(registers, op1.Operand1, out iOp1))
-                                operations.Add(new OperationKPU(OpCode.Store, iOp1, registers.IndexInDatas(op1.Operand1)));
-
-                            registers.Use(op1.Operand1);
-                        }
-                        else if (operation is ITensorOperation2<T> op2)
-                        {
-                            opCode = op2.OpCode;
-
-                            if (GetOperandIndex(registers, op2.Operand1, out iOp1))
-                                operations.Add(new OperationKPU(OpCode.Store, iOp1, registers.IndexInDatas(op2.Operand1)));
-                            if (GetOperandIndex(registers, op2.Operand2, out iOp2))
-                                operations.Add(new OperationKPU(OpCode.Store, iOp2, registers.IndexInDatas(op2.Operand2)));
-
-                            registers.Use(op2.Operand1);
-                            registers.Use(op2.Operand2);
-                        }
-                        else if (operation is ITensorReduce<T> opR)
-                        {
-                            throw new NotImplementedException();
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException($"Invalid operation {operation}");
-                        }
-
-                        operations.Add(new OperationKPU(opCode, result, iOp1, iOp2));
-                    }
-                }
-                return Exec(operations, registers.Datas.Select(e => (DataTensor<T>)e.Tensor), registers.KPURegisters.Count);
+                var topo =  tensorOperation.DepthFirstSearch();
+                KPUContext<T> context = new(topo.OrderBy(e => e.Value).Select(e => e.Key));
+                return Exec(context.Script, context.Datas.Select(e => (TensorData<T>)e), context.Registers.Count);
             }
             else
-                return tensor;
+                return (TensorData<T>)tensor;
         }
     }
 }

@@ -3,8 +3,14 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
+    /// <summary>
+    /// Base interface for tensor operations.
+    /// </summary>
     public interface ITensorOperation : ITensor
     {
+        /// <summary>
+        /// The operation code of the <see cref="ITensorOperation"/>
+        /// </summary>
         OpCode OpCode { get; }
     }
 

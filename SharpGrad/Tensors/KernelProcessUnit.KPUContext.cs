@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
@@ -9,139 +11,362 @@ namespace SharpGrad.Tensors
 
     public partial class KernelProcessUnit
     {
-        public readonly struct KPUContext<T>(IEnumerable<Tensor<T>> tensors)
+        public class KPUContext<T>
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            public struct KPURegister(Tensor<T> tensor, int ttl)
-            {
-                public Tensor<T>? Value = tensor;
-                private int TTL = ttl;
+            // contains all input tensors
+            private readonly List<ITensor<T>> datas;
+            public IReadOnlyList<ITensor<T>> Datas => datas;
 
-                public void Use()
+            // contains all operations
+            private readonly List<ITensor<T>> operations;
+            public IReadOnlyList<ITensor<T>> Operations => operations;
+
+            // contains the registers
+            private readonly List<ITensor<T>?> registers = [];
+            public IReadOnlyList<ITensor<T>?> Registers => registers;
+
+            // contains the script
+            private readonly List<OperationKPU> script = [];
+            public IReadOnlyList<OperationKPU> Script => script;
+
+            private bool IsLastUse(ITensor<T> tensor)
+            {
+                for (int j = current + 1; j < tensors.Count; j++)
+                    if (tensor.Equals(tensors[j]))
+                        return false;
+                return true;
+            }
+
+            private int current = -1;
+            private List<ITensor<T>> tensors;
+
+            public KPUContext(List<ITensor<T>> tensors)
+            {
+                datas = [];
+                operations = [];
+                this.tensors = tensors;
+
+                for (current = 0; current < tensors.Count; current++)
                 {
-                    if (Value is null || TTL <= 0)
-                        throw new InvalidOperationException($"Try to use an empty register");
-                    if (--TTL <= 0)
+                    Add(tensors[current]);
+                }
+            }
+
+            private void Add(ITensor<T> tensor)
+            {
+                switch (tensor)
+                {
+                    case TensorData<T> data:
+                        Add(data);
+                        break;
+                    case ITensorReduce<T> operationR:
+                        Add(operationR);
+                        break;
+                    case ITensorOperation1<T> operation1:
+                        Add(operation1);
+                        break;
+                    case ITensorOperation2<T> operation2:
+                        Add(operation2);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unknown node type {tensor.GetType()}");
+                }
+            }
+
+            private void Add(TensorData<T> data)
+            {
+                datas.Add(data);
+            }
+
+            private void Add(ITensorReduce<T> operationR)
+            {
+                if (!operations.Contains(operationR))
+                {
+                    operations.Add(operationR);
+                    Add(operationR.Operand1);
+                }
+                throw new NotImplementedException();
+            }
+            private void Add(ITensorOperation1<T> operation1)
+            {
+                throw new NotImplementedException();
+            }
+
+            private short Store(ITensor<T> operand)
+            {
+                int iOp = registers.IndexOf(operand);
+                if (iOp != -1)
+                    return (short)(-iOp - 1);
+
+                iOp = registers.IndexOf(null);
+                if (iOp == -1)
+                {
+                    iOp = -registers.Count -1;
+                    if (operand.Depth == 0)
+                        script.Add(new OperationKPU(OpCode.Store, (short)iOp, (short)datas.IndexOf(operand)));
+                    registers.Add(operand);
+                }
+                else
+                {
+                    iOp = -iOp - 1;
+                    if (operand.Depth == 0)
+                        script.Add(new OperationKPU(OpCode.Store, (short)iOp, (short)datas.IndexOf(operand)));
+                    registers[iOp] = operand;
+                }
+
+                return (short)iOp;
+            }
+            private short GetOrStrore(ITensor<T> operand)
+            {
+                int iOp1 = registers.IndexOf(operand);
+                if (iOp1 == -1)
+                {
+                    if (operand.Depth == 0 && IsLastUse(operand))
                     {
-                        Value = null;
+                        iOp1 = datas.IndexOf(operand);
+                    }
+                    else
+                    {
+                        // find the first empty register
+                        int iOp = registers.IndexOf(null);
+                        // if no empty register is found, create a new one
+                        if (iOp == -1)
+                            iOp = registers.Count;
+                        // compute KPU index
+                        iOp = -iOp - 1;
+                        if(operand.Depth == 0)
+                            script.Add(new OperationKPU(OpCode.Store, (short)iOp, (short)datas.IndexOf(operand)));
+                        iOp1 = iOp;
+                        registers.Add(operand);
+                    }
+                }
+                else
+                {
+                    if (IsLastUse(operand))
+                    {
+                        registers[iOp1] = null;
+                    }
+                    iOp1 = -iOp1 - 1;
+                }
+                return (short)iOp1;
+            }
+
+            private void Add(ITensorOperation2<T> operation2)
+            {
+                var operand1 = operation2.Operand1;
+                var operand2 = operation2.Operand2;
+                short iOp1;
+                int iOp2;
+
+                if (operand1.Depth == 0 && operand2.Depth == 0)
+                {
+                    // The two operand are data tensors
+                    iOp1 = GetOrStrore(operand1);
+                    iOp2 = GetOrStrore(operand2);
+                }
+                else if (operand1.Depth == 0)
+                {
+                    // The first operand is a data tensor and the second operand is an operation
+                }
+                else if (operand2.Depth == 0)
+                {
+                    // The first operand is an operation and the second operand is a data tensor
+                }
+                else
+                {
+                    // The two operands are operations
+                }
+            }
+        }
+
+        public class KpuScript<T>: IReadOnlyList<OperationKPU>
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            private readonly OperationKPU[] operations = [];
+            public OperationKPU this[int index] => operations[index];
+
+            private readonly TensorData<T>[] datas = [];
+            public IReadOnlyList<TensorData<T>> Datas => datas;
+            public readonly int RegistersCount;
+
+            public int Count => operations.Length;
+
+            public KpuScript(IList<OperationKPU> operations, IList<ITensor<T>> datas, int registersCount)
+            {
+                this.operations = [.. operations];
+                this.datas = datas.Cast<TensorData<T>>().ToArray();
+                RegistersCount = registersCount;
+            }
+
+            public IEnumerator<OperationKPU> GetEnumerator() => ((IEnumerable<OperationKPU>)operations).GetEnumerator();
+            IEnumerator IEnumerable.GetEnumerator() => operations.GetEnumerator();
+        }
+
+        /// <summary>
+        /// Count the number of times a tensor is used after a given index.
+        /// </summary>
+        /// <typeparam name="T">The type of the tensor.</typeparam>
+        /// <param name="tensor">The tensor to count the usage of.</param>
+        /// <param name="tensors">The list of tensors.</param>
+        /// <param name="starting">The index to start counting from.</param>
+        /// <returns>The number of times the tensor is used.</returns>
+        private int UsageCount<T>(ITensor<T> tensor, List<Tensor<T>> tensors, int starting)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            int count = 0;
+            for (int j = starting + 1; j < tensors.Count; j++)
+            {
+                var t = tensors[j];
+                if (t is ITensorOperation1<T> operation1)
+                    if (operation1.Operand1.Equals(tensor))
+                        count++;
+                    else if (t is ITensorOperation2<T> operation2)
+                    {
+                        if (operation2.Operand1.Equals(tensor))
+                            count++;
+                        if (operation2.Operand2.Equals(tensor))
+                            count++;
+                    }
+                    else if (t is ITensorReduce<T> operationR)
+                        throw new NotImplementedException();
+            }
+            return count;
+        }
+
+        /// <summary>
+        /// Store a tensor in the first available register. Otherwise, add it to the list of registers.
+        /// </summary>
+        /// <typeparam name="T">The type of the tensor.</typeparam>
+        /// <param name="registers">The list of registers.</param>
+        /// <param name="tensor">The tensor to store.</param>
+        /// <returns>The index of the register where the tensor is stored.</returns>
+        /// <remarks>This is the index in regiters, not the KPU index.</remarks>
+        private int Store<T>(List<ITensor<T>?> registers, ITensor<T> tensor)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            for (int i = 0; i < registers.Count; i++)
+            {
+                if (registers[i] == null)
+                {
+                    registers[i] = tensor;
+                    return i;
+                }
+            }
+            registers.Add(tensor);
+            return registers.Count - 1;
+        }
+
+        public KpuScript<T> GetKpuScript<T>(ITensor<T> tensors)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            List<ITensor<T>> datas = [];
+            List<ITensor<T>> operations = [];
+            List<ITensor<T>?> registers = [];
+            List<OperationKPU> script = [];
+
+            var topo = tensors.DepthFirstSearch()
+                .OrderBy(e => e.Value.Index)
+                .Select(e => e.Value.Tensor)
+                .ToList();
+
+            for (int i = 0; i < topo.Count; i++)
+            {
+                var tensor = topo[i];
+                if (tensor.Depth == 0)
+                {
+                    // Add the data tensor to the list of data tensors only if it is not already present
+                    if (!datas.Contains(tensor))
+                        datas.Add(tensor);
+
+                    // If the data tensor is used more than once, store it in a register
+                    if (UsageCount(tensor, topo, i) > 1)
+                    {
+                        short iOp1 = (short)datas.IndexOf(tensor);
+                        short iResult = (short)(-Store(registers, tensor) - 1);
+                        script.Add(new OperationKPU(OpCode.Store, iResult, iOp1));
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (registers.Contains(tensor))
+                        continue;
+                    if (tensor.OperandCound == 1 && tensor is ITensorOperation1<T> operation1)
+                    {
+                        // Operation result or stored data should contains the operand
+                        short iOp1 = (short)registers.IndexOf(operation1.Operand1);
+                        if (iOp1 == -1)
+                        {
+                            // If not, it's a data used only once
+                            iOp1 = (short)datas.IndexOf(operation1.Operand1);
+                            // If not, something is wrong !
+                            Debug.Assert(iOp1 != -1, $"Index {i} ({operation1}) : Operand 1 {operation1.Operand1} not found.");
+                        }
+                        else
+                        {
+                            // Compute the KPU register index
+                            iOp1 = (short)(-iOp1 - 1);
+
+                            // If the operand is not used anymore, free the register
+                            if (UsageCount(operation1.Operand1, topo, i) == 0)
+                                registers[iOp1] = null;
+                        }
+
+                        short iResult = (short)(-Store(registers, operation1) - 1);
+                        script.Add(new OperationKPU(operation1.OpCode, iResult, iOp1));
+                    }
+                    else if (tensor.OperandCound == 2 && tensor is ITensorOperation2<T> operation2)
+                    {
+                        // Operation result or stored data should contains the first operand
+                        short iOp1 = (short)registers.IndexOf(operation2.Operand1);
+                        if (iOp1 == -1)
+                        {
+                            // If not, it's a data used only once
+                            iOp1 = (short)datas.IndexOf(operation2.Operand1);
+                            // If not, something is wrong !
+                            Debug.Assert(iOp1 != -1, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                        }
+                        else
+                        {
+                            // Compute the KPU register index
+                            iOp1 = (short)(-iOp1 - 1);
+
+                            // If the operand is not used anymore, free the register
+                            if (UsageCount(operation2.Operand1, topo, i) == 0)
+                                registers[iOp1] = null;
+                        }
+
+                        // Operation result or stored data should contains the second operand
+                        short iOp2 = (short)registers.IndexOf(operation2.Operand2);
+                        if (iOp2 == -1)
+                        {
+                            // If not, it's a data used only once
+                            iOp2 = (short)datas.IndexOf(operation2.Operand2);
+                            // If not, something is wrong !
+                            Debug.Assert(iOp2 != -1, $"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
+                        }
+                        else
+                        {
+                            // Compute the KPU register index
+                            iOp2 = (short)(-iOp2 - 1);
+
+                            // If the operand is not used anymore, free the register
+                            if (UsageCount(operation2.Operand2, topo, i) == 0)
+                                registers[iOp2] = null;
+                        }
+
+                        short iResult = (short)(-Store(registers, operation2) - 1);
+                        script.Add(new OperationKPU(operation2.OpCode, iResult, iOp1, iOp2));
+                    }
+                    else if (tensor.OperandCound == -1 && tensor is ITensorReduce<T> operationR)
+                    {
+                        throw new NotImplementedException();
                     }
                 }
             }
 
-            // contains all input tensors and number of use
-            private readonly List<(Tensor<T> Tensor, short TTL)> datas = tensors
-                .Where(e => e.Depth == 0)
-                .GroupBy(e => e)
-                .Select(e => (e.Key, (short)e.Count()))
-                .ToList();
-            public readonly IReadOnlyList<(Tensor<T> Tensor, short TTL)> Datas => datas;
-
-            /// <summary>
-            /// Get the index of the input tensor
-            /// </summary>
-            /// <param name="tensor">Tensor to get the index</param>
-            /// <returns>Index of the input tensor. -1 if not found</returns>
-            public short IndexInDatas(Tensor<T> tensor) => (short)datas.IndexOf(datas.First(e => e.Tensor == tensor));
-
-            // contains all operations, and number of use
-            private readonly List<(Tensor<T> Tensor, short TTL)> operations = tensors
-                .Where(e => e.Depth > 0)
-                .GroupBy(e => e)
-                .Select(e => (e.Key, (short)e.Count()))
-                .ToList();
-
-            public readonly IReadOnlyList<(Tensor<T> Tensor, short TTL)> Operations => operations;
-
-            private readonly List<KPURegister> kpuRegisters = [];
-            public IReadOnlyList<KPURegister> KPURegisters => kpuRegisters;
-
-            public short GetTTL(Tensor<T> tensor)
-            {
-                foreach (var (t, ttl) in tensor.Depth == 0 ? datas : operations)
-                    if (t == tensor)
-                        return ttl;
-                throw new InvalidOperationException($"Tensor {tensor} not found for this graph");
-            }
-
-            /// <summary>
-            /// Get the register index of the tensor
-            /// </summary>
-            /// <param name="tensor">Tensor to get the register index</param>
-            /// <param name="firstEmpty">Index of the first empty register</param>
-            /// <returns>Register index or -1 if not found</returns>
-            public short GetRegisterIndex(Tensor<T> tensor)
-            {
-                for (short i = 0; i < kpuRegisters.Count; i++)
-                    if (tensor == kpuRegisters[i].Value)
-                        return i;
-                return -1;
-            }
-
-            /// <summary>
-            /// Get the KPU index of the tensor.
-            /// </summary>
-            /// <param name="tensor">Tensor to get the KPU index</param>
-            /// <returns>If the tensor was found in the regitry list or input list, return the  KPU index. Otherwise, return null.</returns>
-            /// <remarks>A KPU index is negative if the tensor is stored in a register. The realy index in the register list is (-index - 1). Otherwise, the index is the index of the input tensor.</remarks>
-            public short? GetKpuIndex(Tensor<T> tensor)
-            {
-                short regIndex = GetRegisterIndex(tensor);
-                if (regIndex >= 0)
-                {
-                    kpuRegisters[regIndex].Use();
-                    return (short)(-regIndex - 1);
-                }
-                else if (tensor.Depth == 0)
-                {
-                    int i;
-                    int ttl = 0;
-
-                    // Get the ttl of the tensor
-                    for (i = 0; i < datas.Count; i++)
-                    {
-                        (Tensor<T> t, ttl) = datas[i];
-                        if (t == tensor)
-                            break;
-                    }
-
-                    // Check if we need a regiter or not
-                    if (ttl == 1)
-                        return (short)i;
-                }
-                return null;
-            }
-
-            public short Store(Tensor<T> tensor)
-            {
-                short ttl = GetTTL(tensor);
-                if (tensor.Depth == 0 && ttl == 1)
-                    throw new InvalidOperationException($"Tensor {tensor} is an input tensor used only once. No need to store it in a register.");
-
-                kpuRegisters.Add(new KPURegister(tensor, ttl));
-                return (short)-kpuRegisters.Count;
-            }
-
-            public void Use(Tensor<T> tensor)
-            {
-                short regIndex = GetRegisterIndex(tensor);
-                if (regIndex < 0)
-                    throw new InvalidOperationException($"Tensor {tensor} not found in the register list");
-
-                kpuRegisters[regIndex].Use();
-
-                if (tensor is ITensorOperation1<T> operation1)
-                {
-                    Use(operation1.Operand1);
-                }
-                else if (tensor is ITensorOperation2<T> operation2)
-                {
-                    Use(operation2.Operand1);
-                    Use(operation2.Operand2);
-                }
-            }
-
-            public void UseAt(short index) => kpuRegisters[index].Use();
-            public void UseAtKpuIndex(short index) => UseAt((short)(-index - 1));
+            return new(script, datas, registers.Count);
         }
     }
 }

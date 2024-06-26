@@ -1,4 +1,5 @@
-﻿using SharpGrad.Tensors.Operators;
+﻿using SharpGrad.Memory;
+using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -7,7 +8,7 @@ namespace SharpGrad.Tensors
 {
     internal class TensorOperation2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
         : Tensor<T, TOp>(operand1.Shape), ITensorOperation2<T, TOp>
-        where T : unmanaged, INumber<T>, IPowerFunctions<T>
+        where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor2<T, T, T>
     {
         public Tensor<T> Operand1 => operand1;
@@ -15,28 +16,37 @@ namespace SharpGrad.Tensors
 
         public override long Depth { get; } = Math.Max(operand1.Depth, operand2.Depth) + 1;
 
-        public override T this[params Index[] indices] => TOp.Exec(operand1[indices], operand2[indices]);
+        public override int OperandCound => 2;
 
-        public override void DepthFirstSearch(List<Tensor<T>> topoSort, HashSet<Tensor<T>> visited)
-        {
-            if (visited.Add(this))
+        protected AcceleratorBuffer<T>? buffer = null;
+        public override T this[params Index[] indices]{
+            get
             {
-                visited.Add(this);
+                if (buffer is null)
+                {
+                    KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
+                    kpu.Exec(this);
+                    buffer = kpu.GetBuffer(kpu.Exec(this).buffer);
+                }
+                return buffer[Shape.FlattenFrom(Shape, indices)];
+            }
+        }
+
+        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
+        {
+            if (!topoSort.TryGetValue(this, out DfsNode<T>? _))
+            {
                 if (Operand1.Depth >= Operand2.Depth)
                 {
-                    if (Operand1 is ITensorOperation<T> op1)
-                        op1.DepthFirstSearch(topoSort, visited);
-                    if (Operand2 is ITensorOperation<T> op2)
-                        op2.DepthFirstSearch(topoSort, visited);
+                    Operand1.DepthFirstSearch(topoSort);
+                    Operand2.DepthFirstSearch(topoSort);
                 }
                 else
                 {
-                    if (Operand2 is ITensorOperation<T> op2)
-                        op2.DepthFirstSearch(topoSort, visited);
-                    if (Operand1 is ITensorOperation<T> op1)
-                        op1.DepthFirstSearch(topoSort, visited);
+                    Operand2.DepthFirstSearch(topoSort);
+                    Operand1.DepthFirstSearch(topoSort);
                 }
-                topoSort.Add(this);
+                topoSort.Add(this, new(this, topoSort.Count, 1));
             }
         }
 
@@ -61,7 +71,7 @@ namespace SharpGrad.Tensors
             return typeof(TOp).GetHashCode() * 31 + (Operand1.GetHashCode() * 31 + Operand2.GetHashCode() * 31) * 31;
         }
 
-        public override string ToString() => $"({Operand1} {TOp.OpCode} {Operand2})";
+        public override string ToString() => $"({Operand1} {Name} {Operand2})";
 
         public static bool operator ==(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => left.Equals(right);
         public static bool operator !=(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => !left.Equals(right);

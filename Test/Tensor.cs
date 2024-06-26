@@ -11,12 +11,12 @@ namespace Test
     [TestClass]
 
     public class Operators<T>
-        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
+        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
-        public static void Fill(DataTensor<T> result, Func<int, int, int, T> fnc)
+        public static void Fill(TensorData<T> result, Func<int, int, int, T> fnc)
         {
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
@@ -24,9 +24,9 @@ namespace Test
                         result.Set(fnc(i, j, k), i, j, k);
         }
 
-        public static DataTensor<T> NewRandom(params Dim[] dims)
+        public static TensorData<T> NewRandom(params Dim[] dims)
         {
-            DataTensor<T> result = new(dims);
+            TensorData<T> result = new(dims);
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
@@ -66,7 +66,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
             Tensor<T> tc = ta + tb;
@@ -83,7 +83,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
             Tensor<T> tc = ta - tb;
@@ -100,7 +100,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
             Tensor<T> tc = ta * tb;
@@ -117,7 +117,7 @@ namespace Test
             Tensor<T> ta = NewRandom(256, 256, 256);
             Tensor<T> tb = NewRandom(256, 256, 256);
 
-            DataTensor<T> ty = new DataTensor<T>(nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = new TensorData<T>(nameof(ty), new(256, 256, 256));
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;
