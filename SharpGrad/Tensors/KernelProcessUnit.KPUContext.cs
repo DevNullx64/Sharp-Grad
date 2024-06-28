@@ -42,7 +42,7 @@ namespace SharpGrad.Tensors
         /// <param name="tensor">The tensor to count the usage of.</param>
         /// <param name="tensors">The list of tensors.</param>
         /// <param name="starting">The index to start counting from.</param>
-        /// <returns>The number of times the tensor is used.</returns>
+        /// <returns>Operation that uses tensort twice is counted once.</returns>
         private int UsageCount<T>(ITensor<T> tensor, List<Tensor<T>> tensors, int starting)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
@@ -57,13 +57,35 @@ namespace SharpGrad.Tensors
                     {
                         if (operation2.Operand1.Equals(tensor))
                             count++;
-                        if (operation2.Operand2.Equals(tensor))
+                        else if (operation2.Operand2.Equals(tensor))
                             count++;
                     }
                     else if (t is ITensorReduce<T> operationR)
                         throw new NotImplementedException();
             }
             return count;
+        }
+
+        private static bool WillBeUsed<T>(ITensor<T> tensor, List<Tensor<T>> tensors, int starting)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            for (int j = starting + 1; j < tensors.Count; j++)
+            {
+                var t = tensors[j];
+                if (t is ITensorOperation1<T> operation1)
+                    if (operation1.Operand1.Equals(tensor))
+                        return true;
+                    else if (t is ITensorOperation2<T> operation2)
+                    {
+                        if (operation2.Operand1.Equals(tensor))
+                            return true;
+                        if (operation2.Operand2.Equals(tensor))
+                            return true;
+                    }
+                    else if (t is ITensorReduce<T> operationR)
+                        throw new NotImplementedException();
+            }
+            return false;
         }
 
         /// <summary>
@@ -262,16 +284,17 @@ namespace SharpGrad.Tensors
         public KpuScript<T> GetKpuScript<T>(ITensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            List<ITensor<T>> datas = [];
-            List<ITensor<T>> operations = [];
-            List<ITensor<T>?> registers = [];
-            List<OperationKPU> script = [];
-
             var topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)
                 .Select(e => e.Value.Tensor)
                 .ToList();
+
             TensorData<T> result = new("Result", topo[^1].Shape);
+            // Add the result tensor to the list at the beginning (index 0)
+            List<ITensor<T>> datas = [result];
+            List<ITensor<T>> operations = [];
+            List<ITensor<T>?> registers = [];
+            List<OperationKPU> script = [];
 
             for (int i = 0; i < topo.Count; i++)
             {
@@ -295,10 +318,17 @@ namespace SharpGrad.Tensors
                 {
                     if (registers.Contains(t))
                         continue;
+
+                    OpCode opCode;
+                    short iOp1;
+                    short iOp2;
+                    short iResult;
                     if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
                     {
+                        opCode = operation1.OpCode;
+
                         // Operation result or stored data should contains the operand
-                        short iOp1 = (short)registers.IndexOf(operation1.Operand1);
+                        iOp1 = (short)registers.IndexOf(operation1.Operand1);
                         if (iOp1 == -1)
                         {
                             // If not, it's a data used only once
@@ -312,17 +342,19 @@ namespace SharpGrad.Tensors
                             iOp1 = (short)(-iOp1 - 1);
 
                             // If the operand is not used anymore, free the register
-                            if (UsageCount(operation1.Operand1, topo, i) == 0)
+                            if (!WillBeUsed(operation1.Operand1, topo, i))
                                 registers[iOp1] = null;
                         }
+                        iOp2 = OperationKPU.NoOperand;
 
-                        short iResult = (short)(-Store(registers, operation1) - 1);
-                        script.Add(new OperationKPU(operation1.OpCode, iResult, iOp1));
+                        iResult = (short)Store(registers, operation1);
                     }
                     else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
                     {
+                        opCode = operation2.OpCode;
+
                         // Operation result or stored data should contains the first operand
-                        short iOp1 = (short)registers.IndexOf(operation2.Operand1);
+                        iOp1 = (short)registers.IndexOf(operation2.Operand1);
                         if (iOp1 == -1)
                         {
                             // If not, it's a data used only once
@@ -336,12 +368,12 @@ namespace SharpGrad.Tensors
                             iOp1 = (short)(-iOp1 - 1);
 
                             // If the operand is not used anymore, free the register
-                            if (UsageCount(operation2.Operand1, topo, i) == 0)
+                            if (!WillBeUsed(operation2.Operand1, topo, i))
                                 registers[iOp1] = null;
                         }
 
                         // Operation result or stored data should contains the second operand
-                        short iOp2 = (short)registers.IndexOf(operation2.Operand2);
+                        iOp2 = (short)registers.IndexOf(operation2.Operand2);
                         if (iOp2 == -1)
                         {
                             // If not, it's a data used only once
@@ -355,17 +387,20 @@ namespace SharpGrad.Tensors
                             iOp2 = (short)(-iOp2 - 1);
 
                             // If the operand is not used anymore, free the register
-                            if (UsageCount(operation2.Operand2, topo, i) == 0)
+                            if (!WillBeUsed(operation2.Operand2, topo, i))
                                 registers[iOp2] = null;
                         }
 
-                        short iResult = (short)(-Store(registers, operation2) - 1);
-                        script.Add(new OperationKPU(operation2.OpCode, iResult, iOp1, iOp2));
+                        // Store result in a register if not the last operation. Otherwise, store it in datas[0] which is the result tensor
+                        iResult = (short)Store(registers, operation2);
                     }
-                    else if (t.OperandCound == -1 && t is ITensorReduce<T> operationR)
+                    else //if (t.OperandCound == -1 && t is ITensorReduce<T> operationR)
                     {
                         throw new NotImplementedException();
                     }
+
+                    iResult = (short)(i != topo.Count - 1 ? -iResult - 1 : 0);
+                    script.Add(new OperationKPU(opCode, iResult, iOp1, iOp2));
                 }
             }
 

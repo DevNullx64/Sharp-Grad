@@ -117,12 +117,12 @@ namespace SharpGrad.Tensors
     /// <param name="opCode">Operation to perform</param>
     /// <param name="indexOperand1">Left operand</param>
     /// <param name="indexOperand2">Result of the operation</param>
-    public readonly struct OperationKPU(OpCode opCode, short result, short indexOperand1, short indexOperand2 = OperationKPU.Empty)
+    public readonly struct OperationKPU(OpCode opCode, short result, short indexOperand1, short indexOperand2 = OperationKPU.NoOperand)
     {
         /// <summary>
         /// Value used to represent an empty index
         /// </summary>
-        public const short Empty = short.MaxValue;
+        public const short NoOperand = short.MaxValue;
 
         /// <inheritdoc/>
         public OpCode OpCode => opCode;

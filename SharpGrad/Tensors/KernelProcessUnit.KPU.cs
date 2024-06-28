@@ -205,7 +205,7 @@ namespace SharpGrad.Tensors
         {
             if (tensor is ITensorOperation<T> tensorOperation)
             {
-                var topo =  tensorOperation.DepthFirstSearch();
+                KpuScript<T> script = GetKpuScript(tensor);
                 throw new NotImplementedException();
             }
             else
