@@ -6,7 +6,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class TensorOperation1<T, TOp>(Tensor<T> operand1)
-        : Tensor<T, TOp>(operand1.Shape), ITensorOperation1<T, TOp>
+        : TensorOperation<T, TOp>(operand1.Shape), ITensorOperation1<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor1<T, T>
     {
@@ -20,7 +20,9 @@ namespace SharpGrad.Tensors
 
         internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
         {
-            if (!topoSort.TryGetValue(this, out DfsNode<T>? _))
+            if (topoSort.TryGetValue(this, out DfsNode<T>? count))
+                count.UsageCount++;
+            else
             {
                 Operand1.DepthFirstSearch(topoSort);
                 topoSort.Add(this, new(this, topoSort.Count, 1));

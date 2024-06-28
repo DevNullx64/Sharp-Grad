@@ -7,7 +7,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class TensorOperation2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
-        : Tensor<T, TOp>(operand1.Shape), ITensorOperation2<T, TOp>
+        : TensorOperation<T, TOp>(operand1.Shape), ITensorOperation2<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor2<T, T, T>
     {

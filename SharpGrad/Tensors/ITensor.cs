@@ -35,6 +35,7 @@ namespace SharpGrad.Tensors
     {
         public Tensor<T> Tensor { get; } = tensor;
         public int Index { get; } = index;
+        public int UsageCount { get; set; } = usageCount;
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
     internal class TensorReduce<T, TOp>(Tensor<T> operand1)
-        : Tensor<T, TOp>(operand1.Shape), ITensorReduce<T, TOp>
+        : TensorOperation<T, TOp>(operand1.Shape), ITensorReduce<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IAggregator<T, TOp>
     {

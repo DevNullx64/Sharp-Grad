@@ -107,20 +107,21 @@ namespace SharpGrad
         /// <param name="indices">The indices to flatten.</param>
         /// <returns>The flattened index.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public static int FlattenFrom(Shape Shape, params Index[] indices)
+        public int FlattenFrom(params Index[] indices)
         {
-            if (indices.Length != Shape.Count)
-                throw new ArgumentException($"Expected {Shape.Count} indices, got {indices.Length}");
+            if (indices.Length != dims.Length)
+                throw new ArgumentException($"Expected {Count} indices, got {indices.Length}");
 
-            int flattenedIndex = indices[0].IsFromEnd
-                ? Shape[0] - indices[0].Value
-                : indices[0].Value;
+            int flattenedIndex = 0;
 
-            for (int i = 1; i < indices.Length; i++)
+            for (int i = 0; i < dims.Length; i++)
             {
-                flattenedIndex *= Shape[i];
+                if (indices[i].Value < 0 || indices[i].Value >= dims[i])
+                    throw new ArgumentOutOfRangeException(nameof(indices), indices[i].Value, $"Index out of range for dimension {i}. {indices[0].Value} is not in the range [0, {dims[i]})");
+
+                flattenedIndex *= dims[i];
                 flattenedIndex += indices[i].IsFromEnd
-                    ? Shape[i] - indices[i].Value
+                    ? dims[i] - indices[i].Value
                     : indices[i].Value;
             }
 
