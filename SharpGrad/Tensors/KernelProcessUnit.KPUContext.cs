@@ -259,7 +259,7 @@ namespace SharpGrad.Tensors
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
-        public KpuScript<T> GetKpuScript<T>(ITensor<T> tensors)
+        public KpuScript<T> GetKpuScript<T>(ITensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             List<ITensor<T>> datas = [];
@@ -267,34 +267,35 @@ namespace SharpGrad.Tensors
             List<ITensor<T>?> registers = [];
             List<OperationKPU> script = [];
 
-            var topo = tensors.DepthFirstSearch()
+            var topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)
                 .Select(e => e.Value.Tensor)
                 .ToList();
+            TensorData<T> result = new("Result", topo[^1].Shape);
 
             for (int i = 0; i < topo.Count; i++)
             {
-                var tensor = topo[i];
-                if (tensor.Depth == 0)
+                var t = topo[i];
+                if (t.Depth == 0)
                 {
                     // Add the data tensor to the list of data tensors only if it is not already present
-                    if (!datas.Contains(tensor))
-                        datas.Add(tensor);
+                    if (!datas.Contains(t))
+                        datas.Add(t);
 
                     // If the data tensor is used more than once, store it in a register
-                    if (UsageCount(tensor, topo, i) > 1)
+                    if (UsageCount(t, topo, i) > 1)
                     {
-                        short iOp1 = (short)datas.IndexOf(tensor);
-                        short iResult = (short)(-Store(registers, tensor) - 1);
+                        short iOp1 = (short)datas.IndexOf(t);
+                        short iResult = (short)(-Store(registers, t) - 1);
                         script.Add(new OperationKPU(OpCode.Store, iResult, iOp1));
                         continue;
                     }
                 }
                 else
                 {
-                    if (registers.Contains(tensor))
+                    if (registers.Contains(t))
                         continue;
-                    if (tensor.OperandCound == 1 && tensor is ITensorOperation1<T> operation1)
+                    if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
                     {
                         // Operation result or stored data should contains the operand
                         short iOp1 = (short)registers.IndexOf(operation1.Operand1);
@@ -318,7 +319,7 @@ namespace SharpGrad.Tensors
                         short iResult = (short)(-Store(registers, operation1) - 1);
                         script.Add(new OperationKPU(operation1.OpCode, iResult, iOp1));
                     }
-                    else if (tensor.OperandCound == 2 && tensor is ITensorOperation2<T> operation2)
+                    else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
                     {
                         // Operation result or stored data should contains the first operand
                         short iOp1 = (short)registers.IndexOf(operation2.Operand1);
@@ -361,7 +362,7 @@ namespace SharpGrad.Tensors
                         short iResult = (short)(-Store(registers, operation2) - 1);
                         script.Add(new OperationKPU(operation2.OpCode, iResult, iOp1, iOp2));
                     }
-                    else if (tensor.OperandCound == -1 && tensor is ITensorReduce<T> operationR)
+                    else if (t.OperandCound == -1 && t is ITensorReduce<T> operationR)
                     {
                         throw new NotImplementedException();
                     }
