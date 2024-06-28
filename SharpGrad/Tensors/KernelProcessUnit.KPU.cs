@@ -206,8 +206,7 @@ namespace SharpGrad.Tensors
             if (tensor is ITensorOperation<T> tensorOperation)
             {
                 var topo =  tensorOperation.DepthFirstSearch();
-                KPUContext<T> context = new(topo.OrderBy(e => e.Value).Select(e => (ITensor<T>)e.Key));
-                return Exec(context.Script, context.Datas.Select(e => (TensorData<T>)e), context.Registers.Count);
+                throw new NotImplementedException();
             }
             else
                 return (TensorData<T>)tensor;
