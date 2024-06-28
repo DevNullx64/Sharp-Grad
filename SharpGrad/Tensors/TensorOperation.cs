@@ -14,7 +14,5 @@ namespace SharpGrad.Tensors
         where TOp : IExecutor
     {
         public OpCode OpCode => TOp.OpCode;
-
-        public abstract int OperandCound { get; }
     }
 }

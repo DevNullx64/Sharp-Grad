@@ -37,7 +37,7 @@ namespace SharpGrad.Tensors
         public long Length => Shape.Length;
         public abstract long Depth { get; }
 
-        public int OperandCound => 0;
+        public abstract int OperandCound { get; }
 
         public abstract T this[params Index[] indices] { get; }
 

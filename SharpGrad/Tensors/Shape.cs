@@ -76,13 +76,6 @@ namespace SharpGrad
         public bool IsScalar { get => Length == 1; }
 
         /// <summary>
-        /// Gets the flattened index from the specified indices.
-        /// </summary>
-        /// <param name="indices">The indices to flatten.</param>
-        /// <returns>The flattened index.</returns>
-        public int GetFlattenIndex(params Index[] indices) => FlattenFrom(this, indices);
-
-        /// <summary>
         /// Gets the indices from the specified flattened index.
         /// </summary>
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
@@ -107,7 +100,7 @@ namespace SharpGrad
         /// <param name="indices">The indices to flatten.</param>
         /// <returns>The flattened index.</returns>
         /// <exception cref="ArgumentException"></exception>
-        public int FlattenFrom(params Index[] indices)
+        public int GetFlattenIndex(params Index[] indices)
         {
             if (indices.Length != dims.Length)
                 throw new ArgumentException($"Expected {Count} indices, got {indices.Length}");

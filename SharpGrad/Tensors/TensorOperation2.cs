@@ -28,7 +28,7 @@ namespace SharpGrad.Tensors
                     kpu.Exec(this);
                     buffer = kpu.GetBuffer(kpu.Exec(this).buffer);
                 }
-                return buffer[Shape.FlattenFrom(Shape, indices)];
+                return buffer[Shape.GetFlattenIndex(indices)];
             }
         }
 

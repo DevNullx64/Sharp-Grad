@@ -42,16 +42,13 @@ namespace SharpGrad.Tensors
             private int current = -1;
             private List<ITensor<T>> tensors;
 
-            public KPUContext(List<ITensor<T>> tensors)
+            public KPUContext(IEnumerable<ITensor<T>> tensors)
             {
                 datas = [];
                 operations = [];
-                this.tensors = tensors;
-
-                for (current = 0; current < tensors.Count; current++)
-                {
-                    Add(tensors[current]);
-                }
+                this.tensors = tensors.ToList();
+                foreach (var tensor in tensors)
+                    Add(tensor);
             }
 
             private void Add(ITensor<T> tensor)

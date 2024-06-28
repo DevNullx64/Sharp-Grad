@@ -14,17 +14,19 @@ namespace SharpGrad.Tensors
 
         public override long Depth => 0;
 
+        public override int OperandCound => 0;
+
         public override T this[params Index[] indices]
         {
             get
             {
-                var flattenedIndex = Shape.FlattenFrom(Shape, indices);
+                var flattenedIndex = Shape.GetFlattenIndex(indices);
                 return buffer[flattenedIndex];
             }
         }
         public void Set(T value, params Index[] indices)
         {
-            var flattenedIndex = Shape.FlattenFrom(Shape, indices);
+            var flattenedIndex = Shape.GetFlattenIndex(indices);
             buffer[flattenedIndex] = value;
         }
 
