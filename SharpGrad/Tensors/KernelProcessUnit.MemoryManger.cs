@@ -122,7 +122,8 @@ namespace SharpGrad.Tensors
         }
 
 
-        AcceleratorBuffer<T> ILowLevelMemoryManager.GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
+        public AcceleratorBuffer<T> GetBuffer<T>(MemoryBuffer1D<T, Stride1D.Dense> data)
+            where T: unmanaged
         {
             try
             {
@@ -137,7 +138,7 @@ namespace SharpGrad.Tensors
             }
         }
 
-        public AcceleratorBuffer<T> GetBuffer<T>(AcceleratorBuffer<T> buffer)
+        public AcceleratorBuffer<T> CloneBuffer<T>(AcceleratorBuffer<T> buffer)
             where T : unmanaged
         {
             AcceleratorBuffer<T> result = new(this, buffer.Length);

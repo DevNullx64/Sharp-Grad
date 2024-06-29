@@ -18,15 +18,14 @@ namespace SharpGrad.Tensors
 
         public override int OperandCound => 2;
 
-        protected AcceleratorBuffer<T>? buffer = null;
+        internal AcceleratorBuffer<T>? buffer = null;
         public override T this[params Index[] indices]{
             get
             {
                 if (buffer is null)
                 {
                     KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
-                    kpu.Exec(this);
-                    buffer = kpu.GetBuffer(kpu.Exec(this).buffer);
+                    buffer = kpu.Exec(this).buffer;
                 }
                 return buffer[Shape.GetFlattenIndex(indices)];
             }

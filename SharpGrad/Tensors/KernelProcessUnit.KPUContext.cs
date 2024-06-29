@@ -50,18 +50,20 @@ namespace SharpGrad.Tensors
             for (int j = starting + 1; j < tensors.Count; j++)
             {
                 var t = tensors[j];
-                if (t is ITensorOperation1<T> operation1)
+                if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
+                {
                     if (operation1.Operand1.Equals(tensor))
                         count++;
-                    else if (t is ITensorOperation2<T> operation2)
-                    {
-                        if (operation2.Operand1.Equals(tensor))
-                            count++;
-                        else if (operation2.Operand2.Equals(tensor))
-                            count++;
-                    }
-                    else if (t is ITensorReduce<T> operationR)
-                        throw new NotImplementedException();
+                }
+                else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
+                {
+                    if (operation2.Operand1.Equals(tensor))
+                        count++;
+                    else if (operation2.Operand2.Equals(tensor))
+                        count++;
+                }
+                else if (t is ITensorReduce<T> operationR)
+                    throw new NotImplementedException();
             }
             return count;
         }
@@ -72,18 +74,20 @@ namespace SharpGrad.Tensors
             for (int j = starting + 1; j < tensors.Count; j++)
             {
                 var t = tensors[j];
-                if (t is ITensorOperation1<T> operation1)
+                if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
+                {
                     if (operation1.Operand1.Equals(tensor))
                         return true;
-                    else if (t is ITensorOperation2<T> operation2)
-                    {
-                        if (operation2.Operand1.Equals(tensor))
-                            return true;
-                        if (operation2.Operand2.Equals(tensor))
-                            return true;
-                    }
-                    else if (t is ITensorReduce<T> operationR)
-                        throw new NotImplementedException();
+                }
+                else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
+                {
+                    if (operation2.Operand1.Equals(tensor))
+                        return true;
+                    if (operation2.Operand2.Equals(tensor))
+                        return true;
+                }
+                else if (t is ITensorReduce<T> operationR)
+                    throw new NotImplementedException();
             }
             return false;
         }
@@ -170,12 +174,11 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // Compute the KPU register index
-                            iOp1 = (short)(-iOp1 - 1);
-
                             // If the operand is not used anymore, free the register
                             if (!WillBeUsed(operation1.Operand1, topo, i))
                                 registers[iOp1] = null;
+                            // Compute the KPU register index
+                            iOp1 = (short)(-iOp1 - 1);
                         }
                         iOp2 = OperationKPU.NoOperand;
                     }
@@ -195,12 +198,11 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // Compute the KPU register index
-                            iOp1 = (short)(-iOp1 - 1);
-
                             // If the operand is not used anymore, free the register
                             if (!WillBeUsed(operation2.Operand1, topo, i))
                                 registers[iOp1] = null;
+                            // Compute the KPU register index
+                            iOp1 = (short)(-iOp1 - 1);
                         }
 
                         // Operation result or stored data should contains the second operand
@@ -215,12 +217,11 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // Compute the KPU register index
-                            iOp2 = (short)(-iOp2 - 1);
-
                             // If the operand is not used anymore, free the register
                             if (!WillBeUsed(operation2.Operand2, topo, i))
                                 registers[iOp2] = null;
+                            // Compute the KPU register index
+                            iOp2 = (short)(-iOp2 - 1);
                         }
                     }
                     else //if (t.OperandCound == -1 && t is ITensorReduce<T> operationR)

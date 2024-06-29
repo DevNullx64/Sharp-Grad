@@ -126,43 +126,43 @@ namespace SharpGrad.Tensors
             func(idx, ops.View, tensors.View, new SpecializedValue<short>(registerCount));
         }
 
-        private static void GetRowKernel<T>(LongIndex1D idx, ArrayView2D<T, Stride2D.DenseY> tensors, ArrayView1D<T, Stride1D.Dense> result, SpecializedValue<int> row)
+        private static void GetRowKernel<T>(Index1D idx, ArrayView2D<T, Stride2D.DenseY> tensors, ArrayView1D<T, Stride1D.Dense> result, int row)
             where T : unmanaged
             => result[idx] = tensors[row, idx];
         private void GetRow<T>(MemoryBuffer2D<T, Stride2D.DenseY> tensor, int row, MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged
         {
-            Action<AcceleratorStream, LongIndex1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<int>> GetRowFnc
-                = Accelerator.LoadAutoGroupedKernel<LongIndex1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<int>>(GetRowKernel);
-            GetRowFnc(Accelerator.DefaultStream, new LongIndex1D(tensor.IntExtent.Y), tensor.View, result.View, new SpecializedValue<int>(row));
+            Action<AcceleratorStream, Index1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, int> GetRowFnc
+                = Accelerator.LoadAutoGroupedKernel<Index1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, int>(GetRowKernel);
+            GetRowFnc(Accelerator.DefaultStream, new Index1D((int)result.Length), tensor.View, result.View, row);
         }
 
         private MemoryBuffer1D<T, Stride1D.Dense> GetRow<T>(MemoryBuffer2D<T, Stride2D.DenseY> tensor, int row)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            var result = Accelerator.Allocate1D<T, Stride1D.Dense>(tensor.IntExtent.X, new Stride1D.Dense());
+            var result = Accelerator.Allocate1D<T, Stride1D.Dense>(tensor.IntExtent.Y, new Stride1D.Dense());
             GetRow(tensor, row, result);
             return result;
         }
 
 
-        private static void SetRowKernel<T>(LongIndex1D idx, ArrayView1D<T, Stride1D.Dense> tensors, ArrayView2D<T, Stride2D.DenseY> result, SpecializedValue<int> row)
+        private static void SetRowKernel<T>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensors, ArrayView2D<T, Stride2D.DenseY> result, SpecializedValue<int> row)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             => result[row, idx] = tensors[idx];
         private MemoryBuffer2D<T, Stride2D.DenseY> To2D<T>(IEnumerable<ArrayView1D<T, Stride1D.Dense>> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            long length = tensor.First().Length;
+            var length = tensor.First().Length;
 
             MemoryBuffer2D<T, Stride2D.DenseY> result = Accelerator.Allocate2DDenseY<T>(new(tensor.Count(), length));
-            var func = Accelerator.LoadAutoGroupedStreamKernel<LongIndex1D, ArrayView1D<T, Stride1D.Dense>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<int>>(SetRowKernel);
+            var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<int>>(SetRowKernel);
 
             int i = 0;
             foreach (var t in tensor)
             {
                 if (t.Length != length)
                     throw new InvalidOperationException($"Invalid data length {t.Length} for shape {length}");
-                func(new LongIndex1D(length), t, result.View, new SpecializedValue<int>(i++));
+                func(new Index1D((int)length), t, result.View, new SpecializedValue<int>(i++));
             }
             Synchronize();
             //foreach (var t in tensor)
@@ -210,10 +210,11 @@ namespace SharpGrad.Tensors
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = GetBuffer(script.ToArray());
                 var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
-                func(new Index1D(script.Count), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>(script.RegistersCount));
+                func(new Index1D((int)tensors.Extent.Y), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>(script.RegistersCount));
                 Synchronize();
 
                 var resultMemory = GetRow(tensors, 0);
+                Synchronize();
                 AcceleratorBuffer<T> resultBuffer = ((ILowLevelMemoryManager)this).GetBuffer(resultMemory);
                 return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
             }
