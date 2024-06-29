@@ -23,6 +23,11 @@ namespace Test
             Operators<T>.Fill(Y, (i, j, k) => (A[i, j, k] + B[i, j, k]) * (B[i, j, k] - C[i, j, k]));
 
             var cY = (A + B) * (B - C);
+
+            long begin = DateTime.Now.Ticks;
+            _ = cY[0, 0, 0];
+            Debug.WriteLine($"Get result of {nameof(cY)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
+
             (T mean, T min, T max) = Operators<T>.Test(Y, cY);
 
             Assert.IsTrue(mean <= Operators<T>.Epsilon && min <= Operators<T>.Epsilon && max <= Operators<T>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");

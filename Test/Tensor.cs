@@ -18,24 +18,29 @@ namespace Test
         public static T Epsilon = T.CreateChecked(1e-6);
         public static void Fill(TensorData<T> result, Func<int, int, int, T> fnc)
         {
+            long begin = DateTime.Now.Ticks;
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
                     for (int k = 0; k < result.Shape[2]; k++)
                         result.Set(fnc(i, j, k), i, j, k);
+            Debug.WriteLine($"Fill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
         }
 
         public static TensorData<T> NewRandom(params Dim[] dims)
         {
+            long begin = DateTime.Now.Ticks;
             TensorData<T> result = new(dims);
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
                         result.Set(T.CreateTruncating((rnd.NextDouble() + 1) * 2), i, j, k);
+            Debug.WriteLine($"NewRandom of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
             return result;
         }
 
         public static (T Mean, T Min, T Max) Test(Tensor<T> tc, Tensor<T> ty)
         {
+            long begin = DateTime.Now.Ticks;
             T diff = T.Zero;
             T min = T.CreateTruncating(double.MaxValue);
             T max = T.CreateTruncating(double.MinValue);
@@ -55,6 +60,7 @@ namespace Test
                             max = diff_;
                     }
             T factor = T.CreateTruncating(tc.Shape.Length);
+            Debug.WriteLine($"Test between {nameof(tc)} and {nameof(ty)} took {(DateTime.Now.Ticks - begin) / 10000} ms");
             return (factor == T.Zero ? diff : diff / factor, min, max);
         }
 
