@@ -77,6 +77,10 @@ namespace Test
 
             Tensor<T> tc = ta + tb;
 
+            long begin = DateTime.Now.Ticks;
+            _ = tc[0, 0, 0];
+            Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
+
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, max={max}");
@@ -94,10 +98,15 @@ namespace Test
 
             Tensor<T> tc = ta - tb;
 
+            long begin = DateTime.Now.Ticks;
+            _ = tc[0, 0, 0];
+            Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
+
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Subtraction test passed with error mean={mean}, min={min}, max={max}");
         }
+
         public static void Multiplication()
         {
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
@@ -111,10 +120,15 @@ namespace Test
 
             Tensor<T> tc = ta * tb;
 
+            long begin = DateTime.Now.Ticks;
+            _ = tc[0, 0, 0];
+            Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
+
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Multiplication test passed with error mean={mean}, min={min}, max={max}");
         }
+
         public static void Division()
         {
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
@@ -127,6 +141,10 @@ namespace Test
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;
+
+            long begin = DateTime.Now.Ticks;
+            _ = tc[0, 0, 0];
+            Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 
             (T mean, T min, T max) = Test(tc, ty);
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");

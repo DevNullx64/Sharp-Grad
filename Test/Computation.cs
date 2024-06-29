@@ -15,14 +15,25 @@ namespace Test
         private void TestComputation<T>()
             where T: unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
+            T epsilon = T.CreateChecked(1e-5);
             TensorData<T> A = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> B = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> C = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> Y = new("Y", new(256, 256, 256));
 
-            Operators<T>.Fill(Y, (i, j, k) => (A[i, j, k] + B[i, j, k]) * (B[i, j, k] - C[i, j, k]));
+            Operators<T>.Fill(Y, (i, j, k) =>
+            {
+                T a = A[i, j, k];
+                T b = B[i, j, k];
+                T c = C[i, j, k];
+                T d = (a + b) * (b - c);
+                T e = (a - c) / (b * c);
+                return d / e;
+            });
 
-            var cY = (A + B) * (B - C);
+            Tensor<T> D = (A + B) * (B - C);
+            Tensor<T> E = (A - C) / (B * C);
+            var cY = D / E;
 
             long begin = DateTime.Now.Ticks;
             _ = cY[0, 0, 0];
