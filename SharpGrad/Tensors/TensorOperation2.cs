@@ -6,15 +6,15 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class TensorOperation2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
-        : TensorOperation<T, TOp>(operand1.Shape), ITensorOperation2<T, TOp>
+    internal class TensorOperation2<T, TOp>
+        : TensorOperation<T, TOp>, ITensorOperation2<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor2<T, T, T>
     {
-        public Tensor<T> Operand1 => operand1;
-        public Tensor<T> Operand2 => operand2;
+        public Tensor<T> Operand1 { get; }
+        public Tensor<T> Operand2 { get; }
 
-        public override long Depth { get; } = Math.Max(operand1.Depth, operand2.Depth) + 1;
+        public override long Depth { get; }
 
         public override int OperandCound => 2;
 
@@ -30,6 +30,14 @@ namespace SharpGrad.Tensors
                 }
                 return buffer[Shape.GetFlattenIndex(indices)];
             }
+        }
+
+        public TensorOperation2(Tensor<T> operand1, Tensor<T> operand2)
+            : base(TOp.ResultingShape(operand1.Shape, operand2.Shape))
+        {
+            Operand1 = operand1;
+            Operand2 = operand2;
+            Depth = Math.Max(operand1.Depth, operand2.Depth) + 1;
         }
 
         internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)

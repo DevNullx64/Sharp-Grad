@@ -1,23 +1,30 @@
-﻿using SharpGrad.Tensors.Operators;
+﻿using SharpGrad.Memory;
+using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal class TensorOperation1<T, TOp>(Tensor<T> operand1)
-        : TensorOperation<T, TOp>(operand1.Shape), ITensorOperation1<T, TOp>
+    internal class TensorOperation1<T, TOp>
+        : TensorOperation<T, TOp>, ITensorOperation1<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IExecutor1<T, T>
     {
-        public Tensor<T> Operand1 => operand1;
+        public Tensor<T> Operand1 { get; }
 
-        public override long Depth { get; } = operand1.Depth + 1;
+        public override long Depth { get; }
 
         public override int OperandCound => 1;
 
-        public override T this[params Index[] indices] => TOp.Exec(operand1[indices]);
+        public override T this[params Index[] indices] => TOp.Exec(Operand1[indices]);
 
+        public TensorOperation1(Tensor<T> operand1)
+            : base(TOp.ResultingShape(operand1.Shape))
+        {
+            Operand1 = operand1;
+            Depth = operand1.Depth + 1;
+        }
         internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
         {
             if (topoSort.TryGetValue(this, out DfsNode<T>? count))

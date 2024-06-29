@@ -206,7 +206,16 @@ namespace SharpGrad.Tensors
             if (tensor is ITensorOperation<T> tensorOperation)
             {
                 KpuScript<T> script = GetKpuScript(tensor);
-                throw new NotImplementedException();
+
+                using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
+                AcceleratorBuffer<OperationKPU> ops = GetBuffer(script.ToArray());
+                var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
+                func(new Index1D(script.Count), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>(script.RegistersCount));
+                Synchronize();
+
+                var resultMemory = GetRow(tensors, 0);
+                AcceleratorBuffer<T> resultBuffer = ((ILowLevelMemoryManager)this).GetBuffer(resultMemory);
+                return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
             }
             else
                 return (TensorData<T>)tensor;
