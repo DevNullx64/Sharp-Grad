@@ -15,7 +15,7 @@ namespace Test
         private void TestComputation<T>()
             where T: unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            T epsilon = T.CreateChecked(1e-5);
+            //T epsilon = T.CreateChecked(1e-5);
             TensorData<T> A = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> B = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> C = Operators<T>.NewRandom(256, 256, 256);

@@ -41,6 +41,7 @@ namespace Test
         public static (T Mean, T Min, T Max) Test(Tensor<T> tc, Tensor<T> ty)
         {
             long begin = DateTime.Now.Ticks;
+
             T diff = T.Zero;
             T min = T.CreateTruncating(double.MaxValue);
             T max = T.CreateTruncating(double.MinValue);
@@ -51,7 +52,7 @@ namespace Test
                     {
                         T diff_ = tc[d, i, j] - ty[d, i, j];
                         if (diff_ < T.Zero)
-                            diff_ *= -T.Zero;
+                            diff_ = -diff_;
 
                         diff += diff_;
                         if (diff_ < min)
