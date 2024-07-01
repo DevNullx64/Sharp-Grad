@@ -146,9 +146,9 @@ namespace SharpGrad.Tensors
         }
 
 
-        private static void SetRowKernel<T>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensors, ArrayView2D<T, Stride2D.DenseY> result, SpecializedValue<int> row)
+        private static void SetRowKernel<T>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensor, ArrayView2D<T, Stride2D.DenseY> results, SpecializedValue<int> row)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-            => result[row, idx] = tensors[idx];
+            => results[row, idx] = tensor[idx];
         private MemoryBuffer2D<T, Stride2D.DenseY> To2D<T>(IEnumerable<ArrayView1D<T, Stride1D.Dense>> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
@@ -175,7 +175,6 @@ namespace SharpGrad.Tensors
         internal TensorData<T> Exec<T>(IEnumerable<OperationKPU> operations, IEnumerable<TensorData<T>> datas, int registryCount)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-
             var lastOperation = operations.Last();
             short resultRow = lastOperation.IndexResult;
             if (lastOperation.IndexResult < 0) checked
