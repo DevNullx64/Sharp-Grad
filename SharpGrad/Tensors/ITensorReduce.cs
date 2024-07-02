@@ -3,9 +3,11 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    internal interface ITensorReduce<T> : ITensorOperation1<T>
+    internal interface ITensorReduce<T> : ITensorOperation<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-    { }
+    {
+        Tensor<T> Operand { get; }
+    }
 
     internal interface ITensorReduce<T, TOp> : ITensorReduce<T>
     where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>

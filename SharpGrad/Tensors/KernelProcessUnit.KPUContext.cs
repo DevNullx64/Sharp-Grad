@@ -52,7 +52,7 @@ namespace SharpGrad.Tensors
                 var t = tensors[j];
                 if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
                 {
-                    if (operation1.Operand1.Equals(tensor))
+                    if (operation1.Operand.Equals(tensor))
                         count++;
                 }
                 else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
@@ -76,7 +76,7 @@ namespace SharpGrad.Tensors
                 var t = tensors[j];
                 if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
                 {
-                    if (operation1.Operand1.Equals(tensor))
+                    if (operation1.Operand.Equals(tensor))
                         return true;
                 }
                 else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
@@ -163,19 +163,19 @@ namespace SharpGrad.Tensors
                         opCode = operation1.OpCode;
 
                         // Operation result or stored data should contains the operand
-                        iOp1 = (short)registers.IndexOf(operation1.Operand1);
+                        iOp1 = (short)registers.IndexOf(operation1.Operand);
                         if (iOp1 == -1)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)datas.IndexOf(operation1.Operand1);
+                            iOp1 = (short)datas.IndexOf(operation1.Operand);
                             // If not, something is wrong !
                             if(iOp1 == -1)
-                                throw new Exception($"Index {i} ({operation1}) : Operand 1 {operation1.Operand1} not found.");
+                                throw new Exception($"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
                         }
                         else
                         {
                             // If the operand is not used anymore, free the register
-                            if (!WillBeUsed(operation1.Operand1, topo, i))
+                            if (!WillBeUsed(operation1.Operand, topo, i))
                                 registers[iOp1] = null;
                             // Compute the KPU register index
                             iOp1 = (short)(-iOp1 - 1);

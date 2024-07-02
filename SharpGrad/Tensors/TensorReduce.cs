@@ -10,7 +10,7 @@ namespace SharpGrad.Tensors
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         where TOp : IAggregator<T, TOp>
     {
-        public Tensor<T> Operand1 { get; } = operand1;
+        public Tensor<T> Operand { get; } = operand1;
 
         public override long Depth { get; } = operand1.Depth + 1;
 
@@ -22,18 +22,18 @@ namespace SharpGrad.Tensors
         {
             if (!topoSort.TryGetValue(this, out DfsNode<T>? _))
             {
-                Operand1.DepthFirstSearch(topoSort);
+                Operand.DepthFirstSearch(topoSort);
                 topoSort.Add(this, new(this, topoSort.Count, 1));
             }
         }
 
         public override void Backward()
         {
-            if (Operand1 is ITensorOperation<T> op1)
+            if (Operand is ITensorOperation<T> op1)
                 op1.Backward();
         }
 
         public override bool Equals(ITensor? other)
-            => other is TensorReduce<T, TOp> aggregator && Operand1.Equals(aggregator.Operand1);
+            => other is TensorReduce<T, TOp> aggregator && Operand.Equals(aggregator.Operand);
     }
 }
