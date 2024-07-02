@@ -257,7 +257,6 @@ namespace SharpGrad.Memory
         public AcceleratorBuffer(IMemoryManager memoryManager, long length)
             : base(memoryManager, length) { }
 
-
         /// <summary>
         /// Create a new DeviceBuffer with the specified length.
         /// </summary>
