@@ -127,17 +127,42 @@ namespace SharpGrad
         /// <param name="shape">The shape of the tensor.</param>
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices from the specified flattened index.</returns>
-        public static Index[] IndicesFrom(Shape shape, int flattenedIndex)
+        public static int[] IndicesFrom(int[] shape, int flattenedIndex)
         {
-            Index[] indices = new Index[shape.Count];
-            for (int i = shape.Count - 1; i >= 0; i--)
+            for (int i = shape.Length - 1; i >= 0; i--)
             {
-                indices[i] = flattenedIndex % shape[i];
+                shape[i] = flattenedIndex % shape[i];
                 flattenedIndex /= shape[i];
             }
 
-            return indices;
+            return shape;
         }
+
+        /// <summary>
+        /// Gets the indices from the specified flattened index.
+        /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
+        /// <returns>The indices from the specified flattened index.</returns>
+        public static Index[] IndicesFrom(Index[] shape, int flattenedIndex)
+        {
+            for (int i = shape.Length - 1; i >= 0; i--)
+            {
+                shape[i] = flattenedIndex % shape[i].Value;
+                flattenedIndex /= shape[i].Value;
+            }
+
+            return shape;
+        }
+
+        /// <summary>
+        /// Gets the indices from the specified flattened index.
+        /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
+        /// <returns>The indices from the specified flattened index.</returns>
+        public static Index[] IndicesFrom(Shape shape, int flattenedIndex)
+            => IndicesFrom(shape.Select(x => new Index(x)).ToArray(), flattenedIndex);
 
         /// <inheritdoc/>
         public bool Equals(Shape other) => dims.SequenceEqual(other.dims);
@@ -153,6 +178,13 @@ namespace SharpGrad
 
         /// <inheritdoc/>
         public override string ToString() => $"[{string.Join(", ", dims)}]";
+
+        internal Shape Reduce(Index dim)
+        {
+            var dims = (Dim[])this.dims.Clone();
+            dims[dim] = 1;
+            return new Shape(dims);
+        }
 
         /// <summary>
         /// Implicitly converts an array of dimensions to a shape.

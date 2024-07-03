@@ -19,11 +19,11 @@ namespace SharpGrad.Tensors
 
         public override T this[params Index[] indices] => TOp.Exec(Operand[indices]);
 
-        public TensorOperation1(Tensor<T> operand1)
-            : base(TOp.ResultingShape(operand1.Shape))
+        public TensorOperation1(Tensor<T> operand)
+            : base(TOp.ResultingShape(operand.Shape))
         {
-            Operand = operand1;
-            Depth = operand1.Depth + 1;
+            Operand = operand;
+            Depth = operand.Depth + 1;
         }
         internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
         {

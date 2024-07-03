@@ -220,5 +220,22 @@ namespace SharpGrad.Tensors
             else
                 return (TensorData<T>)tensor;
         }
+
+        private static void ReduceStage1Kernel<T, TOp>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensor, ArrayView1D<T, Stride1D.Dense> results, ArrayView1D<int, Stride1D.Dense> shape, int dim)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+            where TOp : IExecutor2<T, T, T>
+        {
+            for (int i = 1; i < 32; i++)
+            {
+                Shape.IndicesFrom(null, idx);
+            }
+        }
+
+        public TensorData<T> Reduce<T, TOp>(Tensor<T> tensor, Index? dim = null)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+            where TOp : IExecutor2<T, T, T>
+        {
+            throw new NotImplementedException();
+        }
     }
 }
