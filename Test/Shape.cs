@@ -33,12 +33,9 @@ namespace Test
         public void TestRange()
         {
             Shape shape = new(rnd.Next(), rnd.Next(), rnd.Next());
-            Dim dim = shape[^1];
-            Assert.AreEqual(dim, shape[2]);
-            dim = shape[^2];
-            Assert.AreEqual(dim, shape[1]);
-            dim = shape[^3];
-            Assert.AreEqual(dim, shape[0]);
+            Assert.AreEqual(shape[^1], shape[2]);
+            Assert.AreEqual(shape[^2], shape[1]);
+            Assert.AreEqual(shape[^3], shape[0]);
         }
     }
 }

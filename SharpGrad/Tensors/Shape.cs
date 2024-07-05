@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ILGPU.Runtime;
+using ILGPU;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -102,20 +104,32 @@ namespace SharpGrad
         /// <exception cref="ArgumentException"></exception>
         public int GetFlattenIndex(params Index[] indices)
         {
-            if (indices.Length != dims.Length)
-                throw new ArgumentException($"Expected {Count} indices, got {indices.Length}");
+            if (indices.Length != Length)
+                throw new ArgumentException($"Expected {Length} indices, got {indices.Length}");
 
-            int flattenedIndex = 0;
-
-            for (int i = 0; i < dims.Length; i++)
+            int[] intsindices = [indices.Length];
+            for (int i = 0; i < indices.Length; i++)
             {
-                if (indices[i].Value < 0 || indices[i].Value >= dims[i])
-                    throw new ArgumentOutOfRangeException(nameof(indices), indices[i].Value, $"Index out of range for dimension {i}. {indices[0].Value} is not in the range [0, {dims[i]})");
+                intsindices[i] = indices[i].IsFromEnd ? dims[i] - indices[i].Value : indices[i].Value;
+                if (intsindices[i] < 0 || intsindices[i] >= dims[i])
+                    throw new ArgumentOutOfRangeException(nameof(indices), i, "Index out of range.");
+            }
 
-                flattenedIndex *= dims[i];
-                flattenedIndex += indices[i].IsFromEnd
-                    ? dims[i] - indices[i].Value
-                    : indices[i].Value;
+            int[] intsShape = new int[dims.Length];
+            for (int i = 0; i < dims.Length; i++)
+                intsShape[i] = dims[i].Size;
+
+            return GetFlattenIndices(intsShape, intsindices);
+        }
+
+        public static int GetFlattenIndices(int[] shape, params int[] indices)
+        {
+            int flattenedIndex = shape[0];
+
+            for (int i = 1; i < shape.Length; i++)
+            {
+                flattenedIndex *= shape[i];
+                flattenedIndex += indices[i];
             }
 
             return flattenedIndex;
@@ -129,30 +143,14 @@ namespace SharpGrad
         /// <returns>The indices from the specified flattened index.</returns>
         public static int[] IndicesFrom(int[] shape, int flattenedIndex)
         {
-            for (int i = shape.Length - 1; i >= 0; i--)
+            int[] result = new int[shape.Length];
+            for (int i = result.Length - 1; i >= 0; i--)
             {
-                shape[i] = flattenedIndex % shape[i];
-                flattenedIndex /= shape[i];
+                result[i] = flattenedIndex % shape[i];
+                flattenedIndex /= result[i];
             }
 
-            return shape;
-        }
-
-        /// <summary>
-        /// Gets the indices from the specified flattened index.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
-        /// <returns>The indices from the specified flattened index.</returns>
-        public static Index[] IndicesFrom(Index[] shape, int flattenedIndex)
-        {
-            for (int i = shape.Length - 1; i >= 0; i--)
-            {
-                shape[i] = flattenedIndex % shape[i].Value;
-                flattenedIndex /= shape[i].Value;
-            }
-
-            return shape;
+            return result;
         }
 
         /// <summary>
@@ -162,7 +160,16 @@ namespace SharpGrad
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices from the specified flattened index.</returns>
         public static Index[] IndicesFrom(Shape shape, int flattenedIndex)
-            => IndicesFrom(shape.Select(x => new Index(x)).ToArray(), flattenedIndex);
+        {
+            Index[] indices = new Index[shape.Count];
+            for (int i = shape.Count - 1; i >= 0; i--)
+            {
+                indices[i] = flattenedIndex % shape[i];
+                flattenedIndex /= shape[i];
+            }
+
+            return indices;
+        }
 
         /// <inheritdoc/>
         public bool Equals(Shape other) => dims.SequenceEqual(other.dims);

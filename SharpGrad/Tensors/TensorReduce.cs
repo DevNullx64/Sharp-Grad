@@ -22,7 +22,7 @@ namespace SharpGrad.Tensors
 
         public override int OperandCound => -1;
 
-        public override T this[params Index[] indices] => KernelProcessUnit.DefaultKPU.Exec(this);
+        public override T this[params Index[] indices] => throw new NotFiniteNumberException();
 
         internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
         {

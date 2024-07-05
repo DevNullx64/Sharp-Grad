@@ -11,6 +11,7 @@ using SharpGrad.Tensors.Operators;
 using System.Runtime.CompilerServices;
 using System.Runtime;
 using ILGPU.Runtime.Cuda;
+using System.Data.SqlTypes;
 
 namespace SharpGrad.Tensors
 {
@@ -221,21 +222,58 @@ namespace SharpGrad.Tensors
                 return (TensorData<T>)tensor;
         }
 
-        private static void ReduceStage1Kernel<T, TOp>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensor, ArrayView1D<T, Stride1D.Dense> results, ArrayView1D<int, Stride1D.Dense> shape, int dim)
+        private static void ReduceStage1Kernel<T, TOp>(
+            Index1D idx, 
+            ArrayView1D<T, Stride1D.Dense> tensor, 
+            ArrayView1D<T, Stride1D.Dense> results, 
+            ArrayView1D<int, Stride1D.Dense> shape, 
+            int dim, 
+            SpecializedValue<int> count)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            for (int i = 1; i < 32; i++)
-            {
-                Shape.IndicesFrom(null, idx);
-            }
+            int[] intShape = [shape.IntLength];
+            for(int i = 0; i < shape.Length; i++)
+                intShape[i] = shape[i];
+
+            int[] indices_to = Shape.IndicesFrom(intShape, idx);
+            int[] indices_from = [indices_to.Length];
+            for (int i = 0; i < indices_to.Length; i++)
+                indices_from[i] = (i == dim) ? indices_to[i] * count : indices_to[i];
+
+            T acc = TOp.Exec(tensor[Shape.GetFlattenIndices(indices_from, intShape)], tensor[Shape.GetFlattenIndices(indices_from, intShape)]);
+            int cMax = indices_from[dim] + count <= intShape[dim] ? indices_from[dim] + count : intShape[dim];
+            for (; indices_from[dim] < cMax; indices_from[dim]++)
+                acc = TOp.Exec(acc, tensor[Shape.GetFlattenIndices(indices_from, intShape)]);
+            results[idx] = acc;
         }
 
         public TensorData<T> Reduce<T, TOp>(Tensor<T> tensor, Index? dim = null)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            throw new NotImplementedException();
+            dim ??= new Index(1, true);
+
+            SpecializedValue<int> dims = (dim.Value.IsFromEnd)
+                ? new SpecializedValue<int>(tensor.Shape.Count - dim.Value.Value)
+                : new SpecializedValue<int>(dim.Value.Value);
+
+            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, int, SpecializedValue<int>>(ReduceStage1Kernel<T, TOp>);
+
+            var shape = new int[tensor.Shape.Count];
+            for (int i = 0; i < tensor.Shape.Count; i++)
+                shape[i] = tensor.Shape[i].Size;
+
+            var result = Accelerator.Allocate1D<T, Stride1D.Dense>(shape[dims], new Stride1D.Dense());
+            AcceleratorBuffer<int> shapeGpu = GetBuffer(shape);
+
+            if (tensor is TensorData<T> tensorData)
+            {
+                fnc(new Index1D((int)result.Length), tensorData.View, result.View, shapeGpu.AcceleratorData.View, dims, new SpecializedValue<int>(32));
+                return new TensorData<T>("Result", new Shape(shape[dims]), ((ILowLevelMemoryManager)this).GetBuffer(result));
+            }
+            else
+                throw new NotImplementedException();
         }
     }
 }
