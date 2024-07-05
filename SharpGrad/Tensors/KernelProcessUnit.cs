@@ -19,6 +19,7 @@ namespace SharpGrad.Tensors
         protected readonly Context context;
         protected readonly Device device;
         protected readonly Accelerator Accelerator;
+        public readonly MemoryManagementUnit MMU;
         private bool disposedValue;
 
         public KernelProcessUnit()
@@ -26,6 +27,7 @@ namespace SharpGrad.Tensors
             context = Context.Create(builder => builder.AllAccelerators());
             device = context.GetPreferredDevice(preferCPU: false);
             Accelerator = device.CreateAccelerator(context);
+            MMU = new MemoryManagementUnit(Accelerator);
         }
 
         public void Synchronize() => Accelerator.Synchronize();

@@ -22,7 +22,7 @@ namespace Test
             int i = 1;
             while (true)
             {
-                AcceleratorBuffer<double> newBlock = kpu.GetBuffer<double>(1024 * 1024);
+                AcceleratorBuffer<double> newBlock = kpu.MMU.GetBuffer<double>(1024 * 1024);
                 newBlock.Location = BufferLocation.Accelerator;
                 newBlock.Fill(i++);
                 allocs.Add(newBlock);

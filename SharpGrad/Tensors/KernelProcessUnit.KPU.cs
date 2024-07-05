@@ -189,7 +189,7 @@ namespace SharpGrad.Tensors
                 }
             using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(datas.Select(e => e.View));
 
-            AcceleratorBuffer<OperationKPU> ops = GetBuffer(operations.ToArray());
+            AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(operations.ToArray());
 
             var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
             func(new Index1D(operations.Count()), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>((short)registryCount));
@@ -208,14 +208,14 @@ namespace SharpGrad.Tensors
                 KpuScript<T> script = GetKpuScript(tensor);
 
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
-                AcceleratorBuffer<OperationKPU> ops = GetBuffer(script.ToArray());
+                AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
                 var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
                 func(new Index1D((int)tensors.Extent.Y), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>(script.RegistersCount));
                 Synchronize();
 
                 var resultMemory = GetRow(tensors, 0);
                 Synchronize();
-                AcceleratorBuffer<T> resultBuffer = ((ILowLevelMemoryManager)this).GetBuffer(resultMemory);
+                AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer(resultMemory);
                 return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
             }
             else
@@ -265,7 +265,7 @@ namespace SharpGrad.Tensors
                 shape[i] = tensor.Shape[i].Size;
 
             var result = Accelerator.Allocate1D<T, Stride1D.Dense>(shape[dims], new Stride1D.Dense());
-            AcceleratorBuffer<int> shapeGpu = GetBuffer(shape);
+            AcceleratorBuffer<int> shapeGpu = MMU.GetBuffer(shape);
 
             if (tensor is TensorData<T> tensorData)
             {

@@ -41,12 +41,12 @@ namespace SharpGrad.Tensors
 
 
         public TensorData(string name, Shape shape)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer<T>(shape.Length)) { }
+            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length)) { }
         public TensorData(Shape shape)
             : this(GetNextName(), shape) { }
 
         public TensorData(string name, Shape shape, T[] data)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.GetBuffer(data)) { }
+            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data)) { }
         public TensorData(Shape shape, T[] data)
             : this(GetNextName(), shape, data) { }
 

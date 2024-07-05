@@ -54,9 +54,9 @@ namespace SharpGrad.Memory
     /// A structure that manages data on the RAM and a <see cref="Accelerator"/> (GPU). It free the RAM data when the data is available on the <see cref="Accelerator"/>. And vice versa.
     /// </summary>
     /// <param name="length">The length of the data.</param>
-    public abstract class AcceleratorBuffer(IMemoryManager memoryManager, long length) : IAcceleratorBuffer
+    public abstract class AcceleratorBuffer(MemoryManagementUnit mmu, long length) : IAcceleratorBuffer
     {
-        protected IMemoryManager MemoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
+        protected MemoryManagementUnit MemoryManager = mmu ?? throw new ArgumentNullException(nameof(mmu));
         /// <summary>
         /// The last time the data was accessed on the <see cref="Accelerator"/>.
         /// </summary>
@@ -89,7 +89,7 @@ namespace SharpGrad.Memory
             {
                 if (disposing)
                 {
-                    memoryManager.Release(this);
+                    mmu.Release(this);
                 }
 
                 // TODO: libérer les ressources non managées (objets non managés) et substituer le finaliseur
@@ -205,10 +205,10 @@ namespace SharpGrad.Memory
                             }
                             break;
                         case BufferLocation.Accelerator:
-                            acceleratorData ??= MemoryManager.MemoryBuffer1D<T>(Length);
+                            acceleratorData ??= ((ILowLevelMemoryManager) MemoryManager).MemoryBuffer1D<T>(Length);
                             if (cpuData is not null)
                             {
-                                acceleratorData = MemoryManager.MemoryBuffer1D(CPUData);
+                                acceleratorData = ((ILowLevelMemoryManager)MemoryManager).MemoryBuffer1D(CPUData);
                                 MemoryManager.Synchronize();
                                 cpuData = null;
                             }
@@ -254,23 +254,23 @@ namespace SharpGrad.Memory
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
-        public AcceleratorBuffer(IMemoryManager memoryManager, long length)
-            : base(memoryManager, length) { }
+        public AcceleratorBuffer(MemoryManagementUnit mmu, long length)
+            : base(mmu, length) { }
 
         /// <summary>
         /// Create a new DeviceBuffer with the specified length.
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
-        public AcceleratorBuffer(IMemoryManager memoryManager, T[] data)
-            : this(memoryManager, data.Length)
+        public AcceleratorBuffer(MemoryManagementUnit mmu, T[] data)
+            : this(mmu, data.Length)
         {
             if (data is null)
                 throw new ArgumentNullException(nameof(data));
             cpuData = data;
         }
-        public AcceleratorBuffer(IMemoryManager memoryManager, MemoryBuffer1D<T, Stride1D.Dense> data)
-            : this(memoryManager, data.Length) {
+        public AcceleratorBuffer(MemoryManagementUnit mmu, MemoryBuffer1D<T, Stride1D.Dense> data)
+            : this(mmu, data.Length) {
             if (data.IsDisposed)
                 throw new ArgumentException($"The data is disposed.");
             acceleratorData = data; 
@@ -334,10 +334,10 @@ namespace SharpGrad.Memory
     public class AcceleratorBufferReal<T> : AcceleratorBuffer<T>
         where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
-        public AcceleratorBufferReal(IMemoryManager memoryManager, long length) : base(memoryManager, length) { }
+        public AcceleratorBufferReal(MemoryManagementUnit mmu, long length) : base(mmu, length) { }
 
-        public AcceleratorBufferReal(IMemoryManager memoryManager, T[] data) : base(memoryManager, data) { }
+        public AcceleratorBufferReal(MemoryManagementUnit mmu, T[] data) : base(mmu, data) { }
 
-        public AcceleratorBufferReal(IMemoryManager memoryManager, MemoryBuffer1D<T, Stride1D.Dense> data) : base(memoryManager, data) { }
+        public AcceleratorBufferReal(MemoryManagementUnit mmu, MemoryBuffer1D<T, Stride1D.Dense> data) : base(mmu, data) { }
     }
 }

@@ -104,10 +104,10 @@ namespace SharpGrad
         /// <exception cref="ArgumentException"></exception>
         public int GetFlattenIndex(params Index[] indices)
         {
-            if (indices.Length != Length)
-                throw new ArgumentException($"Expected {Length} indices, got {indices.Length}");
+            if (indices.Length != dims.Length)
+                throw new ArgumentException($"Expected {dims.Length} indices, got {indices.Length}");
 
-            int[] intsindices = [indices.Length];
+            int[] intsindices = new int[indices.Length];
             for (int i = 0; i < indices.Length; i++)
             {
                 intsindices[i] = indices[i].IsFromEnd ? dims[i] - indices[i].Value : indices[i].Value;
@@ -124,7 +124,7 @@ namespace SharpGrad
 
         public static int GetFlattenIndices(int[] shape, params int[] indices)
         {
-            int flattenedIndex = shape[0];
+            int flattenedIndex = indices[0];
 
             for (int i = 1; i < shape.Length; i++)
             {
