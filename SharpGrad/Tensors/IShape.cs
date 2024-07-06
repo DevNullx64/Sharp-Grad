@@ -6,21 +6,21 @@ namespace SharpGrad
     /// <summary>
     /// Interface for a shape of a tensor.
     /// </summary>
-    public interface IShape : IReadOnlyList<Dim>
+    public interface IShape : IReadOnlyList<int>
     {
         /// <summary>
-        /// Gets the <see cref="Dim"/> at the specified index.
+        /// Gets the <see cref="int"/> at the specified index.
         /// </summary>
-        /// <param name="index">The index of the <see cref="Dim"/> to get.</param>
-        /// <returns>The <see cref="Dim"/> at the specified index.</returns>
-        Dim this[Index index] { get; }
+        /// <param name="index">The index of the <see cref="int"/> to get.</param>
+        /// <returns>The <see cref="int"/> at the specified index.</returns>
+        int this[Index index] { get; }
 
         /// <summary>
-        /// Gets the <see cref="Dim"/>s at the specified range.
+        /// Gets the <see cref="int"/>s at the specified range.
         /// </summary>
-        /// <param name="range">The range of the <see cref="Dim"/>s to get.</param>
-        /// <returns>The <see cref="Dim"/>s at the specified range.</returns>
-        Dim[] this[Range range] { get; }
+        /// <param name="range">The range of the <see cref="int"/>s to get.</param>
+        /// <returns>The <see cref="int"/>s at the specified range.</returns>
+        int[] this[Range range] { get; }
 
         /// <summary>
         /// Get the total number of elements in the shape.

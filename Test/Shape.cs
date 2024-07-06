@@ -16,7 +16,7 @@ namespace Test
         public void TestIndex()
         {
             Shape shape = new(rnd.Next(), rnd.Next(), rnd.Next());
-            Dim[] dims = shape[..^1];
+            int[] dims = shape[..^1];
             Assert.AreEqual(dims.Length, shape.Count - 1);
             Assert.AreEqual(dims[1], shape[1]);
             Assert.AreEqual(dims[0], shape[0]);

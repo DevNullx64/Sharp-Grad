@@ -11,9 +11,9 @@ namespace SharpGrad
     /// Represents the shape of a tensor.
     /// </summary>
     /// <param name="dims">The dimensions of the tensor.</param>
-    public readonly struct Shape(IEnumerable<Dim> dims) : IShape, IEquatable<Shape>
+    public readonly struct Shape(IEnumerable<int> dims) : IShape, IEquatable<Shape>
     {
-        public Shape(params Dim[] dims) : this((IEnumerable<Dim>)dims) { }
+        public Shape(params int[] ints) : this(ints.AsEnumerable()) { }
 
         /// <summary>
         /// An empty shape.
@@ -23,13 +23,13 @@ namespace SharpGrad
         /// <summary>
         /// The dimensions of the tensor.
         /// </summary>
-        private readonly Dim[] dims = dims.ToArray();
+        private readonly int[] dims = dims.ToArray();
 
         /// <summary>
         /// Gets the dimension at the specified index.
         /// </summary>
-        public Dim this[Index index] => dims[index];
-        Dim IReadOnlyList<Dim>.this[int index] => dims[index];
+        public int this[Index index] => dims[index];
+        int IReadOnlyList<int>.this[int index] => dims[index];
 
         /// <summary>
         /// Gets the dimensions in the specified range.
@@ -37,7 +37,7 @@ namespace SharpGrad
         /// <param name="range">The range of dimensions to get.</param>
         /// <returns>The dimensions in the specified range.</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Dim[] this[Range range]
+        public int[] this[Range range]
         {
             get
             {
@@ -52,7 +52,7 @@ namespace SharpGrad
                 if(start > end)
                     throw new ArgumentOutOfRangeException(nameof(range), "Start index is greater than end index.");
 
-                Dim[] result = new Dim[end - start];
+                int[] result = new int[end - start];
                 for (int i = start; i < end; i++)
                     result[i - start] = dims[i];
 
@@ -91,7 +91,7 @@ namespace SharpGrad
         }
 
         /// <inheritdoc/>
-        public IEnumerator<Dim> GetEnumerator() => ((IEnumerable<Dim>)dims).GetEnumerator();
+        public IEnumerator<int> GetEnumerator() => (IEnumerator<int>)dims.GetEnumerator();
         /// <inheritdoc/>
         IEnumerator IEnumerable.GetEnumerator() => dims.GetEnumerator();
 
@@ -117,7 +117,7 @@ namespace SharpGrad
 
             int[] intsShape = new int[dims.Length];
             for (int i = 0; i < dims.Length; i++)
-                intsShape[i] = dims[i].Size;
+                intsShape[i] = dims[i];
 
             return GetFlattenIndices(intsShape, intsindices);
         }
@@ -142,6 +142,18 @@ namespace SharpGrad
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices from the specified flattened index.</returns>
         public static int[] IndicesFrom(int[] shape, int flattenedIndex)
+        {
+            int[] result = new int[shape.Length];
+            for (int i = result.Length - 1; i >= 0; i--)
+            {
+                result[i] = flattenedIndex % shape[i];
+                flattenedIndex /= result[i];
+            }
+
+            return result;
+        }
+
+        public static int[] IndicesFrom(ArrayView1D<int, Stride1D.Dense> shape, int flattenedIndex)
         {
             int[] result = new int[shape.Length];
             for (int i = result.Length - 1; i >= 0; i--)
@@ -188,23 +200,17 @@ namespace SharpGrad
 
         internal Shape Reduce(Index dim)
         {
-            var dims = (Dim[])this.dims.Clone();
+            var dims = (int[])this.dims.Clone();
             dims[dim] = 1;
             return new Shape(dims);
         }
-
-        /// <summary>
-        /// Implicitly converts an array of dimensions to a shape.
-        /// </summary>
-        /// <param name="dims">The dimensions of the tensor.</param>
-        /// <returns>The shape of the tensor.</returns>
-        public static implicit operator Shape(Dim[] dims) => new(dims);
 
         /// <summary>
         /// Implicitly converts an array of integers to a shape.
         /// </summary>
         /// <param name="dims">The dimensions of the tensor.</param>
         /// <returns>The shape of the tensor.</returns>
-        public static implicit operator Shape(int[] dims) => new(dims.Select(x => (Dim)x).ToArray());
+        public static implicit operator Shape(int[] dims) => new(dims);
+        public static explicit operator int[](Shape shape) => shape.dims;
     }
 }

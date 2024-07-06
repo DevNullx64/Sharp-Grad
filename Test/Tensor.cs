@@ -26,7 +26,7 @@ namespace Test
             Debug.WriteLine($"Fill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
         }
 
-        public static TensorData<T> NewRandom(params Dim[] dims)
+        public static TensorData<T> NewRandom(params int[] dims)
         {
             long begin = DateTime.Now.Ticks;
             TensorData<T> result = new(dims);

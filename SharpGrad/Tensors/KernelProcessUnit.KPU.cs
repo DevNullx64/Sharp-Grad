@@ -166,10 +166,6 @@ namespace SharpGrad.Tensors
                 func(new Index1D((int)length), t, result.View, new SpecializedValue<int>(i++));
             }
             Synchronize();
-            //foreach (var t in tensor)
-            //{
-            //    // offload 1D tensor.
-            //}
             return result;
         }
 
@@ -222,29 +218,30 @@ namespace SharpGrad.Tensors
                 return (TensorData<T>)tensor;
         }
 
+        private int ReduceKernelElementsCount = 32;
         private static void ReduceStage1Kernel<T, TOp>(
-            Index1D idx, 
-            ArrayView1D<T, Stride1D.Dense> tensor, 
-            ArrayView1D<T, Stride1D.Dense> results, 
-            ArrayView1D<int, Stride1D.Dense> shape, 
-            int dim, 
+            Index1D idx,
+            ArrayView1D<T, Stride1D.Dense> tensor,
+            ArrayView1D<int, Stride1D.Dense> tensorShape,
+            ArrayView1D<T, Stride1D.Dense> results,
+            ArrayView1D<int, Stride1D.Dense> resultShape,
+            int dim,
             SpecializedValue<int> count)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            int[] intShape = [shape.IntLength];
-            for(int i = 0; i < shape.Length; i++)
-                intShape[i] = shape[i];
-
-            int[] indices_to = Shape.IndicesFrom(intShape, idx);
+            int[] indices_to = Shape.IndicesFrom(resultShape, idx);
             int[] indices_from = [indices_to.Length];
             for (int i = 0; i < indices_to.Length; i++)
                 indices_from[i] = (i == dim) ? indices_to[i] * count : indices_to[i];
 
-            T acc = TOp.Exec(tensor[Shape.GetFlattenIndices(indices_from, intShape)], tensor[Shape.GetFlattenIndices(indices_from, intShape)]);
-            int cMax = indices_from[dim] + count <= intShape[dim] ? indices_from[dim] + count : intShape[dim];
+            int iFrom = Shape.GetFlattenIndices(indices_from);
+            T acc = TOp.Exec(tensor[iFrom], tensor[iFrom + 1]);
+            int cMax = indices_from[dim] + count;
+            if (cMax > tensorShape[dim])
+                cMax = tensorShape[dim];
             for (; indices_from[dim] < cMax; indices_from[dim]++)
-                acc = TOp.Exec(acc, tensor[Shape.GetFlattenIndices(indices_from, intShape)]);
+                acc = TOp.Exec(acc, tensor[Shape.GetFlattenIndices(indices_from)]);
             results[idx] = acc;
         }
 
@@ -252,28 +249,61 @@ namespace SharpGrad.Tensors
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            dim ??= new Index(1, true);
-
-            SpecializedValue<int> dims = (dim.Value.IsFromEnd)
-                ? new SpecializedValue<int>(tensor.Shape.Count - dim.Value.Value)
-                : new SpecializedValue<int>(dim.Value.Value);
-
-            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, int, SpecializedValue<int>>(ReduceStage1Kernel<T, TOp>);
+            dim ??= tensor.Shape.Count - 1;
+            if (tensor.Shape[dim.Value] == 1)
+                return (TensorData<T>)tensor;
 
             var shape = new int[tensor.Shape.Count];
+            int shapeLength = 1;
+            int dim_ = dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value;
+            int dimSize = 0;
+            int[] outShape = new int[tensor.Shape.Count];
+            int outShapeLength = 1;
+            int resultingSize = -1;
             for (int i = 0; i < tensor.Shape.Count; i++)
-                shape[i] = tensor.Shape[i].Size;
+            {
+                shape[i] = tensor.Shape[i];
+                shapeLength *= shape[i];
 
-            var result = Accelerator.Allocate1D<T, Stride1D.Dense>(shape[dims], new Stride1D.Dense());
+                if (i == dim_)
+                {
+                    dimSize = shape[i];
+                    outShape[i] = (shape[i] + (ReduceKernelElementsCount - 1)) / ReduceKernelElementsCount;
+                }
+                else
+                    outShape[i] = shape[i];
+
+                outShapeLength *= outShape[i];
+            }
+
+            var resultGpu = Accelerator.Allocate1D<T, Stride1D.Dense>(outShapeLength, new Stride1D.Dense());
             AcceleratorBuffer<int> shapeGpu = MMU.GetBuffer(shape);
+            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, int, SpecializedValue<int>>(ReduceStage1Kernel<T, TOp>);
 
+            if (tensor.OperandCound != 0)
+                tensor = Exec(tensor);
             if (tensor is TensorData<T> tensorData)
             {
-                fnc(new Index1D((int)result.Length), tensorData.View, result.View, shapeGpu.AcceleratorData.View, dims, new SpecializedValue<int>(32));
-                return new TensorData<T>("Result", new Shape(shape[dims]), ((ILowLevelMemoryManager)this).GetBuffer(result));
+                fnc(new Index1D((int)resultGpu.Length), tensorData.View, MMU.GetBuffer((int[])tensorData.Shape).AcceleratorData.View, resultGpu.View, MMU.GetBuffer(shape).AcceleratorData.View, dim_, new SpecializedValue<int>(ReduceKernelElementsCount));
             }
             else
                 throw new NotImplementedException();
+
+            while (resultingSize > 1)
+            {
+                shape = outShape;
+                shapeLength = outShapeLength;
+                
+                outShape[dim_] = resultingSize = (shape[dim_] + (ReduceKernelElementsCount - 1)) / ReduceKernelElementsCount;
+                outShapeLength = 1;
+                for (int i = 0; i < shape.Length; i++)
+                    outShapeLength *= outShape[i];
+
+                var resultGpu2 = Accelerator.Allocate1D<T, Stride1D.Dense>(shapeLength, new Stride1D.Dense());
+
+            }
+
+            return new TensorData<T>("Result", new Shape(shape[dim_]), ((ILowLevelMemoryManager)this).GetBuffer(resultGpu));
         }
     }
 }
