@@ -14,7 +14,7 @@ namespace SharpGrad.Tensors
 
         public override long Depth => 0;
 
-        public override int OperandCound => 0;
+        public override int OperandCount => 0;
 
         public override T this[params Index[] indices]
         {
@@ -30,7 +30,7 @@ namespace SharpGrad.Tensors
             buffer[flattenedIndex] = value;
         }
 
-        protected TensorData(string name, Shape shape, AcceleratorBuffer<T> buffer)
+        internal TensorData(string name, Shape shape, AcceleratorBuffer<T> buffer)
             : base(name, shape)
         {
             Shape = shape;

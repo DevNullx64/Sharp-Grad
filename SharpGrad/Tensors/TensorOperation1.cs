@@ -15,7 +15,7 @@ namespace SharpGrad.Tensors
 
         public override long Depth { get; }
 
-        public override int OperandCound => 1;
+        public override int OperandCount => 1;
 
         public override T this[params Index[] indices] => TOp.Exec(Operand[indices]);
 

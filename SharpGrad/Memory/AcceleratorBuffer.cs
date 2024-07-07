@@ -179,7 +179,7 @@ namespace SharpGrad.Memory
         /// <summary>
         /// Get or set the location of the data.
         /// </summary>
-        /// <remarks>Set <see cref="BufferLocation.Empty"/> to free the ressources.</remarks>
+        /// <remarks>Set <see cref="BufferLocation.Empty"/> to free the ressources. If and empty buffer is accessed using the <see cref="AcceleratorData"/>, the data will be allocated but not set to zero.</remarks>
         public override BufferLocation Location {
             get {
                 return IsOnRAM
@@ -212,8 +212,6 @@ namespace SharpGrad.Memory
                                 MemoryManager.Synchronize();
                                 cpuData = null;
                             }
-                            else
-                                acceleratorData.MemSetToZero();
                             break;
                         case BufferLocation.Empty:
                             cpuData = null;

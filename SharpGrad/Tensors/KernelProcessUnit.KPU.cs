@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime;
 using ILGPU.Runtime.Cuda;
 using System.Data.SqlTypes;
+using System.Data;
 
 namespace SharpGrad.Tensors
 {
@@ -196,7 +197,7 @@ namespace SharpGrad.Tensors
             return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
         }
 
-        public TensorData<T> Exec<T>(Tensor<T> tensor)
+        public TensorData<T> Compute<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             if (tensor is ITensorOperation<T> tensorOperation)
@@ -219,91 +220,137 @@ namespace SharpGrad.Tensors
         }
 
         private int ReduceKernelElementsCount = 32;
-        private static void ReduceStage1Kernel<T, TOp>(
-            Index1D idx,
-            ArrayView1D<T, Stride1D.Dense> tensor,
-            ArrayView1D<int, Stride1D.Dense> tensorShape,
-            ArrayView1D<T, Stride1D.Dense> results,
-            ArrayView1D<int, Stride1D.Dense> resultShape,
+        private static void ReduceKernel<T, TOp>(
+            Index1D idxDestination,
+            ArrayView1D<T, Stride1D.Dense> source,
+            ArrayView1D<int, Stride1D.Dense> sourceShape,
+            ArrayView1D<T, Stride1D.Dense> destination,
             int dim,
-            SpecializedValue<int> count)
+            int count,
+            SpecializedValue<int> dims)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            int[] indices_to = Shape.IndicesFrom(resultShape, idx);
-            int[] indices_from = [indices_to.Length];
-            for (int i = 0; i < indices_to.Length; i++)
-                indices_from[i] = (i == dim) ? indices_to[i] * count : indices_to[i];
+            // Duplicate the tensor shape. Except for the dimension to reduce, where the size is divided by the count.
+            int[] destinationShape = new int[dims];
+            for (int i = 0; i < dims; i++)
+                destinationShape[i] = (i == dim) ? (sourceShape[i] + count - 1) / count : sourceShape[i];
 
-            int iFrom = Shape.GetFlattenIndices(indices_from);
-            T acc = TOp.Exec(tensor[iFrom], tensor[iFrom + 1]);
-            int cMax = indices_from[dim] + count;
-            if (cMax > tensorShape[dim])
-                cMax = tensorShape[dim];
-            for (; indices_from[dim] < cMax; indices_from[dim]++)
-                acc = TOp.Exec(acc, tensor[Shape.GetFlattenIndices(indices_from)]);
-            results[idx] = acc;
+            // Get the indices of input and output tensors.
+            int[] indicesDestination = Shape.IndicesFrom(destinationShape, idxDestination);
+            int[] indicesSource = new int[dims];
+            for(int i = 0; i < dims; i++)
+                indicesSource[i] = (i == dim) ? indicesDestination[i] * count : indicesDestination[i];
+
+            // Compute the amount of elements that can be reduced.
+            int cMax = indicesSource[dim] + count;
+            if (cMax > sourceShape[dim])
+                cMax = sourceShape[dim];
+
+            // Compute the reduction of the two first elements.
+            int iSource = Shape.GetFlattenIndices(sourceShape, indicesSource);
+            indicesSource[dim]++;
+            int iSource2 = Shape.GetFlattenIndices(sourceShape, indicesSource);
+            indicesSource[dim]++;
+            T acc = TOp.Exec(source[iSource], source[iSource2]);
+
+            // Reduce the elements.
+            for (; indicesSource[dim] < cMax; indicesSource[dim]++)
+            {
+                iSource2 = Shape.GetFlattenIndices(sourceShape, indicesSource);
+                acc = TOp.Exec(acc, source[iSource2]);
+            }
+
+            // Store the result.
+            destination[idxDestination] = acc;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ReduceKernel<T, TOp>(
+            Index1D idxResults,
+            ArrayView1D<T, Stride1D.Dense> from,
+            ArrayView1D<int, Stride1D.Dense> fromShape,
+            ArrayView1D<T, Stride1D.Dense> results,
+            int dim)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+            where TOp : IExecutor2<T, T, T>
+        { ReduceKernel<T, TOp>(idxResults, from, fromShape, results, dim, 32, new SpecializedValue<int>((int)fromShape.Length)); }
 
         public TensorData<T> Reduce<T, TOp>(Tensor<T> tensor, Index? dim = null)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             where TOp : IExecutor2<T, T, T>
         {
-            dim ??= tensor.Shape.Count - 1;
-            if (tensor.Shape[dim.Value] == 1)
+            // If dim is not specified, reduce the last dimension.
+            int dim_ = (dim is null)
+                ? tensor.Shape.Count - 1 // [^1] by default
+                : (dim.Value.IsFromEnd)
+                    ? tensor.Shape.Count - dim.Value.Value
+                    : dim.Value.Value;
+
+            // Compute the tensor if it is not already computed.
+            // Remember that a tensor without operations is already computed.
+            if (tensor.OperandCount != 0)
+                tensor = Compute(tensor);
+
+            // If the dimension to reduce is already 1, return the tensor.
+            if (tensor.Shape[dim_] == 1)
                 return (TensorData<T>)tensor;
 
-            var shape = new int[tensor.Shape.Count];
-            int shapeLength = 1;
-            int dim_ = dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value;
-            int dimSize = 0;
-            int[] outShape = new int[tensor.Shape.Count];
-            int outShapeLength = 1;
-            int resultingSize = -1;
-            for (int i = 0; i < tensor.Shape.Count; i++)
-            {
-                shape[i] = tensor.Shape[i];
-                shapeLength *= shape[i];
+            // Compute the shape of the result tensor.
+            var sourceShape = tensor.Shape;
+            int resultingSize = (tensor.Shape[dim_] + ReduceKernelElementsCount - 1) / ReduceKernelElementsCount;
+            var destinationShape = tensor.Shape.SetDim(dim_, resultingSize);
 
-                if (i == dim_)
-                {
-                    dimSize = shape[i];
-                    outShape[i] = (shape[i] + (ReduceKernelElementsCount - 1)) / ReduceKernelElementsCount;
-                }
-                else
-                    outShape[i] = shape[i];
+            var shapeGpu = MMU.GetBuffer((int[])sourceShape);
+            var destinationGpu = MMU.GetBuffer<T>(destinationShape.Length);
 
-                outShapeLength *= outShape[i];
-            }
+            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, int, int, SpecializedValue<int>>(ReduceKernel<T, TOp>);
 
-            var resultGpu = Accelerator.Allocate1D<T, Stride1D.Dense>(outShapeLength, new Stride1D.Dense());
-            AcceleratorBuffer<int> shapeGpu = MMU.GetBuffer(shape);
-            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, int, SpecializedValue<int>>(ReduceStage1Kernel<T, TOp>);
-
-            if (tensor.OperandCound != 0)
-                tensor = Exec(tensor);
             if (tensor is TensorData<T> tensorData)
             {
-                fnc(new Index1D((int)resultGpu.Length), tensorData.View, MMU.GetBuffer((int[])tensorData.Shape).AcceleratorData.View, resultGpu.View, MMU.GetBuffer(shape).AcceleratorData.View, dim_, new SpecializedValue<int>(ReduceKernelElementsCount));
+                fnc(
+                    new Index1D((int)destinationShape.Length),
+                    tensorData.View,
+                    MMU.GetBuffer((int[])tensorData.Shape).AcceleratorData.View,
+                    destinationGpu.AcceleratorData.View,
+                    dim_,
+                    ReduceKernelElementsCount,
+                    new SpecializedValue<int>(tensorData.Shape.Count));
+
+                // Reduce the tensor until it has only one element in the dimension to reduce.
+                AcceleratorBuffer<T>? sourceGpu = null;
+                while (resultingSize > 1)
+                {
+                    (sourceGpu, destinationGpu) = (destinationGpu, sourceGpu);
+
+                    sourceShape = destinationShape;
+
+                    resultingSize = (resultingSize + ReduceKernelElementsCount - 1) / ReduceKernelElementsCount;
+                    destinationShape = sourceShape.SetDim(dim_, resultingSize);
+
+                    destinationGpu ??= MMU.GetBuffer<T>(destinationShape.Length); // Allocate the destination buffer the first time.
+
+                    fnc(
+                        new Index1D((int)destinationShape.Length),
+                        sourceGpu.AcceleratorData.View,
+                        MMU.GetBuffer((int[])sourceShape).AcceleratorData.View,
+                        destinationGpu.AcceleratorData.View,
+                        dim_,
+                        ReduceKernelElementsCount,
+                        new SpecializedValue<int>(sourceShape.Count));
+                }
+                if (sourceGpu is not null)
+                {
+                    sourceGpu.Dispose();
+                    sourceGpu = destinationGpu;
+                    destinationGpu = MMU.GetBuffer<T>(destinationShape.Length);
+                    destinationGpu.AcceleratorData.CopyFrom(sourceGpu);
+                    sourceGpu.Dispose();
+                }
+                return new TensorData<T>($"{tensor.Name} {{result}}", new Shape(destinationShape), destinationGpu);
             }
             else
-                throw new NotImplementedException();
-
-            while (resultingSize > 1)
-            {
-                shape = outShape;
-                shapeLength = outShapeLength;
-                
-                outShape[dim_] = resultingSize = (shape[dim_] + (ReduceKernelElementsCount - 1)) / ReduceKernelElementsCount;
-                outShapeLength = 1;
-                for (int i = 0; i < shape.Length; i++)
-                    outShapeLength *= outShape[i];
-
-                var resultGpu2 = Accelerator.Allocate1D<T, Stride1D.Dense>(shapeLength, new Stride1D.Dense());
-
-            }
-
-            return new TensorData<T>("Result", new Shape(shape[dim_]), ((ILowLevelMemoryManager)this).GetBuffer(resultGpu));
+                throw new Exception($"This should not happen.");
         }
     }
 }

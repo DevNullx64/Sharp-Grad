@@ -11,6 +11,6 @@ namespace SharpGrad.Tensors
 
     internal interface ITensorReduce<T, TOp> : ITensorReduce<T>
     where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-    where TOp : IAggregator<T, TOp>
+    where TOp : IExecutor2<T, T, T>
     { }
 }

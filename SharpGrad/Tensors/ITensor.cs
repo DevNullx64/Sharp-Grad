@@ -27,7 +27,7 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// The number of operands used by the tensor.
         /// </summary>
-        int OperandCound { get; }
+        int OperandCount { get; }
     }
 
     public class DfsNode<T>(Tensor<T> tensor, int index, int usageCount)

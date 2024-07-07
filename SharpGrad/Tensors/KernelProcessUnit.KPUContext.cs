@@ -50,12 +50,12 @@ namespace SharpGrad.Tensors
             for (int j = starting + 1; j < tensors.Count; j++)
             {
                 var t = tensors[j];
-                if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
+                if (t.OperandCount == 1 && t is ITensorOperation1<T> operation1)
                 {
                     if (operation1.Operand.Equals(tensor))
                         count++;
                 }
-                else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
+                else if (t.OperandCount == 2 && t is ITensorOperation2<T> operation2)
                 {
                     if (operation2.Operand1.Equals(tensor))
                         count++;
@@ -74,12 +74,12 @@ namespace SharpGrad.Tensors
             for (int j = starting + 1; j < tensors.Count; j++)
             {
                 var t = tensors[j];
-                if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
+                if (t.OperandCount == 1 && t is ITensorOperation1<T> operation1)
                 {
                     if (operation1.Operand.Equals(tensor))
                         return true;
                 }
-                else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
+                else if (t.OperandCount == 2 && t is ITensorOperation2<T> operation2)
                 {
                     if (operation2.Operand1.Equals(tensor))
                         return true;
@@ -158,7 +158,7 @@ namespace SharpGrad.Tensors
                     if (registers.Contains(t))
                         continue;
 
-                    if (t.OperandCound == 1 && t is ITensorOperation1<T> operation1)
+                    if (t.OperandCount == 1 && t is ITensorOperation1<T> operation1)
                     {
                         opCode = operation1.OpCode;
 
@@ -182,7 +182,7 @@ namespace SharpGrad.Tensors
                         }
                         iOp2 = OperationKPU.NoOperand;
                     }
-                    else if (t.OperandCound == 2 && t is ITensorOperation2<T> operation2)
+                    else if (t.OperandCount == 2 && t is ITensorOperation2<T> operation2)
                     {
                         opCode = operation2.OpCode;
 

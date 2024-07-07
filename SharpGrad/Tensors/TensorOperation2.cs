@@ -16,7 +16,7 @@ namespace SharpGrad.Tensors
 
         public override long Depth { get; }
 
-        public override int OperandCound => 2;
+        public override int OperandCount => 2;
 
         internal AcceleratorBuffer<T>? buffer = null;
         public override T this[params Index[] indices]{
@@ -25,7 +25,7 @@ namespace SharpGrad.Tensors
                 if (buffer is null)
                 {
                     KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
-                    buffer = kpu.Exec(this).buffer;
+                    buffer = kpu.Compute(this).buffer;
                 }
                 return buffer[Shape.GetFlattenIndex(indices)];
             }

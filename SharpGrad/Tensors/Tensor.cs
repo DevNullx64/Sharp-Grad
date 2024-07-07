@@ -37,10 +37,11 @@ namespace SharpGrad.Tensors
         public long Length => Shape.Length;
         public abstract long Depth { get; }
 
-        public abstract int OperandCound { get; }
+        public abstract int OperandCount { get; }
 
         public abstract T this[params Index[] indices] { get; }
 
+        public Tensor<T> Sum(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce<T, AddOp<T>>(this, dim);
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);
         public static Tensor<T> operator -(Tensor<T> value) => new TensorOperation1<T, NegOp<T>>(value);
         public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, SubOp<T>>(left, right);
