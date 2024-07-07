@@ -2,6 +2,7 @@
 using SharpGrad.Tensors;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -12,15 +13,35 @@ namespace Test
     [TestClass]
     public class TensorReduce
     {
+        public static readonly Shape TestShape = new(512, 512, 512);
         [TestMethod]
         public void TestReduceSum()
         {
-            Tensor<float> tensor = new TensorData<float>("Input", new Shape(3, 3), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
-            Tensor<float> sum = tensor.Sum();
-            Assert.AreEqual(sum.Shape, new Shape(3, 1));
-            Assert.AreEqual(sum[0, 0], 6);
-            Assert.AreEqual(sum[1, 0], 15);
-            Assert.AreEqual(sum[2, 0], 24);
+            Tensor<float> a = Operators<float>.NewRandom(TestShape);
+
+            long start = DateTime.Now.Ticks;
+            TensorData<float> ty = new(TestShape.SetDim(^1, 1));
+            for (int i = 0; i < TestShape[0]; i++)
+                for (int j = 0; j < TestShape[1]; j++)
+                {
+                    ty.Set(0, i, j, 0);
+                    for (int k = 0; k < TestShape[2]; k++)
+                        ty.Set(ty[i, j, 0] + a[i, j, k], i, j, 0);
+                }
+            long end = DateTime.Now.Ticks;
+            Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");
+
+            start = DateTime.Now.Ticks;
+            Tensor<float> sum = a.Sum();
+            end = DateTime.Now.Ticks;
+            Debug.WriteLine($"SharpGrad: {(end - start) / 10000} ms");
+
+            for (int i = 0; i < TestShape[0]; i++)
+                for (int j = 0; j < TestShape[1]; j++)
+                {
+                    float d = Math.Abs(sum[i, j, 0] - ty[i, j, 0]);
+                    Assert.IsTrue(d < 1e-2, $"Error: {d} > 1e-2");
+                }
         }
     }
 }

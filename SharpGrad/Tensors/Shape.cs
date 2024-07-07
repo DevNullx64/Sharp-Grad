@@ -77,10 +77,10 @@ namespace SharpGrad
         /// </summary>
         public bool IsScalar { get => Length == 1; }
 
-        public Shape SetDim(int dim, int size)
+        public Shape SetDim(Index dim, int size)
         {
             int[] newDims = (int[])dims.Clone();
-            newDims[dim] = size;
+            newDims[dim.IsFromEnd ? Count - dim.Value : dim.Value] = size;
             return new Shape(newDims);
         }
         /// <summary>

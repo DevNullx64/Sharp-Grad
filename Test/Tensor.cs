@@ -37,6 +37,8 @@ namespace Test
             Debug.WriteLine($"NewRandom of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
             return result;
         }
+        public static TensorData<T> NewRandom(Shape shape)
+            => NewRandom((int[])shape);
 
         public static (T Mean, T Min, T Max) Test(Tensor<T> tc, Tensor<T> ty)
         {

@@ -1,4 +1,4 @@
-﻿#define CPU_ACCELERATOR
+﻿// #define CPU_ACCELERATOR
 using ILGPU;
 using ILGPU.Runtime;
 using SharpGrad.Memory;
