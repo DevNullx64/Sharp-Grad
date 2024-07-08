@@ -13,6 +13,7 @@ using System.Runtime;
 using ILGPU.Runtime.Cuda;
 using System.Data.SqlTypes;
 using System.Data;
+using System.Net.Http.Headers;
 
 namespace SharpGrad.Tensors
 {
@@ -100,32 +101,65 @@ namespace SharpGrad.Tensors
         /// <param name="ops">Operations to perform</param>
         /// <param name="tensors">Tensors to operate on</param>
         /// <param name="registerCount">Number of registers to use</param>
-        private static void ExecKernel<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors, SpecializedValue<short> registerCount)
+        private static T ExecKernel_<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors, T[] register)
             where T : unmanaged, INumber<T>
         {
-            T[] register = new T[registerCount];
+            T result = T.Zero;
 
             for (int i = 0; i < ops.Length; i++)
             {
                 OperationKPU op = ops[i];
-                var operand1 = op.IndexOperand1 < 0
-                    ? register[-op.IndexOperand1 - 1]
-                    : tensors[op.IndexOperand1, idx];
-                var operand2 = op.IndexOperand2 < 0
-                    ? register[-op.IndexOperand2 - 1]
-                    : tensors[op.IndexOperand2, idx];
-                if (op.IndexResult >= 0)
-                    tensors[op.IndexResult, idx] = Exec(op.OpCode, operand1, operand2);
-                else
-                    register[-op.IndexResult - 1] = Exec(op.OpCode, operand1, operand2);
+
+                result = Exec(op.OpCode,
+                    op.IndexOperand1 < 0
+                        ? register[~op.IndexOperand1]
+                        : tensors[op.IndexOperand1, idx],
+                    op.IndexOperand2 < 0
+                        ? register[~op.IndexOperand2]
+                        : tensors[op.IndexOperand2, idx]);
+
+                if (i < ops.Length - 1)
+                {
+                    if (op.IndexResult >= 0)
+                        tensors[op.IndexResult, idx] = result;
+                    else
+                        register[~op.IndexResult] = result;
+                }
             }
+
+            return result;
         }
 
-        private void Exec<T>(Index1D idx, MemoryBuffer1D<OperationKPU, Stride1D.Dense> ops, MemoryBuffer2D<T, Stride2D.DenseY> tensors, short registerCount)
+        /// <summary>
+        /// Kernel Processing Unit
+        /// </summary>
+        /// <param name="idx">GPU Index</param>
+        /// <param name="ops">Operations to perform</param>
+        /// <param name="tensors">Tensors to operate on</param>
+        /// <param name="registerCount">Number of registers to use</param>
+        private static void ExecKernel<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors, ArrayView1D<T, Stride1D.Dense> result, SpecializedValue<short> registerCount)
             where T : unmanaged, INumber<T>
         {
-            var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
-            func(idx, ops.View, tensors.View, new SpecializedValue<short>(registerCount));
+            T[] register = new T[registerCount];
+            result[idx] = ExecKernel_(idx, ops, tensors, register);
+        }
+
+        private static void ExecKernel<T, TOp>(
+            Index1D idx, 
+            ArrayView<OperationKPU> ops, 
+            ArrayView2D<T, Stride2D.DenseY> tensors, 
+            SpecializedValue<short> registerCount)
+            where T : unmanaged, INumber<T>
+            where TOp : IExecutor2<T, T, T>
+        {
+            T[] register = new T[registerCount];
+
+            T result = ExecKernel_(idx, ops, tensors, register);
+            OperationKPU op = ops[ops.Length - 1];
+            if (op.IndexResult >= 0)
+                tensors[op.IndexResult, idx] = result;
+            else
+                register[~op.IndexResult] = result;
         }
 
         private static void GetRowKernel<T>(Index1D idx, ArrayView2D<T, Stride2D.DenseY> tensors, ArrayView1D<T, Stride1D.Dense> result, int row)
@@ -170,50 +204,19 @@ namespace SharpGrad.Tensors
             return result;
         }
 
-        internal TensorData<T> Exec<T>(IEnumerable<OperationKPU> operations, IEnumerable<TensorData<T>> datas, int registryCount)
-            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-        {
-            var lastOperation = operations.Last();
-            short resultRow = lastOperation.IndexResult;
-            if (lastOperation.IndexResult < 0) checked
-                {
-                    // The result is stored in a register. Need to allocate a new tensor to store the result.
-                    resultRow = (short)datas.Count();
-                    TensorData<T> result = ("Result", new Shape((int)datas.First().Length));
-                    datas = datas.Append(result);
-                    // Add a store operation to store the result in the result tensor.
-                    operations = operations.Append(new OperationKPU(OpCode.Store, resultRow, (short)datas.Count()));
-                }
-            using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(datas.Select(e => e.View));
-
-            AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(operations.ToArray());
-
-            var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
-            func(new Index1D(operations.Count()), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>((short)registryCount));
-            Synchronize();
-
-            var resultMemory = GetRow(tensors, resultRow);
-            AcceleratorBuffer<T> resultBuffer = ((ILowLevelMemoryManager)this).GetBuffer(resultMemory);
-            return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
-        }
-
         public TensorData<T> Compute<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             if (tensor is ITensorOperation<T> tensorOperation)
             {
                 KpuScript<T> script = GetKpuScript(tensor);
-
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
-                var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<short>>(ExecKernel);
-                func(new Index1D((int)tensors.Extent.Y), ops.AcceleratorData.View, tensors.View, new SpecializedValue<short>(script.RegistersCount));
+                AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer<T>(tensors.Extent.Y);
+                var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<short>>(ExecKernel);
+                func(new Index1D((int)resultBuffer.AcceleratorData.Length), ops.AcceleratorData.View, tensors.View, resultBuffer.AcceleratorData.View, new SpecializedValue<short>(script.RegistersCount));
                 Synchronize();
-
-                var resultMemory = GetRow(tensors, 0);
-                Synchronize();
-                AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer(resultMemory);
-                return new TensorData<T>("Result", new Shape((int)resultMemory.Length), resultBuffer);
+                return new TensorData<T>("Result", tensor.Shape, resultBuffer);
             }
             else
                 return (TensorData<T>)tensor;

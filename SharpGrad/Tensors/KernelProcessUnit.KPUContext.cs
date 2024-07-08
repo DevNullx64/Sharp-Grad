@@ -62,8 +62,6 @@ namespace SharpGrad.Tensors
                     else if (operation2.Operand2.Equals(tensor))
                         count++;
                 }
-                else if (t is ITensorReduce<T> operationR)
-                    throw new NotImplementedException();
             }
             return count;
         }
@@ -86,8 +84,6 @@ namespace SharpGrad.Tensors
                     if (operation2.Operand2.Equals(tensor))
                         return true;
                 }
-                else if (t is ITensorReduce<T> operationR)
-                    throw new NotImplementedException();
             }
             return false;
         }
@@ -123,9 +119,8 @@ namespace SharpGrad.Tensors
                 .Select(e => e.Value.Tensor)
                 .ToList();
 
-            TensorData<T> result = new("Result", topo[^1].Shape);
             // Add the result tensor to the list at the beginning (index 0)
-            List<ITensor<T>> datas = [result];
+            List<ITensor<T>> datas = [];
             List<ITensor<T>> operations = [];
             List<ITensor<T>?> registers = [];
             List<OperationKPU> script = [];
@@ -224,14 +219,12 @@ namespace SharpGrad.Tensors
                             iOp2 = (short)(-iOp2 - 1);
                         }
                     }
-                    else //if (t.OperandCound == -1 && t is ITensorReduce<T> operationR)
-                    {
-                        throw new NotImplementedException();
-                    }
+                    else
+                        throw new NotSupportedException($"Operation {t} not supported.");
                 }
 
                 // If the operation is not the last one, the result is stored in a register. Otherwise, it's the final result.
-                short iResult = (short)(i != topo.Count - 1 ? -Store(registers, t) - 1 : 0);
+                short iResult = (short)(i != topo.Count - 1 ? -Store(registers, t) - 1 : OperationKPU.NoOperand);
                 script.Add(new OperationKPU(opCode, iResult, iOp1, iOp2));
             }
 
