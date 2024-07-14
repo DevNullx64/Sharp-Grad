@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace SharpGrad
 {
@@ -110,8 +111,10 @@ namespace SharpGrad
         /// <exception cref="ArgumentException"></exception>
         public int GetFlattenIndex(params Index[] indices)
         {
+            // check if the number of indices is equal to the number of dimensions
             if (indices.Length != dims.Length)
             {
+                // check if the last dimension is 1 and the number of indices is equal to the number of dimensions - 1
                 if (dims[^1] == 1 && indices.Length == dims.Length - 1)
                 {
                     List<Index> newIndices = new(indices) { Index.FromStart(0) };
@@ -121,19 +124,17 @@ namespace SharpGrad
                     throw new ArgumentException($"Expected {dims.Length} indices, got {indices.Length}");
             }
 
-            int[] intsindices = new int[indices.Length];
+            // convert the indices to integers
+            int[] intsIndices = new int[indices.Length];
             for (int i = 0; i < indices.Length; i++)
             {
-                intsindices[i] = indices[i].IsFromEnd ? dims[i] - indices[i].Value : indices[i].Value;
-                if (intsindices[i] < 0 || intsindices[i] >= dims[i])
+                // check if the index is from the end and convert it to an integer
+                intsIndices[i] = indices[i].IsFromEnd ? dims[i] - indices[i].Value : indices[i].Value;
+                if (intsIndices[i] < 0 || intsIndices[i] >= dims[i])
                     throw new ArgumentOutOfRangeException(nameof(indices), i, "Index out of range.");
             }
 
-            int[] intsShape = new int[dims.Length];
-            for (int i = 0; i < dims.Length; i++)
-                intsShape[i] = dims[i];
-
-            return GetFlattenIndices(intsShape, intsindices);
+            return GetFlattenIndices(dims, intsIndices);
         }
 
 
@@ -143,10 +144,12 @@ namespace SharpGrad
         /// <param name="shape">The shape of the tensor.</param>
         /// <param name="indices">The indices to flatten.</param>
         /// <returns>The flattened index.</returns>
+        /// <remarks>This funtion considers the indices as column-major.</remarks>
+        /// </remarks>
         public static int GetFlattenIndices(int[] shape, params int[] indices)
         {
             int r = 0;
-            for (int i = 0; i < shape.Length; i++)
+            for (int i = shape.Length - 1; i >= 0; i--)
             {
                 r *= shape[i];
                 r += indices[i];
@@ -157,7 +160,7 @@ namespace SharpGrad
         public static int GetFlattenIndices(ArrayView1D<int, Stride1D.Dense> shape, params int[] indices)
         {
             int r = 0;
-            for (int i = 0; i < shape.IntLength; i++)
+            for (int i = shape.IntLength - 1; i >= 0; i--)
             {
                 r *= shape[i];
                 r += indices[i];
@@ -171,6 +174,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the tensor.</param>
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices from the specified flattened index.</returns>
+        /// <remarks>This funtion considers the indices as column-major.</remarks>
         public static int[] IndicesFrom(int[] shape, int flattenedIndex)
         {
             int[] results = new int[shape.Length];
@@ -184,6 +188,31 @@ namespace SharpGrad
             return results;
         }
 
+        /// <summary>
+        /// Adds the specified <paramref name="value"/> to the <paramref name="index"/> of the <paramref name="shape"/> at the specified <paramref name="dim"/>.
+        /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="index">Flattened index to add the value to.</param>
+        /// <param name="dim">The dimension to add the value to.</param>
+        /// <param name="value">The value to add.</param>
+        /// <returns>The flattened index after adding the value.</returns>
+        public static int Add(ArrayView1D<int, Stride1D.Dense> shape, int index, int dim, int value)
+        {
+            Debug.Assert(dim < shape.IntLength, $"Dimension {dim} is out of range.");
+            Debug.Assert(shape[dim] > 0, $"Dimension {dim} is zero.");
+
+            int size = shape[0];
+            for (int i = 1; i < dim; i++)
+                size *= shape[i];
+            return index + value * size;
+        }
+
+        /// <summary>
+        /// Gets the indices from the specified flattened index.
+        /// </summary>
+        /// <param name="shape">The shape of the tensor.</param>
+        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
+        /// <returns>The indices from the specified flattened index.</returns>
         public static int[] IndicesFrom(ArrayView1D<int, Stride1D.Dense> shape, int flattenedIndex)
         {
             int[] results = new int[shape.Length];
