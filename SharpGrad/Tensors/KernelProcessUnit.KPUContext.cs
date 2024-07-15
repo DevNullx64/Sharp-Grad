@@ -20,15 +20,15 @@ namespace SharpGrad.Tensors
 
             private readonly TensorData<T>[] datas = [];
             public IReadOnlyList<TensorData<T>> Datas => datas;
-            public readonly short RegistersCount;
+            public readonly byte CacheSize;
 
             public int Count => operations.Length;
 
-            public KpuScript(IList<OperationKPU> operations, IList<ITensor<T>> datas, short registersCount)
+            public KpuScript(IList<OperationKPU> operations, IList<ITensor<T>> datas, byte registersCount)
             {
                 this.operations = [.. operations];
                 this.datas = datas.Cast<TensorData<T>>().ToArray();
-                RegistersCount = registersCount;
+                CacheSize = registersCount;
             }
 
             public IEnumerator<OperationKPU> GetEnumerator() => ((IEnumerable<OperationKPU>)operations).GetEnumerator();
@@ -228,7 +228,7 @@ namespace SharpGrad.Tensors
                 script.Add(new OperationKPU(opCode, iResult, iOp1, iOp2));
             }
 
-            return new(script, datas, (short)registers.Count);
+            return new(script, datas, (byte)registers.Count);
         }
     }
 }
