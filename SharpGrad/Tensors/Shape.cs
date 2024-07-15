@@ -149,7 +149,7 @@ namespace SharpGrad
         public static int GetFlattenIndices(int[] shape, params int[] indices)
         {
             int r = 0;
-            for (int i = shape.Length - 1; i >= 0; i--)
+            for (int i = 0; i < shape.Length; i++)
             {
                 r *= shape[i];
                 r += indices[i];
@@ -160,7 +160,7 @@ namespace SharpGrad
         public static int GetFlattenIndices(ArrayView1D<int, Stride1D.Dense> shape, params int[] indices)
         {
             int r = 0;
-            for (int i = shape.IntLength - 1; i >= 0; i--)
+            for (int i = 0; i < shape.IntLength; i++)
             {
                 r *= shape[i];
                 r += indices[i];
