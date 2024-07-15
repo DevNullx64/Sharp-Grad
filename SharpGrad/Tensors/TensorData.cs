@@ -1,29 +1,24 @@
-﻿using ILGPU;
-using ILGPU.Runtime;
-using SharpGrad.Memory;
+﻿using SharpGrad.Memory;
 using System;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public class TensorData<T> : Tensor<T>
+
+    public class TensorData<T> : TensorBuffered<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        internal readonly AcceleratorBuffer<T> buffer;
-        internal ArrayView1D<T, Stride1D.Dense> View => buffer.AcceleratorData.View;
 
-        public override long Depth => 0;
-
-        public override int OperandCount => 0;
-
-        public override T this[params Index[] indices]
+        public new T this[params Index[] indices]
         {
-            get
+            get => base[indices];
+            set
             {
-                var flattenedIndex = Shape.GetFlattenIndex(indices);
-                return buffer[flattenedIndex];
+                int flattenedIndex = Shape.GetFlattenIndex(indices);
+                buffer[flattenedIndex] = value;
             }
         }
+
         public void Set(T value, params Index[] indices)
         {
             var flattenedIndex = Shape.GetFlattenIndex(indices);
@@ -31,24 +26,29 @@ namespace SharpGrad.Tensors
         }
 
         internal TensorData(string name, Shape shape, AcceleratorBuffer<T> buffer)
-            : base(name, shape)
-        {
-            Shape = shape;
-            this.buffer = buffer;
-        }
+            : base(name, shape, buffer)
+        { }
+
         protected TensorData(Shape shape, AcceleratorBuffer<T> buffer)
-            :this(GetNextName(), shape, buffer) { }
+            : this(GetNextName(), shape, buffer)
+        { }
 
 
         public TensorData(string name, Shape shape)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length)) { }
+            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length))
+        { }
+
         public TensorData(Shape shape)
-            : this(GetNextName(), shape) { }
+            : this(GetNextName(), shape)
+        { }
 
         public TensorData(string name, Shape shape, T[] data)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data)) { }
+            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data))
+        { }
+
         public TensorData(Shape shape, T[] data)
-            : this(GetNextName(), shape, data) { }
+            : this(GetNextName(), shape, data)
+        { }
 
         public override bool Equals(ITensor? other)
             => other is TensorData<T> tensor && buffer == tensor.buffer;
@@ -59,13 +59,19 @@ namespace SharpGrad.Tensors
 
         public override void Backward()
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException($"TensorData<{typeof(T).Name}> does not support backward operation");
         }
 
-        public static implicit operator TensorData<T>((string Name, Shape Shape) tensor) => new(tensor.Name, tensor.Shape);
-        public static implicit operator TensorData<T>((string Name, Shape Shape, T[] Data) tensor) => new(tensor.Name, tensor.Shape, tensor.Data);
+        public static implicit operator TensorData<T>((string Name, Shape Shape) tensor)
+            => new(tensor.Name, tensor.Shape);
+        public static implicit operator TensorData<T>((string Name, Shape Shape, T[] Data) tensor)
+            => new(tensor.Name, tensor.Shape, tensor.Data);
 
-        public static implicit operator TensorData<T>((Shape Shape, string Name) tensor) => new(tensor.Name, tensor.Shape);
-        public static implicit operator TensorData<T>((Shape Shape, string Name, T[] Data) tensor) => new(tensor.Name, tensor.Shape, tensor.Data);
+        public static implicit operator TensorData<T>((Shape Shape, string Name) tensor)
+            => new(tensor.Name, tensor.Shape);
+        public static implicit operator TensorData<T>((Shape Shape, string Name, T[] Data) tensor)
+            => new(tensor.Name, tensor.Shape, tensor.Data);
+
+        public override int GetHashCode() => HashCode.Combine(buffer.CPUData);
     }
 }
