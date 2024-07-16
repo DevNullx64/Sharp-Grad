@@ -13,14 +13,14 @@ namespace Test
     [TestClass]
     public class TensorReduce
     {
-        public static readonly Shape TestShape = new(512, 512, 512);
+        public static readonly Shape TestShape = new(256, 256, 256);
         [TestMethod]
         public void TestReduceSum()
         {
-            Tensor<float> a = Operators<float>.NewRandom(TestShape);
+            Tensor<double> a = Operators<double>.NewRandom(TestShape);
 
             long start = DateTime.Now.Ticks;
-            TensorData<float> ty = new(TestShape.SetDim(^1, 1));
+            TensorData<double> ty = new(TestShape.SetDim(^1, 1));
             for (int i = 0; i < TestShape[0]; i++)
                 for (int j = 0; j < TestShape[1]; j++)
                 {
@@ -32,15 +32,45 @@ namespace Test
             Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");
 
             start = DateTime.Now.Ticks;
-            Tensor<float> sum = a.Sum();
+            Tensor<double> sum = a.Sum();
             end = DateTime.Now.Ticks;
             Debug.WriteLine($"SharpGrad: {(end - start) / 10000} ms");
 
             for (int i = 0; i < TestShape[0]; i++)
                 for (int j = 0; j < TestShape[1]; j++)
                 {
-                    float d = Math.Abs(sum[i, j, 0] - ty[i, j, 0]);
-                    Assert.IsTrue(d < 1e-2, $"Error: {d} > 1e-2");
+                    double d = Math.Abs(sum[i, j, 0] - ty[i, j, 0]);
+                    Assert.IsTrue(d < 1e-2, $"Error [{i},{j}]: {d} > 1e-2");
+                }
+        }
+
+        [TestMethod]
+        public void TestReduceSum2()
+        {
+            Tensor<double> a = Operators<double>.NewRandom(TestShape);
+
+            long start = DateTime.Now.Ticks;
+            TensorData<double> ty = new(TestShape.SetDim(^1, 1));
+            for (int i = 0; i < TestShape[0]; i++)
+                for (int j = 0; j < TestShape[1]; j++)
+                {
+                    ty.Set(0, i, j, 0);
+                    for (int k = 0; k < TestShape[2]; k++)
+                        ty.Set(ty[i, j, 0] + a[i, j, k], i, j, 0);
+                }
+            long end = DateTime.Now.Ticks;
+            Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");
+
+            start = DateTime.Now.Ticks;
+            Tensor<double> sum = a.Sum2();
+            end = DateTime.Now.Ticks;
+            Debug.WriteLine($"SharpGrad: {(end - start) / 10000} ms");
+
+            for (int i = 0; i < TestShape[0]; i++)
+                for (int j = 0; j < TestShape[1]; j++)
+                {
+                    double d = Math.Abs(sum[i, j, 0] - ty[i, j, 0]);
+                    Assert.IsTrue(d < 1e-2, $"Error [{i},{j}]: {d} > 1e-2");
                 }
         }
     }

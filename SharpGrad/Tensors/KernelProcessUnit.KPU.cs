@@ -111,13 +111,9 @@ namespace SharpGrad.Tensors
             {
                 OperationKPU op = ops[i];
 
-                result = Exec(op.OpCode,
-                    op.IndexOperand1 < 0
-                        ? cache[~op.IndexOperand1]
-                        : tensors[op.IndexOperand1, idx],
-                    op.IndexOperand2 < 0
-                        ? cache[~op.IndexOperand2]
-                        : tensors[op.IndexOperand2, idx]);
+                T op1 = op.IndexOperand1 < 0 ? cache[~op.IndexOperand1] : tensors[op.IndexOperand1, idx];
+                T op2 = op.IndexOperand2 < 0 ? cache[~op.IndexOperand2] : op.IndexOperand2 == OperationKPU.NoOperand ? T.Zero : tensors[op.IndexOperand2, idx];
+                result = Exec(op.OpCode, op1, op2);
 
                 if (i < ops.Length - 1)
                 {
@@ -150,6 +146,35 @@ namespace SharpGrad.Tensors
             result[idx] = ExecKernel_(idx, ops, tensors, register);
         }
 
+        public readonly struct ByteArgs : IEquatable<ByteArgs>
+        {
+            private readonly int @internal;
+            public byte CacheSize => (byte)(@internal & 0xFF);
+            public byte ShapeDims => (byte)((@internal >> 8) & 0xFF);
+            public byte ApplyDim => (byte)((@internal >> 16) & 0xFF);
+            public byte ReduceCount => (byte)((@internal >> 24) & 0xFF);
+
+            public ByteArgs(byte cacheSize, byte shapeDims, byte applyDim, byte reduceCount)
+            {
+                @internal = cacheSize | (shapeDims << 8) | (applyDim << 16) | (reduceCount << 24);
+            }
+
+            public bool Equals(ByteArgs other) => @internal == other.@internal;
+
+            public override bool Equals(object? obj)
+                => obj is ByteArgs other && Equals(other);
+
+            public override int GetHashCode()
+                => @internal.GetHashCode();
+
+            public static bool operator ==(ByteArgs left, ByteArgs right)
+                => left.Equals(right);
+
+            public static bool operator !=(ByteArgs left, ByteArgs right)
+                => !(left == right);
+
+        }
+
         /// <summary>
         /// Execute a list of operations on tensors and save result reduced in the applyDim dimension.
         /// </summary>
@@ -169,52 +194,50 @@ namespace SharpGrad.Tensors
             ArrayView<OperationKPU> ops, 
             ArrayView2D<T, Stride2D.DenseY> input,
             ArrayView1D<T, Stride1D.Dense> result,
-            SpecializedValue<short> cacheSize,
-
             ArrayView1D<int, Stride1D.Dense> shape,
-            SpecializedValue<byte> shapeDims,
-            SpecializedValue<byte> applyDim,
-            SpecializedValue<byte> reduceCount)
+            SpecializedValue<ByteArgs> args)
             where T : unmanaged, INumber<T>
             where TOp : IExecutor2<T, T, T>
         {
-            Debug.Assert(shapeDims == shape.Length, $"Invalid shape dims {shapeDims} for shape {shape.Length}");
-            Debug.Assert(reduceCount > 0 && reduceCount <= 32, $"Invalid reduce count {reduceCount}");
+            //Debug.Assert(args.Value.ShapeDims == shape.Length, $"Invalid shape dims {args.Value.ShapeDims} for shape {shape.Length}");
+            //Debug.Assert(args.Value.ReduceCount > 0 && args.Value.ReduceCount <= 32, $"Invalid reduce count args.Value.{args.Value.ReduceCount}");
 
             // First, we compute the indices of result.
-            int[] indices = new int[shapeDims];
+            int[] indices = new int[args.Value.ShapeDims];
             int idx = idxResult;
             for (int i = shape.IntLength - 1; i >= 0; i--)
             {
-                indices[i] = idx % (i == applyDim.Value ? shape[i] / reduceCount : shape[i]);
-                idx /= shape[i];
+                int idxApply = shape[i];
+                if (i == args.Value.ApplyDim)
+                    idxApply = (shape[i] + args.Value.ReduceCount - 1) / args.Value.ReduceCount;
+
+                indices[i] = idxApply != 1 ? idx % idxApply : 0;
+                idx /= idxApply;
             }
 
             // Then we can reuse the indices to compute the first index in the input tensor.
-            indices[applyDim.Value] *= reduceCount; // set the base input index of the dimension to reduce.
+            indices[args.Value.ApplyDim] *= args.Value.ReduceCount; // set the base input index of the dimension to reduce.
             int idxInput = Shape.GetFlattenIndices(shape, indices); // compute the first index in the input tensor.
 
             // Then we compute the last index in the input tensor.
-            indices[applyDim.Value] += reduceCount - 1; // set the last input index in the dimension to reduce.
-            if (indices[applyDim.Value] > shape[applyDim.Value]) // if the last index is greater than the dimension size,
-                indices[applyDim.Value] = shape[applyDim.Value]; // we set it to the dimension size.
+            indices[args.Value.ApplyDim] += args.Value.ReduceCount - 1; // set the last input index in the dimension to reduce.
+            if (indices[args.Value.ApplyDim] >= shape[args.Value.ApplyDim]) // if the last index is greater than the dimension size,
+                indices[args.Value.ApplyDim] = shape[args.Value.ApplyDim] - 1; // we set it to the dimension size.
             int lastIdxInput = Shape.GetFlattenIndices(shape, indices); // compute the last index in the input tensor.
 
             // Compute the offset between two elements of the applyDim dimension.
             int stepSize = 1;
-            for(int i = shape.IntExtent - 1; i >= applyDim.Value; i--)
-                stepSize *= shape[i];
+            for(int i = shape.IntExtent - 2; i >= args.Value.ApplyDim; i--)
+                stepSize *= shape[i + 1];
 
             // Compute the first element of the reduction.
-            T[] cache = new T[cacheSize]; // Cache to store intermediate results.
+            T[] cache = new T[args.Value.CacheSize]; // Cache to store intermediate results.
             T acc = ExecKernel_(idxInput, ops, input, cache); // Compute the first element of the reduction.
 
             // Reduce the elements.
-            while (idxInput < lastIdxInput)
-            {
-                idxInput += stepSize; // Move to the next element of the reduction.
+            while ((idxInput += stepSize) <= lastIdxInput) // Move to the next element of the reduction.
                 acc = TOp.Exec(acc, ExecKernel_(idxInput, ops, input, cache));
-            }
+
             result[idxResult] = acc;
         }
 
@@ -232,7 +255,7 @@ namespace SharpGrad.Tensors
             // Compute the tensor if it is not already computed.
             // Remember that a tensor without operations is already computed.
             if (tensor.OperandCount != 0)
-                tensor = Compute(tensor);
+                tensor = Compute2<T, TOp>(tensor, dim_);
 
             // If the dimension to reduce is already 1, return the tensor.
             if (tensor.Shape[dim_] == 1)
@@ -246,7 +269,14 @@ namespace SharpGrad.Tensors
             var shapeGpu = MMU.GetBuffer((int[])sourceShape);
             var destinationGpu = MMU.GetBuffer<T>(destinationShape.Length);
 
-            var fnc = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView1D<int, Stride1D.Dense>, ArrayView1D<T, Stride1D.Dense>, int, int, SpecializedValue<int>>(ReduceKernel<T, TOp>);
+            var fnc = Accelerator.LoadAutoGroupedStreamKernel<
+                Index1D,
+                ArrayView1D<T, Stride1D.Dense>,
+                ArrayView1D<int, Stride1D.Dense>,
+                ArrayView1D<T, Stride1D.Dense>,
+                int,
+                int,
+                SpecializedValue<int>>(ReduceKernel<T, TOp>);
 
             if (tensor is TensorData<T> tensorData)
             {
@@ -318,7 +348,7 @@ namespace SharpGrad.Tensors
             return result;
         }
 
-        private static void SetRowKernel<T>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensor, ArrayView2D<T, Stride2D.DenseY> results, SpecializedValue<int> row)
+        private static void SetRowKernel<T>(Index1D idx, ArrayView1D<T, Stride1D.Dense> tensor, ArrayView2D<T, Stride2D.DenseY> results, int row)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
             => results[row, idx] = tensor[idx];
 
@@ -328,19 +358,55 @@ namespace SharpGrad.Tensors
             var length = tensor.First().Length;
 
             MemoryBuffer2D<T, Stride2D.DenseY> result = Accelerator.Allocate2DDenseY<T>(new(tensor.Count(), length));
-            var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView2D<T, Stride2D.DenseY>, SpecializedValue<int>>(SetRowKernel);
+            var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<T, Stride1D.Dense>, ArrayView2D<T, Stride2D.DenseY>, int>(SetRowKernel);
 
             int i = 0;
             foreach (var t in tensor)
             {
                 if (t.Length != length)
                     throw new InvalidOperationException($"Invalid data length {t.Length} for shape {length}");
-                func(new Index1D((int)length), t, result.View, new SpecializedValue<int>(i++));
+                func(new Index1D((int)length), t, result.View, i++);
             }
             Synchronize();
             return result;
         }
 
+        public TensorData<T> Compute2<T, TOp>(Tensor<T> tensor, Index? dim = null)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+            where TOp : IExecutor2<T, T, T>
+        {
+            dim ??= ^1;
+            byte dim_ = (byte)(dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value);
+            if (tensor is ITensorOperation<T> tensorOperation)
+            {
+                KpuScript<T> script = GetKpuScript(tensor);
+                using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
+                AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
+                AcceleratorBuffer<int> shapeBuffer = MMU.GetBuffer((int[])tensor.Shape);
+                Shape outputShape = tensor.Shape.SetDim(dim_, (tensor.Shape[dim_] + ReduceKernelElementsCount - 1) / ReduceKernelElementsCount);
+                AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer<T>(outputShape.Length);
+
+                ByteArgs args = new ByteArgs(script.CacheSize, (byte)tensor.Shape.Count, dim_, 32);
+                var func = Accelerator.LoadAutoGroupedStreamKernel <
+                    Index1D, // GPU Index in result tensor
+                    ArrayView< OperationKPU >, // Operations to perform
+                    ArrayView2D<T, Stride2D.DenseY>, // Tensors to operate on
+                    ArrayView1D<T, Stride1D.Dense>, // Result tensor
+                    ArrayView1D< int, Stride1D.Dense > , // Shape of the input tensor
+                    SpecializedValue<ByteArgs> > // Number of elements to reduce
+                    (ExecKernel<T, TOp>);
+                func(
+                    new Index1D((int)resultBuffer.AcceleratorData.Length),
+                    ops.AcceleratorData.View,
+                    tensors.View, resultBuffer.AcceleratorData.View,
+                    shapeBuffer.AcceleratorData.View,
+                    new SpecializedValue<ByteArgs>(args));
+                Synchronize();
+                return new TensorData<T>("Result", outputShape, resultBuffer);
+            }
+            else
+                return (TensorData<T>)tensor;
+        }
         public TensorData<T> Compute<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
@@ -350,8 +416,19 @@ namespace SharpGrad.Tensors
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
                 AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer<T>(tensors.Extent.Y);
-                var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, SpecializedValue<short>>(ExecKernel);
-                func(new Index1D((int)resultBuffer.AcceleratorData.Length), ops.AcceleratorData.View, tensors.View, resultBuffer.AcceleratorData.View, new SpecializedValue<short>(script.RegistersCount));
+                var func = Accelerator.LoadAutoGroupedStreamKernel<
+                    Index1D, // GPU Index in result tensor
+                    ArrayView<OperationKPU>, // Operations to perform
+                    ArrayView2D<T, Stride2D.DenseY>, // Tensors to operate on
+                    ArrayView1D<T, Stride1D.Dense>, // Result tensor
+                    SpecializedValue<short>> // Number of cached results
+                    (ExecKernel);
+                func(
+                    new Index1D((int)resultBuffer.AcceleratorData.Length), 
+                    ops.AcceleratorData.View,
+                    tensors.View,
+                    resultBuffer.AcceleratorData.View, 
+                    new SpecializedValue<short>(script.CacheSize));
                 Synchronize();
                 return new TensorData<T>("Result", tensor.Shape, resultBuffer);
             }

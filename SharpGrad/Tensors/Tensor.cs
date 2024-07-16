@@ -42,6 +42,7 @@ namespace SharpGrad.Tensors
         public abstract T this[params Index[] indices] { get; }
 
         public Tensor<T> Sum(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce<T, AddOp<T>>(this, dim);
+        public Tensor<T> Sum2(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce2<T, AddOp<T>>(this, dim);
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);
         public static Tensor<T> operator -(Tensor<T> value) => new TensorOperation1<T, NegOp<T>>(value);
         public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, SubOp<T>>(left, right);
@@ -67,7 +68,7 @@ namespace SharpGrad.Tensors
 
         public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch()
         {
-            Dictionary<Tensor<T>, DfsNode<T>> topoSort = new();
+            Dictionary<Tensor<T>, DfsNode<T>> topoSort = [];
             DepthFirstSearch(topoSort);
             return topoSort;
         }

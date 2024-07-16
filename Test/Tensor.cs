@@ -1,7 +1,9 @@
 using ILGPU.Algorithms;
+using ILGPU.Algorithms.ScanReduceOperations;
 using ILGPU.Util;
 using SharpGrad;
 using SharpGrad.Tensors;
+using SharpGrad.Tensors.Operators;
 using System.Diagnostics;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -24,6 +26,33 @@ namespace Test
                     for (int k = 0; k < result.Shape[2]; k++)
                         result.Set(fnc(i, j, k), i, j, k);
             Debug.WriteLine($"Fill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
+        }
+
+        public static TensorData<T> Reduce<TOp>(TensorData<T> input, int dim)
+            where TOp : IExecutor2<T, T, T>
+        {
+            Shape resultShape = input.Shape.SetDim(dim, 1);
+            TensorData<T> result = new TensorData<T>(resultShape);
+
+            for (int i = 0; i < input.Shape[0]; i++)
+                for (int j = 0; j < input.Shape[1]; j++)
+                    for (int k = 0; k < input.Shape[2]; k++)
+                        switch (dim)
+                        {
+                            case 0:
+                                result[0, j, k] = TOp.Exec(result[0, j, k], input[i, j, k]);
+                                break;
+                            case 1:
+                                result[i, 0, k] = TOp.Exec(result[i, 0, k], input[i, j, k]);
+                                break;
+                            case 2:
+                                result[i, j, 0] = TOp.Exec(result[i, j, 0], input[i, j, k]);
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(nameof(dim));
+                        }
+
+            return result;
         }
 
         public static TensorData<T> NewRandom(params int[] dims)
