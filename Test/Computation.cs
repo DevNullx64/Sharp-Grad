@@ -66,7 +66,7 @@ namespace Test
             Tensor<T> C = A * B;
 
             long begin = DateTime.Now.Ticks;
-            Tensor<T> cY = C.Sum2(dim);
+            Tensor<T> cY = C.Sum(dim);
             _ = cY[0, 0, 0];
             Debug.WriteLine($"Get result of {nameof(cY)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 

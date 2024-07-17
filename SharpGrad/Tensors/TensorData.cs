@@ -5,9 +5,11 @@ using System.Numerics;
 namespace SharpGrad.Tensors
 {
 
-    public class TensorData<T> : TensorBuffered<T>
+    public class TensorData<T> : TensorConst<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
+
+        public new bool NeedsGradient { get; set; } = true;
 
         public new T this[params Index[] indices]
         {
@@ -49,18 +51,6 @@ namespace SharpGrad.Tensors
         public TensorData(Shape shape, T[] data)
             : this(GetNextName(), shape, data)
         { }
-
-        public override bool Equals(ITensor? other)
-            => other is TensorData<T> tensor && buffer == tensor.buffer;
-
-        public override bool Equals(object? obj) => obj is TensorData<T> tensor && Equals(tensor);
-
-        public override string ToString() => $"{Name}{Shape}";
-
-        public override void Backward()
-        {
-            throw new NotSupportedException($"TensorData<{typeof(T).Name}> does not support backward operation");
-        }
 
         public static implicit operator TensorData<T>((string Name, Shape Shape) tensor)
             => new(tensor.Name, tensor.Shape);

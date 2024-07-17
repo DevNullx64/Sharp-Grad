@@ -62,7 +62,7 @@ namespace Test
             Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");
 
             start = DateTime.Now.Ticks;
-            Tensor<double> sum = a.Sum2();
+            Tensor<double> sum = a.Sum();
             end = DateTime.Now.Ticks;
             Debug.WriteLine($"SharpGrad: {(end - start) / 10000} ms");
 

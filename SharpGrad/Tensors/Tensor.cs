@@ -36,13 +36,13 @@ namespace SharpGrad.Tensors
         }
         public long Length => Shape.Length;
         public abstract long Depth { get; }
+        public abstract bool NeedsGradient { get; }
 
         public abstract int OperandCount { get; }
 
         public abstract T this[params Index[] indices] { get; }
 
-        public Tensor<T> Sum(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce<T, AddOp<T>>(this, dim);
-        public Tensor<T> Sum2(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce2<T, AddOp<T>>(this, dim);
+        public Tensor<T> Sum(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce2<T, AddOp<T>>(this, dim);
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);
         public static Tensor<T> operator -(Tensor<T> value) => new TensorOperation1<T, NegOp<T>>(value);
         public static Tensor<T> operator -(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, SubOp<T>>(left, right);
@@ -50,7 +50,7 @@ namespace SharpGrad.Tensors
         public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, DivOp<T>>(left, right);
 
 
-        public static implicit operator Tensor<T>(T[] data) => new TensorData<T>(GetNextName(), new Shape(data.Length), data);
+        public static implicit operator Tensor<T>(T[] data) => new TensorConst<T>(GetNextName(), new Shape(data.Length), data);
         public static implicit operator Tensor<T>((string Name, T[] Data) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
         public static implicit operator Tensor<T>((T[] Data, string Name) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
 

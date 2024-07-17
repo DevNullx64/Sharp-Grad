@@ -16,6 +16,8 @@ namespace SharpGrad.Tensors
 
         public override long Depth { get; }
 
+        public override bool NeedsGradient => Operand1.NeedsGradient || Operand2.NeedsGradient;
+
         public override int OperandCount => 2;
 
         internal AcceleratorBuffer<T>? buffer = null;
