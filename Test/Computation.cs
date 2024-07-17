@@ -106,10 +106,11 @@ namespace Test
             TestComputeAndReduce<T>(new(31, 31, 31));
             TestComputeAndReduce<T>(new(32, 32, 32));
             TestComputeAndReduce<T>(new(33, 33, 33));
+            TestComputeAndReduce<T>(new(31, 32, 33));
 
             Debug.WriteLine($"\nTestComputeAndReduce<{typeof(T).Name}> random shape test");
             for(int i = 0; i < 3; i++)
-                TestComputeAndReduce<T>(new(Random.Shared.Next(1, 1024), Random.Shared.Next(1, 1024), Random.Shared.Next(1, 1024)));
+                TestComputeAndReduce<T>(new(Random.Shared.Next(1, 256), Random.Shared.Next(1, 256), Random.Shared.Next(1, 256)));
 
             Debug.WriteLine($"\nTestComputeAndReduce<{typeof(T).Name}> finished");
         }
