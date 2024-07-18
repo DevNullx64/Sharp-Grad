@@ -24,9 +24,9 @@ namespace Test
             for (int i = 0; i < TestShape[0]; i++)
                 for (int j = 0; j < TestShape[1]; j++)
                 {
-                    ty.Set(0, i, j, 0);
+                    ty[i, j, 0] = 0;
                     for (int k = 0; k < TestShape[2]; k++)
-                        ty.Set(ty[i, j, 0] + a[i, j, k], i, j, 0);
+                        ty[i, j, 0] += a[i, j, k];
                 }
             long end = DateTime.Now.Ticks;
             Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");
@@ -54,9 +54,9 @@ namespace Test
             for (int i = 0; i < TestShape[0]; i++)
                 for (int j = 0; j < TestShape[1]; j++)
                 {
-                    ty.Set(0, i, j, 0);
+                    ty[i, j, 0] = 0;
                     for (int k = 0; k < TestShape[2]; k++)
-                        ty.Set(ty[i, j, 0] + a[i, j, k], i, j, 0);
+                        ty[i, j, 0] += a[i, j, k];
                 }
             long end = DateTime.Now.Ticks;
             Debug.WriteLine($"C# for loop: {(end - start) / 10000} ms");

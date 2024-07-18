@@ -24,7 +24,7 @@ namespace Test
             for (int i = 0; i < result.Shape[0]; i++)
                 for (int j = 0; j < result.Shape[1]; j++)
                     for (int k = 0; k < result.Shape[2]; k++)
-                        result.Set(fnc(i, j, k), i, j, k);
+                        result[i, j, k] = fnc(i, j, k);
             Debug.WriteLine($"Fill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
         }
 
@@ -62,7 +62,7 @@ namespace Test
             for (int i = 0; i < dims[0]; i++)
                 for (int j = 0; j < dims[1]; j++)
                     for (int k = 0; k < dims[2]; k++)
-                        result.Set(T.CreateTruncating((rnd.NextDouble() + 1) * 2), i, j, k);
+                        result[i, j, k] = T.CreateTruncating((rnd.NextDouble() + 1) * 2);
             Debug.WriteLine($"NewRandom of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
             return result;
         }
