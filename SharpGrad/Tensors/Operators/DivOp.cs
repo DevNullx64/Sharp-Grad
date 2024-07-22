@@ -8,8 +8,13 @@ namespace SharpGrad.Tensors.Operators
         public static OpCode OpCode => OpCode.Div;
         public static string Symbol => "/";
 
-        public static (T, T) Backward(T operand1, T operand2, T grad) => (grad / operand2, -grad * operand1 / (operand2 * operand2));
-        public static T Exec(T operand1, T operand2) => operand1 / operand2;
+        public static BackwardNeedOperand BackwardLeftOperand => BackwardNeedOperand.Right;
+        public static T BackwardLeft(T? left, T? right, T grad) => grad / right.Value;
+
+        public static BackwardNeedOperand BackwardRightOperand => BackwardNeedOperand.Both;
+        public static T BackwardRight(T? left, T? right, T grad) => -grad * left.Value / (right.Value * right.Value);
+
+        public static T Exec(T left, T right) => left / right;
     }
 
 }

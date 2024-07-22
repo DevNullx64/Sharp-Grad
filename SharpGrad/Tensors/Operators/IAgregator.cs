@@ -15,25 +15,25 @@ namespace SharpGrad.Tensors.Operators
         /// <summary>
         /// The resulting <see cref="Shape"/> of the operation.
         /// </summary>
-        /// <param name="operand1">The <see cref="Shape"/> of the first operand. </param>
+        /// <param name="right">The <see cref="Shape"/> of the first operand. </param>
         /// <returns>The resulting <see cref="Shape"/>. </returns>
         /// <remarks>Operand is not broadcasted.</remarks>
-        abstract static Shape ResultingShape(Shape operand1);
+        abstract static Shape ResultingShape(Shape right);
 
         /// <summary>
         /// Execute the operation.
         /// </summary>
-        /// <param name="operand1">The first operand.</param>
+        /// <param name="right">The first operand.</param>
         /// <returns>The result of the operation.</returns>
-        abstract static TResult Exec(TOperand1[] operand1);
+        abstract static TResult Exec(TOperand1[] right);
 
         /// <summary>
         /// Compute the gradient of the operation.
         /// </summary>
-        /// <param name="operand1">The first operand.</param>
+        /// <param name="right">The first operand.</param>
         /// <param name="grad">The internal gradient.</param>
         /// <returns>The gradients to backpropagate.</returns>
-        abstract static TOperand1[] Backward(TOperand1[] operand1, TResult grad);
+        abstract static TOperand1[] Backward(TOperand1[] right, TResult grad);
     }
 
 }

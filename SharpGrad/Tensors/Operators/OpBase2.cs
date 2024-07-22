@@ -9,19 +9,19 @@ namespace SharpGrad.Tensors.Operators
         /// <summary>
         /// Broadcasts the <see cref="Shape"/>s of the operands.
         /// </summary>
-        /// <param name="operand1">The <see cref="Shape"/> of the first operand. </param>
-        /// <param name="operand2">The <see cref="Shape"/> of the second operand. </param>
+        /// <param name="left">The <see cref="Shape"/> of the first operand. </param>
+        /// <param name="right">The <see cref="Shape"/> of the second operand. </param>
         /// <returns>The broadcasted <see cref="Shape"/>. </returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public static Shape ResultingShape(Shape operand1, Shape operand2)
+        public static Shape ResultingShape(Shape left, Shape right)
         {
-            if(operand1.IsScalar)
-                return operand2;
-            if(operand2 is T)
-                return operand1;
-            if(operand1.Length != operand2.Length)
-                throw new InvalidOperationException($"Cannot broadcast shapes {operand1} and {operand2}");
-            return operand1;
+            if(left.IsScalar)
+                return right;
+            if(right is T)
+                return left;
+            if(left.Length != right.Length)
+                throw new InvalidOperationException($"Cannot broadcast shapes {left} and {right}");
+            return left;
         }
     }
 

@@ -7,8 +7,8 @@ namespace SharpGrad.Tensors.Operators
         public static OpCode OpCode => OpCode.Exp;
         public static string Symbol => "exp";
 
-        public static T Backward(T operand1, T grad) => grad * T.Exp(operand1);
-        public static T Exec(T operand1) => T.Exp(operand1);
+        public static T Backward(T right, T grad) => grad * T.Exp(right);
+        public static T Exec(T right) => T.Exp(right);
     }
 
 }

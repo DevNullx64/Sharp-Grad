@@ -4,7 +4,7 @@ namespace SharpGrad.Tensors.Operators
 {
     internal class OpBase1<T> where T : unmanaged, INumber<T>
     {
-        public static Shape ResultingShape(Shape operand1) => operand1;
+        public static Shape ResultingShape(Shape right) => right;
     }
 
 }

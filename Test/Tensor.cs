@@ -1,12 +1,8 @@
-using ILGPU.Algorithms;
-using ILGPU.Algorithms.ScanReduceOperations;
-using ILGPU.Util;
 using SharpGrad;
 using SharpGrad.Tensors;
 using SharpGrad.Tensors.Operators;
 using System.Diagnostics;
 using System.Numerics;
-using System.Security.Cryptography;
 
 namespace Test
 {
