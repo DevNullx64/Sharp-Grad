@@ -87,7 +87,7 @@ namespace SharpGrad.Tensors
             return (short)(registers.Count - 1);
         }
 
-        public KpuScript<T> GetKpuScript<T>(ITensor<T> tensor)
+        public KpuExecScript<T> GetKpuScript<T>(ITensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             var topo = tensor.DepthFirstSearch()
