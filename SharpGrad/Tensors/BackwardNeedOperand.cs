@@ -1,4 +1,4 @@
-﻿namespace SharpGrad.Tensors.Operators
+﻿namespace SharpGrad.Tensors
 {
     /// <summary>
     /// Enum for the need of the backward operation for the operands.
