@@ -148,8 +148,8 @@ namespace SharpGrad
         /// </remarks>
         public static int GetFlattenIndices(int[] shape, params int[] indices)
         {
-            int r = 0;
-            for (int i = 0; i < shape.Length; i++)
+            int r = indices[0];
+            for (int i = 1; i < shape.Length; i++)
             {
                 r *= shape[i];
                 r += indices[i];
@@ -159,8 +159,8 @@ namespace SharpGrad
 
         public static int GetFlattenIndices(ArrayView1D<int, Stride1D.Dense> shape, params int[] indices)
         {
-            int r = 0;
-            for (int i = 0; i < shape.IntLength; i++)
+            int r = indices[0];
+            for (int i = 1; i < shape.IntLength; i++)
             {
                 r *= shape[i];
                 r += indices[i];
@@ -186,25 +186,6 @@ namespace SharpGrad
             }
 
             return results;
-        }
-
-        /// <summary>
-        /// Adds the specified <paramref name="value"/> to the <paramref name="index"/> of the <paramref name="shape"/> at the specified <paramref name="dim"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="index">Flattened index to add the value to.</param>
-        /// <param name="dim">The dimension to add the value to.</param>
-        /// <param name="value">The value to add.</param>
-        /// <returns>The flattened index after adding the value.</returns>
-        public static int Add(ArrayView1D<int, Stride1D.Dense> shape, int index, int dim, int value)
-        {
-            Debug.Assert(dim < shape.IntLength, $"Dimension {dim} is out of range.");
-            Debug.Assert(shape[dim] > 0, $"Dimension {dim} is zero.");
-
-            int size = shape[0];
-            for (int i = 1; i < dim; i++)
-                size *= shape[i];
-            return index + value * size;
         }
 
         /// <summary>
