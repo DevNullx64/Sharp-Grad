@@ -1,11 +1,15 @@
-﻿using SharpGrad.Tensors.Operators;
+﻿using ILGPU.Runtime;
+using ILGPU;
+using SharpGrad.Memory;
+using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Tensors
 {
-    public abstract class Tensor<T>(string name, Shape shape) : ITensor<T>,
+    public abstract class Tensor<T> : ITensor<T>,
         IAdditionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
         ISubtractionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
         IUnaryNegationOperators<Tensor<T>, Tensor<T>>,
@@ -21,9 +25,22 @@ namespace SharpGrad.Tensors
                 return $"T{nextId++}";
         }
 
-        public string Name { get; } = name;
+        internal readonly AcceleratorBuffer<T> buffer;
+        internal ArrayView1D<T, Stride1D.Dense> View => buffer.AcceleratorData.View;
 
-        protected Shape Shape_ = shape;
+        public string Name { get; }
+
+        protected Shape Shape_;
+
+        public Tensor(string name, Shape shape, AcceleratorBuffer<T>? buffer = null)
+        {
+            Name = name;
+            Shape_ = shape;
+            this.buffer = buffer ?? KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length);
+            if(this.buffer.Length != shape.Length)
+                throw new InvalidOperationException($"Buffer length {this.buffer.Length} does not match shape length {shape.Length}");
+        }
+
         public virtual Shape Shape
         {
             get => Shape_;
@@ -34,6 +51,7 @@ namespace SharpGrad.Tensors
                 Shape_ = value;
             }
         }
+
         public long Length => Shape.Length;
         public abstract long Depth { get; }
         public abstract bool NeedsGradient { get; }

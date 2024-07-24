@@ -9,8 +9,6 @@ namespace SharpGrad.Tensors
     public class TensorConst<T> : Tensor<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        internal readonly AcceleratorBuffer<T> buffer;
-        internal ArrayView1D<T, Stride1D.Dense> View => buffer.AcceleratorData.View;
         public override long Depth => 0;
         public override int OperandCount => 0;
 
@@ -26,11 +24,8 @@ namespace SharpGrad.Tensors
         }
 
         protected TensorConst(string name, Shape shape, AcceleratorBuffer<T> buffer)
-            : base(name, shape)
-        {
-            Shape = shape;
-            this.buffer = buffer;
-        }
+            : base(name, shape, buffer)
+        { }
         public TensorConst(string name, Shape shape, T[] data)
             : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data))
         { }
