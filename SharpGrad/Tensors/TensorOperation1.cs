@@ -19,8 +19,6 @@ namespace SharpGrad.Tensors
 
         public override int OperandCount => 1;
 
-        public override T this[params Index[] indices] => TOp.Exec(Operand[indices]);
-
         public TensorOperation1(Tensor<T> operand)
             : base(TOp.ResultingShape(operand.Shape))
         {

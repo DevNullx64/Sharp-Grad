@@ -97,6 +97,41 @@ namespace SharpGrad.Tensors
             };
         }
 
+        private static void ForwardKernel<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors)
+            where T : unmanaged, INumber<T>
+        {
+            for (int i = 0; i < ops.Length; i++)
+            {
+                OperationKPU op = ops[i];
+
+                T op1 = tensors[op.IndexOperand1, idx];
+                T op2 = op.IndexOperand2 == OperationKPU.NoOperand 
+                    ? T.Zero - T.One
+                    : tensors[op.IndexOperand2, idx];
+
+                tensors[op.IndexResult, idx] = Exec(op.OpCode, op1, op2);
+            }
+        }
+
+        public void Forward<T>(Tensor<T> tensor)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            if (tensor is ITensorOperation<T> tensorOperation)
+            {
+                KpuFowardScript<T> script = new(tensor);
+                using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
+                AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
+                var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>>(ForwardKernel);
+                func(new Index1D((int)tensors.Extent.Y), ops.AcceleratorData.View, tensors.View);
+                Synchronize();
+                var results = GetRows(tensors);
+
+                for (int i = 0; i < results.Count; i++)
+                    script.Datas[i].Buffer = DefaultKPU.MMU.GetBuffer(results[i]);
+            }
+        }
+
+
         /// <summary>
         /// Kernel Processing Unit
         /// </summary>
@@ -217,15 +252,14 @@ namespace SharpGrad.Tensors
         private static void GetRowKernel<T>(Index1D idx, ArrayView2D<T, Stride2D.DenseY> tensors, ArrayView1D<T, Stride1D.Dense> result, int row)
             where T : unmanaged
         {
-            Debug.Assert(result.Length == tensors.Extent.Y, $"Invalid {nameof(result)} row length {result.Length} for {nameof(tensors)} shape {tensors.Extent.Y}");
+            //Debug.Assert(result.Length == tensors.Extent.Y, $"Invalid {nameof(result)} row length {result.Length} for {nameof(tensors)} shape {tensors.Extent.Y}");
             result[idx] = tensors[row, idx];
         }
 
         private void GetRow<T>(MemoryBuffer2D<T, Stride2D.DenseY> tensor, int row, MemoryBuffer1D<T, Stride1D.Dense> result)
             where T : unmanaged
         {
-            Action<AcceleratorStream, Index1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, int> GetRowFnc
-                = Accelerator.LoadAutoGroupedKernel<Index1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, int>(GetRowKernel);
+            var GetRowFnc = Accelerator.LoadAutoGroupedKernel<Index1D, ArrayView2D<T, Stride2D.DenseY>, ArrayView1D<T, Stride1D.Dense>, int>(GetRowKernel);
             GetRowFnc(Accelerator.DefaultStream, new Index1D((int)result.Length), tensor.View, result.View, row);
         }
 
@@ -234,6 +268,14 @@ namespace SharpGrad.Tensors
         {
             var result = Accelerator.Allocate1D<T, Stride1D.Dense>(tensor.IntExtent.Y, new Stride1D.Dense());
             GetRow(tensor, row, result);
+            return result;
+        }
+        private List<MemoryBuffer1D<T, Stride1D.Dense>> GetRows<T>(MemoryBuffer2D<T, Stride2D.DenseY> tensor)
+            where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+        {
+            List<MemoryBuffer1D<T, Stride1D.Dense>> result = [];
+            for (int i = 0; i < tensor.IntExtent.X; i++)
+                result.Add(GetRow(tensor, i));
             return result;
         }
 
@@ -261,7 +303,7 @@ namespace SharpGrad.Tensors
         }
         #endregion
 
-        public TensorData<T> Compute<T>(Tensor<T> tensor)
+        public void Compute<T>(Tensor<T> tensor)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             if (tensor is ITensorOperation<T> tensorOperation)
@@ -284,10 +326,8 @@ namespace SharpGrad.Tensors
                     resultBuffer.AcceleratorData.View, 
                     new SpecializedValue<short>(script.CacheSize));
                 Synchronize();
-                return new TensorData<T>("Result", tensor.Shape, resultBuffer);
+                tensor.Buffer = resultBuffer;
             }
-            else
-                return (TensorData<T>)tensor;
         }
 
         /// <summary>

@@ -21,7 +21,7 @@ namespace SharpGrad.Tensors
             set
             {
                 int flattenedIndex = Shape.GetFlattenIndex(indices);
-                buffer[flattenedIndex] = value;
+                Buffer[flattenedIndex] = value;
             }
         }
 
@@ -60,6 +60,6 @@ namespace SharpGrad.Tensors
         public static implicit operator TensorData<T>((Shape Shape, string Name, T[] Data) tensor)
             => new(tensor.Name, tensor.Shape, tensor.Data);
 
-        public override int GetHashCode() => HashCode.Combine(buffer.CPUData);
+        public override int GetHashCode() => HashCode.Combine(Buffer.CPUData);
     }
 }

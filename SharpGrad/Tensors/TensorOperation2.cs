@@ -20,19 +20,6 @@ namespace SharpGrad.Tensors
 
         public override int OperandCount => 2;
 
-        internal AcceleratorBuffer<T>? buffer = null;
-        public override T this[params Index[] indices]{
-            get
-            {
-                if (buffer is null)
-                {
-                    KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
-                    buffer = kpu.Compute(this).buffer;
-                }
-                return buffer[Shape.GetFlattenIndex(indices)];
-            }
-        }
-
         public TensorOperation2(Tensor<T> operand1, Tensor<T> operand2)
             : base(TOp.ResultingShape(operand1.Shape, operand2.Shape))
         {

@@ -14,15 +14,6 @@ namespace SharpGrad.Tensors
 
         public override bool NeedsGradient => false;
 
-        public override T this[params Index[] indices]
-        {
-            get
-            {
-                var flattenedIndex = Shape.GetFlattenIndex(indices);
-                return buffer[flattenedIndex];
-            }
-        }
-
         protected TensorConst(string name, Shape shape, AcceleratorBuffer<T> buffer)
             : base(name, shape, buffer)
         { }
@@ -31,7 +22,7 @@ namespace SharpGrad.Tensors
         { }
 
         public override bool Equals(ITensor? other)
-            => other is TensorConst<T> tensor && buffer == tensor.buffer;
+            => other is TensorConst<T> tensor && Buffer == tensor.Buffer;
 
         public override bool Equals(object? obj) => obj is TensorData<T> tensor && Equals(tensor);
 

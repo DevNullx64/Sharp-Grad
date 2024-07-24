@@ -32,6 +32,8 @@ namespace SharpGrad.Tensors
     /// </summary>
     public enum OpCode : short
     {
+        None = -1,
+
         /// <summary>
         /// If set, the operation is commutative. Otherwise, it is not.
         /// </summary>

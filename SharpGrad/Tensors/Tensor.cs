@@ -25,8 +25,38 @@ namespace SharpGrad.Tensors
                 return $"T{nextId++}";
         }
 
-        internal readonly AcceleratorBuffer<T> buffer;
-        internal ArrayView1D<T, Stride1D.Dense> View => buffer.AcceleratorData.View;
+        private AcceleratorBuffer<T>? buffer;
+        internal AcceleratorBuffer<T> Buffer
+        {
+            get
+            {
+                if (buffer is null)
+                {
+                    buffer ??= KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(Shape.Length);
+                    if(NeedsGradient)
+                        KernelProcessUnit.DefaultKPU.Forward(this);
+                    else
+                        KernelProcessUnit.DefaultKPU.Compute(this);
+                }
+                return buffer;
+            }
+            set
+            {
+                if (value.Length != Shape.Length)
+                    throw new InvalidOperationException($"Buffer length {value.Length} does not match shape length {Shape.Length}");
+                buffer = value;
+            }
+        }
+        internal ArrayView1D<T, Stride1D.Dense> View => Buffer.AcceleratorData.View;
+
+        public T this[params Index[] indices]
+        {
+            get
+            {
+                var flattenedIndex = Shape.GetFlattenIndex(indices);
+                return Buffer[flattenedIndex];
+            }
+        }
 
         public string Name { get; }
 
@@ -36,9 +66,9 @@ namespace SharpGrad.Tensors
         {
             Name = name;
             Shape_ = shape;
-            this.buffer = buffer ?? KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length);
-            if(this.buffer.Length != shape.Length)
-                throw new InvalidOperationException($"Buffer length {this.buffer.Length} does not match shape length {shape.Length}");
+            if (buffer is not null && buffer.Length != shape.Length)
+                    throw new InvalidOperationException($"Buffer length {buffer.Length} does not match shape length {shape.Length}");
+            this.buffer = buffer;
         }
 
         public virtual Shape Shape
@@ -57,8 +87,6 @@ namespace SharpGrad.Tensors
         public abstract bool NeedsGradient { get; }
 
         public abstract int OperandCount { get; }
-
-        public abstract T this[params Index[] indices] { get; }
 
         public Tensor<T> Sum(Index? dim = null) => KernelProcessUnit.DefaultKPU.Reduce<T, AddOp<T>>(this, dim);
         public static Tensor<T> operator +(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, AddOp<T>>(left, right);

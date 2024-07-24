@@ -1,3 +1,6 @@
+#if DEBUG
+#define CPU_ACCELERATOR
+#endif
 using SharpGrad;
 using SharpGrad.Tensors;
 using SharpGrad.Tensors.Operators;
@@ -11,6 +14,10 @@ namespace Test
     public class Operators<T>
         where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
+        static Shape testShape = Debugger.IsAttached
+            ? new(32, 32, 32)
+            : new(256, 256, 256);
+
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
@@ -97,10 +104,10 @@ namespace Test
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
             kpu.PrintInformation(Console.Out);
 
-            Tensor<T> ta = NewRandom(256, 256, 256);
-            Tensor<T> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(testShape);
+            Tensor<T> tb = NewRandom(testShape);
 
-            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(testShape));
             Fill(ty, (d, i, j) => ta[d, i, j] + tb[d, i, j]);
 
             Tensor<T> tc = ta + tb;
@@ -113,15 +120,16 @@ namespace Test
             Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, max={max}");
         }
+
         public static void Subtraction()
         {
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
             kpu.PrintInformation(Console.Out);
 
-            Tensor<T> ta = NewRandom(256, 256, 256);
-            Tensor<T> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(testShape);
+            Tensor<T> tb = NewRandom(testShape);
 
-            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(testShape));
             Fill(ty, (d, i, j) => ta[d, i, j] - tb[d, i, j]);
 
             Tensor<T> tc = ta - tb;
@@ -140,10 +148,10 @@ namespace Test
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
             kpu.PrintInformation(Console.Out);
 
-            Tensor<T> ta = NewRandom(256, 256, 256);
-            Tensor<T> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(testShape);
+            Tensor<T> tb = NewRandom(testShape);
 
-            TensorData<T> ty = (nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = (nameof(ty), new(testShape));
             Fill(ty, (d, i, j) => ta[d, i, j] * tb[d, i, j]);
 
             Tensor<T> tc = ta * tb;
@@ -162,10 +170,10 @@ namespace Test
             KernelProcessUnit kpu = KernelProcessUnit.DefaultKPU;
             kpu.PrintInformation(Console.Out);
 
-            Tensor<T> ta = NewRandom(256, 256, 256);
-            Tensor<T> tb = NewRandom(256, 256, 256);
+            Tensor<T> ta = NewRandom(testShape);
+            Tensor<T> tb = NewRandom(testShape);
 
-            TensorData<T> ty = new TensorData<T>(nameof(ty), new(256, 256, 256));
+            TensorData<T> ty = new TensorData<T>(nameof(ty), new(testShape));
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;
