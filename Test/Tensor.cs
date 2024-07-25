@@ -1,6 +1,3 @@
-#if DEBUG
-#define CPU_ACCELERATOR
-#endif
 using SharpGrad;
 using SharpGrad.Tensors;
 using SharpGrad.Tensors.Operators;

@@ -1,5 +1,4 @@
-﻿//#define CPU_ACCELERATOR
-using ILGPU;
+﻿using ILGPU;
 using ILGPU.Runtime;
 using SharpGrad.Memory;
 using SharpGrad.Tensors.Operators;
@@ -26,13 +25,7 @@ namespace SharpGrad.Tensors
         public KernelProcessUnit()
         {
             context = Context.Create(builder => builder.AllAccelerators());
-            device = context.GetPreferredDevice(
-#if CPU_ACCELERATOR
-            preferCPU: true
-#else
-            preferCPU: false
-#endif
-            );
+            device = context.GetPreferredDevice(preferCPU: Debugger.IsAttached);
             Accelerator = device.CreateAccelerator(context);
             MMU = new MemoryManagementUnit(Accelerator);
         }
