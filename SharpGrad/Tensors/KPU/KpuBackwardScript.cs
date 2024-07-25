@@ -5,22 +5,55 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public class KpuExecScript<T> : KpuScrip<T>
+    public class KpuBackwardScript<T> : KpuScrip<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        internal KpuExecScript(ITensor<T> tensor)
+        public KpuBackwardScript(Tensor<T> tensor)
         {
             var topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)
                 .Select(e => e.Value.Tensor)
                 .ToList();
 
+            // 0: not treated
+            // 1: only deep branch treated
+            // 2: shallow branch also treated / treatment is finished
+            byte[] treated = new byte[topo.Count];
+
             List<ITensor<T>> dataList = [];
             List<ITensor<T>?> registerList = [];
+            Stack<T> Gradients = new();
+            Gradients.Push(T.CreateTruncating(1));
 
-            for (int i = 0; i < topo.Count; i++)
+            // Follow the deep branch
+            Tensor<T> current = topo[topo.Count - 1];
+            while (current.OperandCount > 0)
+            {
+                if (current.OperandCount == 1)
+                {
+                    ITensorOperation1<T> operation1 = (ITensorOperation1<T>)current;
+                    treated[topo.IndexOf(operation1.Operand)] = 2;
+                    current = operation1.Operand;
+                }
+                else
+                {
+                    ITensorOperation2<T> operation2 = (ITensorOperation2<T>)current;
+                    treated[topo.IndexOf(operation2.Operand1)] = 1;
+                    current = operation2.Operand1.Depth >= operation2.Operand2.Depth ? operation2.Operand1 : operation2.Operand2;
+                }
+            }
+
+            // Follow the topological order
+            for (int i = topo.Count -1; i > 0; i--)
             {
                 var t = topo[i];
+
+                if (!t.NeedsGradient)
+                {
+                    treated[i] = 2;
+                    continue;
+                }
+
                 OpCode opCode;
                 short iOp1;
                 short iOp2;

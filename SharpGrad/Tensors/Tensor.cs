@@ -58,6 +58,15 @@ namespace SharpGrad.Tensors
             }
         }
 
+        private KpuExecScript<T>? execScript;
+        public KpuExecScript<T> ExecScript => execScript ??= new(this);
+
+        private KpuForwardScript<T>? forwardScript;
+        public KpuForwardScript<T> ForwardScript => forwardScript ??= new(this);
+
+        private KpuBackwardScript<T>? backwardScript;
+        public KpuBackwardScript<T> BackwardScript => backwardScript ??= new(this);
+
         public string Name { get; }
 
         protected Shape Shape_;

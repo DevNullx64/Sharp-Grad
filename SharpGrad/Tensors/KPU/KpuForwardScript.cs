@@ -6,10 +6,10 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public class KpuFowardScript<T> : KpuScrip<T>
+    public class KpuForwardScript<T> : KpuScrip<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        public KpuFowardScript(Tensor<T> tensor)
+        internal KpuForwardScript(Tensor<T> tensor)
         {
             var topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)

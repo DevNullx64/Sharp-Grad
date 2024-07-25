@@ -45,6 +45,23 @@ namespace SharpGrad.Tensors
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         /// <summary>
+        /// The execution script of the tensor. Or forward only.
+        /// </summary>
+        /// <remarks>DOES NOT compute intermediate results. NOT usable with backpropagation.</remarks>
+        KpuExecScript<T> ExecScript { get; }
+
+        /// <summary>
+        /// The forward script of the tensor.
+        /// </summary>
+        /// <remarks>Computes intermediate results. Usable with backpropagation.</remarks>
+        KpuForwardScript<T> ForwardScript { get; }
+
+        /// <summary>
+        /// The backward script of the tensor.
+        /// </summary>
+        /// <remarks>Computes gradients.</remarks>
+        KpuBackwardScript<T> BackwardScript { get; }
+        /// <summary>
         /// The name of the tensor.
         /// </summary>
         string Name { get; }
