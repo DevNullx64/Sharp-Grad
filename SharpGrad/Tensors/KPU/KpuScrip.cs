@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using SharpGrad.Tensors.KPU;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -16,7 +17,7 @@ namespace SharpGrad.Tensors
         /// <param name="tensors">The list of tensors.</param>
         /// <param name="starting">The index to start counting from.</param>
         /// <returns>Operation that uses tensort twice is counted once.</returns>
-        protected int UsageCount(ITensor<T> tensor, List<Tensor<T>> tensors, int starting)
+        protected int UsageCount(Tensor<T> tensor, List<Tensor<T>> tensors, int starting)
         {
             int count = 0;
             for (int j = starting + 1; j < tensors.Count; j++)
@@ -38,7 +39,7 @@ namespace SharpGrad.Tensors
             return count;
         }
 
-        protected static bool WillBeUsed(ITensor<T> tensor, List<Tensor<T>> tensors, int starting)
+        protected static bool WillBeUsed(Tensor<T> tensor, List<Tensor<T>> tensors, int starting)
         {
             for (int j = starting + 1; j < tensors.Count; j++)
             {
@@ -67,18 +68,9 @@ namespace SharpGrad.Tensors
         /// <param name="tensor">The tensor to store.</param>
         /// <returns>The index of the register where the tensor is stored.</returns>
         /// <remarks>This is the index in regiters, not the KPU index.</remarks>
-        protected short Store(List<ITensor<T>?> registers, ITensor<T> tensor)
+        protected short Store(List<Tensor<T>?> registers, Tensor<T> tensor)
         {
-            for (short i = 0; i < registers.Count; i++)
-            {
-                if (registers[i] == null)
-                {
-                    registers[i] = tensor;
-                    return i;
-                }
-            }
-            registers.Add(tensor);
-            return (short)(registers.Count - 1);
+            return (short)registers.Insert(tensor);
         }
 
 
