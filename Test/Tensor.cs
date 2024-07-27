@@ -32,25 +32,31 @@ namespace Test
             where TOp : IExecutor2<T, T, T>
         {
             Shape resultShape = input.Shape.SetDim(dim, 1);
-            TensorData<T> result = new TensorData<T>(resultShape);
+            TensorData<T> result = new(resultShape);
 
-            for (int i = 0; i < input.Shape[0]; i++)
-                for (int j = 0; j < input.Shape[1]; j++)
-                    for (int k = 0; k < input.Shape[2]; k++)
-                        switch (dim)
-                        {
-                            case 0:
+            switch (dim)
+            {
+                case 0:
+                    for (int i = 0; i < input.Shape[0]; i++)
+                        for (int j = 0; j < input.Shape[1]; j++)
+                            for (int k = 0; k < input.Shape[2]; k++)
                                 result[0, j, k] = TOp.Exec(result[0, j, k], input[i, j, k]);
-                                break;
-                            case 1:
+                    break;
+                case 1:
+                    for (int i = 0; i < input.Shape[0]; i++)
+                        for (int j = 0; j < input.Shape[1]; j++)
+                            for (int k = 0; k < input.Shape[2]; k++)
                                 result[i, 0, k] = TOp.Exec(result[i, 0, k], input[i, j, k]);
-                                break;
-                            case 2:
+                    break;
+                case 2:
+                    for (int i = 0; i < input.Shape[0]; i++)
+                        for (int j = 0; j < input.Shape[1]; j++)
+                            for (int k = 0; k < input.Shape[2]; k++)
                                 result[i, j, 0] = TOp.Exec(result[i, j, 0], input[i, j, k]);
-                                break;
-                            default:
-                                throw new ArgumentOutOfRangeException(nameof(dim));
-                        }
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(dim));
+            }
 
             return result;
         }
