@@ -74,9 +74,8 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// Depth-first search to find the topological sort of the graph.
         /// </summary>
-        /// <param name="topoSort">Topological sort of the graph.</param>
-        /// <param name="visited">Set of visited tensors.</param>
-        Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch();
+        /// <param name="needGradientOnly">Whether to search for tensors that need gradients only. Default is false.</param>
+        Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(bool needGradientOnly = false);
 
     }
 }

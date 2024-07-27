@@ -25,11 +25,11 @@ namespace SharpGrad.Tensors
             Operand = operand;
             Depth = operand.Depth + 1;
         }
-        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
+        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, bool needGradientOnly = false)
         {
             if (topoSort.TryGetValue(this, out DfsNode<T>? count))
                 count.UsageCount++;
-            else
+            else if (!needGradientOnly || NeedsGradient)
             {
                 Operand.DepthFirstSearch(topoSort);
                 topoSort.Add(this, new(this, topoSort.Count, 1));

@@ -111,20 +111,21 @@ namespace SharpGrad.Tensors
 
         public abstract bool Equals(ITensor? other);
 
-        internal virtual void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort)
+        internal virtual void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, bool needsGradientOnly = false)
         {
             if (topoSort.TryGetValue(this, out DfsNode<T>? node))
                 node.UsageCount++;
             else
             {
-                topoSort.Add(this, new(this, topoSort.Count, 1));
+                if (!needsGradientOnly || NeedsGradient)
+                    topoSort.Add(this, new(this, topoSort.Count, 1));
             }
         }
 
-        public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch()
+        public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(bool needsGradientOnly = false)
         {
             Dictionary<Tensor<T>, DfsNode<T>> topoSort = [];
-            DepthFirstSearch(topoSort);
+            DepthFirstSearch(topoSort, needsGradientOnly);
             return topoSort;
         }
         public abstract void Backward();
