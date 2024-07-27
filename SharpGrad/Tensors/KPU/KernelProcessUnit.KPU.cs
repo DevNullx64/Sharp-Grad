@@ -97,6 +97,49 @@ namespace SharpGrad.Tensors
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static T Exec<T>(OpCode operation, T operand1)
+            where T : unmanaged, INumber<T>
+        {
+            return operation switch
+            {
+                //OpCode.Reset => T.Zero,
+                OpCode.Neg => NegOp<T>.Exec(operand1),
+                //OpCode.Log => LogOp<T>.Exec(operand1),
+                //OpCode.Exp => ExpOp<T>.Exec(operand1),
+                _ => T.Zero,
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static T BackwardLeft<T>(OpCode operation, T operand1, T operand2, T grad)
+            where T : unmanaged, INumber<T>
+        {
+            return operation switch
+            {
+                OpCode.Add => AddOp<T>.BackwardLeft(operand1, operand2, grad),
+                OpCode.Sub => SubOp<T>.BackwardLeft(operand1, operand2, grad),
+                OpCode.Mul => MulOp<T>.BackwardLeft(operand1, operand2, grad),
+                OpCode.Div => DivOp<T>.BackwardLeft(operand1, operand2, grad),
+                OpCode.Neg => NegOp<T>.Backward(operand1, grad),
+                _ => T.Zero,
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static T BackwardRight<T>(OpCode operation, T operand1, T operand2, T grad)
+            where T : unmanaged, INumber<T>
+        {
+            return operation switch
+            {
+                OpCode.Add => AddOp<T>.BackwardRight(operand1, operand2, grad),
+                OpCode.Sub => SubOp<T>.BackwardRight(operand1, operand2, grad),
+                OpCode.Mul => MulOp<T>.BackwardRight(operand1, operand2, grad),
+                OpCode.Div => DivOp<T>.BackwardRight(operand1, operand2, grad),
+                _ => T.Zero,
+            };
+        }
+
         private static void ForwardKernel<T>(Index1D idx, ArrayView<OperationKPU> ops, ArrayView2D<T, Stride2D.DenseY> tensors)
             where T : unmanaged, INumber<T>
         {
@@ -105,11 +148,9 @@ namespace SharpGrad.Tensors
                 OperationKPU op = ops[i];
 
                 T op1 = tensors[op.IndexOperand1, idx];
-                T op2 = op.IndexOperand2 == OperationKPU.NoOperand 
-                    ? T.Zero - T.One
-                    : tensors[op.IndexOperand2, idx];
-
-                tensors[op.IndexResult, idx] = Exec(op.OpCode, op1, op2);
+                tensors[op.IndexResult, idx] = op.IndexOperand2 == OperationKPU.NoOperand 
+                    ? Exec(op.OpCode, op1)
+                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2, idx]);
             }
         }
 
@@ -149,8 +190,9 @@ namespace SharpGrad.Tensors
                 OperationKPU op = ops[i];
 
                 T op1 = op.IndexOperand1 < 0 ? cache[~op.IndexOperand1] : tensors[op.IndexOperand1, idx];
-                T op2 = op.IndexOperand2 < 0 ? cache[~op.IndexOperand2] : op.IndexOperand2 == OperationKPU.NoOperand ? T.Zero : tensors[op.IndexOperand2, idx];
-                result = Exec(op.OpCode, op1, op2);
+                result = op.IndexOperand2 == OperationKPU.NoOperand
+                    ? Exec(op.OpCode, op1)
+                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2, idx]);
 
                 if (i < ops.Length - 1)
                 {
