@@ -112,7 +112,7 @@ namespace SharpGrad.Tensors
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (!WillBeUsed(operation1.Operand, topo, i))
+                            if (NextUse(operation1.Operand, topo, i) != -1)
                                 cacheList[iOp1] = null;
                             // Compute the KPU cache index
                             iOp1 = (short)(-iOp1 - 1);
@@ -136,7 +136,7 @@ namespace SharpGrad.Tensors
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (!WillBeUsed(operation2.Operand1, topo, i))
+                            if (NextUse(operation2.Operand1, topo, i) != -1)
                                 cacheList[iOp1] = null;
                             // Compute the KPU cache index
                             iOp1 = (short)(-iOp1 - 1);
@@ -155,7 +155,7 @@ namespace SharpGrad.Tensors
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (!WillBeUsed(operation2.Operand2, topo, i))
+                            if (NextUse(operation2.Operand2, topo, i) != -1)
                                 cacheList[iOp2] = null;
                             // Compute the KPU cache index
                             iOp2 = (short)(-iOp2 - 1);
