@@ -39,7 +39,7 @@ namespace SharpGrad.Tensors
         {
             if (tensor is ITensorOperation<T> tensorOperation)
             {
-                KpuForwardScript<T> script = tensor.ForwardScript;
+                AllResultScript<T> script = tensor.ForwardScript;
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
                 var func = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView<OperationKPU>, ArrayView2D<T, Stride2D.DenseY>>(ForwardKernel);

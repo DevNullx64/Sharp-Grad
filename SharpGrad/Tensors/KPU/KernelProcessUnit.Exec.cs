@@ -174,7 +174,7 @@ namespace SharpGrad.Tensors
         {
             if (tensor is ITensorOperation<T> tensorOperation)
             {
-                KpuExecScript<T> script = tensor.ExecScript;
+                OnlyResultScript<T> script = tensor.ExecScript;
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
                 AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer<T>(tensors.Extent.Y);
@@ -212,7 +212,7 @@ namespace SharpGrad.Tensors
             byte dim_ = (byte)(dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value);
             if (tensor is ITensorOperation<T> tensorOperation)
             {
-                KpuExecScript<T> script = tensor.ExecScript;
+                OnlyResultScript<T> script = tensor.ExecScript;
                 using MemoryBuffer2D<T, Stride2D.DenseY> tensors = To2D(script.Datas.Select(e => e.View));
                 AcceleratorBuffer<OperationKPU> ops = MMU.GetBuffer(script.ToArray());
                 AcceleratorBuffer<int> shapeBuffer = MMU.GetBuffer((int[])tensor.Shape);

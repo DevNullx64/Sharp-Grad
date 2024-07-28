@@ -1,7 +1,5 @@
-﻿using SharpGrad.Tensors.KPU;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
@@ -59,20 +57,6 @@ namespace SharpGrad.Tensors
             }
             return false;
         }
-
-        /// <summary>
-        /// Store a tensor in the first available register. Otherwise, add it to the list of registers.
-        /// </summary>
-        /// <typeparam name="T">The type of the tensor.</typeparam>
-        /// <param name="registers">The list of registers.</param>
-        /// <param name="tensor">The tensor to store.</param>
-        /// <returns>The index of the register where the tensor is stored.</returns>
-        /// <remarks>This is the index in regiters, not the KPU index.</remarks>
-        protected short Store(List<Tensor<T>?> registers, Tensor<T> tensor)
-        {
-            return (short)registers.Insert(tensor);
-        }
-
 
         protected readonly List<OperationKPU> operations = [];
         public OperationKPU this[int index] => operations[index];

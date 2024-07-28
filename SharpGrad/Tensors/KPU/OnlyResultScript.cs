@@ -1,15 +1,14 @@
-﻿using SharpGrad.Tensors.KPU;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
 {
-    public class KpuExecScript<T> : KpuScrip<T>
+    public class OnlyResultScript<T> : KpuScrip<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        internal KpuExecScript(ITensor<T> tensor)
+        internal OnlyResultScript(ITensor<T> tensor)
         {
             var topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)
