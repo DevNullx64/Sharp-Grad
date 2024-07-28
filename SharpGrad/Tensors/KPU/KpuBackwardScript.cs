@@ -1,5 +1,4 @@
-﻿using ILGPU.Runtime.Cuda;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -67,7 +66,7 @@ namespace SharpGrad.Tensors
             }
 
             // Follow the topological order
-            for (int i = topo.Count -1; i > 0; i--)
+            for (int i = topo.Count - 1; i > 0; i--)
             {
                 var t = topo[i];
 
@@ -112,10 +111,10 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (!WillBeUsed(operation1.Operand, topo, i))
                                 cacheList[iOp1] = null;
-                            // Compute the KPU register index
+                            // Compute the KPU cache index
                             iOp1 = (short)(-iOp1 - 1);
                         }
                         iOp2 = OperationKPU.NoOperand;
@@ -136,10 +135,10 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (!WillBeUsed(operation2.Operand1, topo, i))
                                 cacheList[iOp1] = null;
-                            // Compute the KPU register index
+                            // Compute the KPU cache index
                             iOp1 = (short)(-iOp1 - 1);
                         }
 
@@ -155,10 +154,10 @@ namespace SharpGrad.Tensors
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (!WillBeUsed(operation2.Operand2, topo, i))
                                 cacheList[iOp2] = null;
-                            // Compute the KPU register index
+                            // Compute the KPU cache index
                             iOp2 = (short)(-iOp2 - 1);
                         }
                     }
@@ -166,8 +165,8 @@ namespace SharpGrad.Tensors
                         throw new NotSupportedException($"Operation {t} not supported.");
                 }
 
-                // If the operation is not the last one, the result is stored in a register. Otherwise, it's the final result.
-                short iResult = (short)(i != topo.Count - 1 ? -Store(cacheList, t) - 1 : OperationKPU.NoOperand);
+                // If the operation is not the last one, the result is stored in cache. Otherwise, it's the final result.
+                short iResult = (short)(i == topo.Count - 1 ? OperationKPU.NoOperand : ~cacheList.Insert(t));
                 operations.Add(new OperationKPU(opCode, iResult, iOp1, iOp2));
             }
 
