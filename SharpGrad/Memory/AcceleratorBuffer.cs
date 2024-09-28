@@ -263,8 +263,7 @@ namespace SharpGrad.Memory
         public AcceleratorBuffer(MemoryManagementUnit mmu, T[] data)
             : this(mmu, data.Length)
         {
-            if (data is null)
-                throw new ArgumentNullException(nameof(data));
+            ArgumentNullException.ThrowIfNull(data);
             cpuData = data;
         }
         public AcceleratorBuffer(MemoryManagementUnit mmu, MemoryBuffer1D<T, Stride1D.Dense> data)

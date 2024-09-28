@@ -8,7 +8,7 @@ namespace SharpGrad.Tensors.Operators
     /// <typeparam name="TOperand1">Type of the first operand.</typeparam>
     /// <typeparam name="TResult">Type of the result.</typeparam>
     /// <remarks>Aggregator operations are unary operations that reduce the dimensionality of the input.</remarks>
-    public interface IAgregator<TOperand1, TResult> : IExecutor
+    public interface IAgregator<TOperand1, TResult> : IExec
         where TOperand1 : unmanaged, INumber<TOperand1>
         where TResult : unmanaged, INumber<TResult>
     {

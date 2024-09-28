@@ -2,7 +2,7 @@
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class LogOp<T> : OpBase1<T>, IExecutor1<T, T> where T : unmanaged, INumber<T>, ILogarithmicFunctions<T>
+    internal class LogOp<T> : BaseFunction<T>, IExecFunction<T, T> where T : unmanaged, INumber<T>, ILogarithmicFunctions<T>
     {
         public static OpCode OpCode => OpCode.Log;
         public static string Symbol => "log";

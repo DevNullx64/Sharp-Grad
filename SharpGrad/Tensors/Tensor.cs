@@ -17,7 +17,7 @@ namespace SharpGrad.Tensors
         IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        private static object lockObj = new();
+        private static readonly object lockObj = new();
         private static int nextId = 0;
         protected static string GetNextName()
         {
@@ -59,13 +59,16 @@ namespace SharpGrad.Tensors
         }
 
         private OnlyResultScript<T>? execScript;
-        public OnlyResultScript<T> ExecScript => execScript ??= new(this);
+        internal OnlyResultScript<T> ExecScript => execScript ??= new(this);
+        public void GetResults() => KernelProcessUnit.DefaultKPU.Compute(this);
 
         private AllResultScript<T>? forwardScript;
-        public AllResultScript<T> ForwardScript => forwardScript ??= new(this);
+        internal AllResultScript<T> ForwardScript => forwardScript ??= new(this);
+        public void Forward() => KernelProcessUnit.DefaultKPU.Forward(this);
 
         private KpuBackwardScript<T>? backwardScript;
-        public KpuBackwardScript<T> BackwardScript => backwardScript ??= new(this);
+        internal KpuBackwardScript<T> BackwardScript => backwardScript ??= new(this);
+        //public void Backward() => KernelProcessUnit.DefaultKPU.Backward(this);
 
         public string Name { get; }
 
@@ -111,18 +114,9 @@ namespace SharpGrad.Tensors
 
         public abstract bool Equals(ITensor? other);
 
-        internal virtual void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, bool needsGradientOnly = false)
-        {
-            if (topoSort.TryGetValue(this, out DfsNode<T>? node))
-                node.UsageCount++;
-            else
-            {
-                if (!needsGradientOnly || NeedsGradient)
-                    topoSort.Add(this, new(this, topoSort.Count, 1));
-            }
-        }
+        internal abstract void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, DepthFirstSearchOption needsGradientOnly = DepthFirstSearchOption.None);
 
-        public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(bool needsGradientOnly = false)
+        public Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(DepthFirstSearchOption needsGradientOnly = DepthFirstSearchOption.None)
         {
             Dictionary<Tensor<T>, DfsNode<T>> topoSort = [];
             DepthFirstSearch(topoSort, needsGradientOnly);

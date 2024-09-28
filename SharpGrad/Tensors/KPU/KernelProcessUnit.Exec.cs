@@ -1,20 +1,13 @@
-﻿using ILGPU.Runtime;
-using ILGPU;
+﻿using ILGPU;
+using ILGPU.Runtime;
 using SharpGrad.Memory;
+using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using SharpGrad.Tensors.Operators;
 using System.Runtime.CompilerServices;
-using System.Runtime;
-using ILGPU.Runtime.Cuda;
-using System.Data.SqlTypes;
-using System.Data;
-using System.Net.Http.Headers;
-using System.Diagnostics;
 
 namespace SharpGrad.Tensors
 {
@@ -206,7 +199,7 @@ namespace SharpGrad.Tensors
         /// <returns></returns>
         public TensorData<T> Compute<T, TOp>(Tensor<T> tensor, Index? dim = null)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-            where TOp : IExecutor2<T, T, T>
+            where TOp : IExecOperation<T, T, T>
         {
             dim ??= ^1;
             byte dim_ = (byte)(dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value);
@@ -219,7 +212,7 @@ namespace SharpGrad.Tensors
                 Shape outputShape = tensor.Shape.SetDim(dim_, (tensor.Shape[dim_] + ReduceKernelElementsCount - 1) / ReduceKernelElementsCount);
                 AcceleratorBuffer<T> resultBuffer = MMU.GetBuffer<T>(outputShape.Length);
 
-                ByteArgs args = new ByteArgs(script.CacheSize, (byte)tensor.Shape.Count, dim_, 32);
+                ByteArgs args = new(script.CacheSize, (byte)tensor.Shape.Count, dim_, 32);
                 var func = Accelerator.LoadAutoGroupedStreamKernel <
                     Index1D, // GPU Index in result tensor
                     ArrayView< OperationKPU >, // Operations to perform

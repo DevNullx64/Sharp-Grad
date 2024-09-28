@@ -2,7 +2,7 @@
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class NegOp<T> : OpBase1<T>, IExecutor1<T, T>
+    internal class NegOp<T> : BaseFunction<T>, IExecFunction<T, T>
         where T : unmanaged, INumber<T>
     {
         public static OpCode OpCode => OpCode.Neg;

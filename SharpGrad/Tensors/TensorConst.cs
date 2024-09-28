@@ -2,6 +2,7 @@
 using ILGPU.Runtime;
 using SharpGrad.Memory;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace SharpGrad.Tensors
@@ -27,6 +28,17 @@ namespace SharpGrad.Tensors
         public override bool Equals(object? obj) => obj is TensorData<T> tensor && Equals(tensor);
 
         public override string ToString() => $"{Name}{Shape}";
+
+        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, DepthFirstSearchOption needsGradientOnly = DepthFirstSearchOption.None)
+        {
+            if (topoSort.TryGetValue(this, out DfsNode<T>? node))
+                node.UsageCount++;
+            else
+            {
+                if (needsGradientOnly.HasFlag(DepthFirstSearchOption.AllGradient) || NeedsGradient)
+                    topoSort.Add(this, new(this, topoSort.Count, 1));
+            }
+        }
 
         public override void Backward()
         {

@@ -40,7 +40,7 @@ namespace SharpGrad.Tensors
             ArrayView1D<int, Stride1D.Dense> shape,
             SpecializedValue<ByteArgs> args)
             where T : unmanaged, INumber<T>
-            where TOp : IExecutor2<T, T, T>
+            where TOp : IExecOperation<T, T, T>
         {
             //Debug.Assert(args.Value.ShapeDims == shape.Length, $"Invalid shape dims {args.Value.ShapeDims} for shape {shape.Length}");
             //Debug.Assert(args.Value.ReduceCount > 0 && args.Value.ReduceCount <= 32, $"Invalid reduce count args.Value.{args.Value.ReduceCount}");
@@ -94,7 +94,7 @@ namespace SharpGrad.Tensors
             int count,
             SpecializedValue<int> dims)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-            where TOp : IExecutor2<T, T, T>
+            where TOp : IExecOperation<T, T, T>
         {
             // Duplicate the tensor shape. Except for the dimension to reduce, where the size is divided by the count.
             int[] destinationShape = new int[dims];
@@ -133,7 +133,7 @@ namespace SharpGrad.Tensors
 
         public TensorData<T> Reduce<T, TOp>(Tensor<T> tensor, Index? dim = null)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-            where TOp : IExecutor2<T, T, T>
+            where TOp : IExecOperation<T, T, T>
         {
             // If dim is not specified, reduce the last dimension.
             int dim_ = (dim is null)

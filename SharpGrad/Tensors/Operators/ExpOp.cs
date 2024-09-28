@@ -2,7 +2,7 @@
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class ExpOp<T> : OpBase1<T>, IExecutor1<T, T> where T : unmanaged, INumber<T>, IExponentialFunctions<T>
+    internal class ExpOp<T> : BaseFunction<T>, IExecFunction<T, T> where T : unmanaged, INumber<T>, IExponentialFunctions<T>
     {
         public static OpCode OpCode => OpCode.Exp;
         public static string Symbol => "exp";

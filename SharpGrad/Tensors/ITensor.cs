@@ -38,29 +38,35 @@ namespace SharpGrad.Tensors
         public int UsageCount { get; set; } = usageCount;
     }
 
+    public enum DepthFirstSearchOption : int
+    {
+        /// <summary>
+        /// Default. Explore all tensors in lef-right order.
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        /// Explore tensors that need gradients only.
+        /// </summary>
+        AllGradient = 1,
+
+        /// <summary>
+        /// Explore low depth-first.
+        /// </summary>
+        LowDepthFirst = 2,
+
+        /// <summary>
+        /// Explore high depth-first.
+        /// </summary>
+        HighDepthFirst = 4,
+    }
+
     /// <summary>
     /// Interface for a tensor with generic type.
     /// </summary>
     public interface ITensor<T> : ITensor
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
-        /// <summary>
-        /// The execution script of the tensor. Or forward only.
-        /// </summary>
-        /// <remarks>DOES NOT compute intermediate results. NOT usable with backpropagation.</remarks>
-        OnlyResultScript<T> ExecScript { get; }
-
-        /// <summary>
-        /// The forward script of the tensor.
-        /// </summary>
-        /// <remarks>Computes intermediate results. Usable with backpropagation.</remarks>
-        AllResultScript<T> ForwardScript { get; }
-
-        /// <summary>
-        /// The backward script of the tensor.
-        /// </summary>
-        /// <remarks>Computes gradients.</remarks>
-        KpuBackwardScript<T> BackwardScript { get; }
         /// <summary>
         /// The name of the tensor.
         /// </summary>
@@ -75,7 +81,7 @@ namespace SharpGrad.Tensors
         /// Depth-first search to find the topological sort of the graph.
         /// </summary>
         /// <param name="needGradientOnly">Whether to search for tensors that need gradients only. Default is false.</param>
-        Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(bool needGradientOnly = false);
+        Dictionary<Tensor<T>, DfsNode<T>> DepthFirstSearch(DepthFirstSearchOption option = DepthFirstSearchOption.None);
 
     }
 }

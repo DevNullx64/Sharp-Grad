@@ -21,30 +21,44 @@ namespace SharpGrad.Tensors
     public partial class KernelProcessUnit
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static T BackwardLeft<T>(OpCode operation, T operand1, T operand2, T grad)
+        private static (T, T) Backward<T>(OpCode operation, T operand1, T operand2, T grad)
             where T : unmanaged, INumber<T>
         {
             return operation switch
             {
-                OpCode.Add => AddOp<T>.BackwardLeft(operand1, operand2, grad),
-                OpCode.Sub => SubOp<T>.BackwardLeft(operand1, operand2, grad),
-                OpCode.Mul => MulOp<T>.BackwardLeft(operand1, operand2, grad),
-                OpCode.Div => DivOp<T>.BackwardLeft(operand1, operand2, grad),
-                OpCode.Neg => NegOp<T>.Backward(operand1, grad),
-                _ => T.Zero,
+                OpCode.Add => AddOp<T>.Backward(operand1, operand2, grad),
+                OpCode.Sub => SubOp<T>.Backward(operand1, operand2, grad),
+                OpCode.Mul => MulOp<T>.Backward(operand1, operand2, grad),
+                OpCode.Div => DivOp<T>.Backward(operand1, operand2, grad),
+                OpCode.Neg => (NegOp<T>.Backward(operand1, grad), T.Zero),
+                _ => (T.Zero, T.Zero),
             };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static T BackwardRight<T>(OpCode operation, T operand1, T operand2, T grad)
+        private static T Backward1<T>(OpCode operation, T operand1, T operand2, T grad)
             where T : unmanaged, INumber<T>
         {
             return operation switch
             {
-                OpCode.Add => AddOp<T>.BackwardRight(operand1, operand2, grad),
-                OpCode.Sub => SubOp<T>.BackwardRight(operand1, operand2, grad),
-                OpCode.Mul => MulOp<T>.BackwardRight(operand1, operand2, grad),
-                OpCode.Div => DivOp<T>.BackwardRight(operand1, operand2, grad),
+                OpCode.Add => AddOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Sub => SubOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Mul => MulOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Div => DivOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Neg => NegOp<T>.Backward(operand1, grad),
+                _ => T.Zero,
+            };
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static T Backward2<T>(OpCode operation, T operand1, T operand2, T grad)
+            where T : unmanaged, INumber<T>
+        {
+            return operation switch
+            {
+                OpCode.Add => AddOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Sub => SubOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Mul => MulOp<T>.Backward(operand1, operand2, grad).Item1,
+                OpCode.Div => DivOp<T>.Backward(operand1, operand2, grad).Item1,
                 _ => T.Zero,
             };
         }

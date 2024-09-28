@@ -12,6 +12,6 @@ namespace SharpGrad.Tensors
 
     internal interface ITensorOperation2<T, TOp> : ITensorOperation2<T>
     where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-    where TOp : IExecutor2<T, T, T>
+    where TOp : IExecOperation<T, T, T>
     { }
 }

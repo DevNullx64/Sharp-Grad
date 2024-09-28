@@ -1,6 +1,6 @@
 ﻿namespace SharpGrad.Tensors.Operators
 {
-    public interface IExecutor
+    public interface IExec
     {
         abstract static string Symbol { get; }
         /// <summary>

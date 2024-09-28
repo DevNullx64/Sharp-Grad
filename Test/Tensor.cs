@@ -29,7 +29,7 @@ namespace Test
         }
 
         public static TensorData<T> Reduce<TOp>(TensorData<T> input, int dim)
-            where TOp : IExecutor2<T, T, T>
+            where TOp : IExecOperation<T, T, T>
         {
             Shape resultShape = input.Shape.SetDim(dim, 1);
             TensorData<T> result = new(resultShape);

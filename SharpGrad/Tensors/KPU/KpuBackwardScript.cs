@@ -25,7 +25,7 @@ namespace SharpGrad.Tensors
         public KpuBackwardScript(Tensor<T> tensor)
         {
             // Topological sort of the graph that needs gradient computation
-            List<Tensor<T>> topo = tensor.DepthFirstSearch(true)
+            List<Tensor<T>> topo = tensor.DepthFirstSearch()
                 .OrderBy(e => e.Value.Index)
                 .Select(e => e.Value.Tensor)
                 .ToList();

@@ -1,6 +1,4 @@
-﻿using SharpGrad.Memory;
-using SharpGrad.Tensors.Operators;
-using System;
+﻿using SharpGrad.Tensors.Operators;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -9,7 +7,7 @@ namespace SharpGrad.Tensors
     internal class TensorOperation1<T, TOp>
         : TensorOperation<T, TOp>, ITensorOperation1<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-        where TOp : IExecutor1<T, T>
+        where TOp : IExecFunction<T, T>
     {
         public Tensor<T> Operand { get; }
 
@@ -25,13 +23,13 @@ namespace SharpGrad.Tensors
             Operand = operand;
             Depth = operand.Depth + 1;
         }
-        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, bool needGradientOnly = false)
+        internal override void DepthFirstSearch(Dictionary<Tensor<T>, DfsNode<T>> topoSort, DepthFirstSearchOption needGradientOnly = DepthFirstSearchOption.None)
         {
             if (topoSort.TryGetValue(this, out DfsNode<T>? count))
                 count.UsageCount++;
-            else if (!needGradientOnly || NeedsGradient)
+            else if (needGradientOnly.HasFlag(DepthFirstSearchOption.AllGradient) || NeedsGradient)
             {
-                Operand.DepthFirstSearch(topoSort);
+                Operand.DepthFirstSearch(topoSort, needGradientOnly);
                 topoSort.Add(this, new(this, topoSort.Count, 1));
             }
         }

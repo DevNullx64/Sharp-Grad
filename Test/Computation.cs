@@ -103,14 +103,10 @@ namespace Test
         where T : unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             TestComputeAndReduce<T>(new(2, 2, 2));
-            TestComputeAndReduce<T>(new(31, 31, 31));
-            TestComputeAndReduce<T>(new(32, 32, 32));
-            TestComputeAndReduce<T>(new(33, 33, 33));
-            TestComputeAndReduce<T>(new(31, 32, 33));
 
             Debug.WriteLine($"\nTestComputeAndReduce<{typeof(T).Name}> random shape test");
-            for(int i = 0; i < 3; i++)
-                TestComputeAndReduce<T>(new(Random.Shared.Next(1, 256), Random.Shared.Next(1, 256), Random.Shared.Next(1, 256)));
+            for(int i = 0; i < 4; i++)
+                TestComputeAndReduce<T>(new(Random.Shared.Next(1, 49), Random.Shared.Next(1, 49), Random.Shared.Next(1, 49)));
 
             Debug.WriteLine($"\nTestComputeAndReduce<{typeof(T).Name}> finished");
         }

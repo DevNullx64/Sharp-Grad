@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace SharpGrad.Tensors.Operators
 {
-    public class OpBase2<T>
+    public class BaseOperation<T>
         where T : unmanaged, INumber<T>
     {
         /// <summary>
