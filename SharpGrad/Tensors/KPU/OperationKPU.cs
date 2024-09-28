@@ -1,4 +1,4 @@
-﻿namespace SharpGrad.Tensors
+﻿namespace SharpGrad.Tensors.KPU
 {
     /// <summary>
     /// An operation to perform using the KPU

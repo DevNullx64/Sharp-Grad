@@ -1,4 +1,6 @@
-﻿namespace SharpGrad.Tensors.Operators
+﻿using SharpGrad.Tensors.KPU;
+
+namespace SharpGrad.Tensors.Operators
 {
     public interface IExec
     {

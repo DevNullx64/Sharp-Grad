@@ -3,6 +3,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {

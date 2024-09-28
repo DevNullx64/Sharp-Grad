@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace SharpGrad.Tensors
+namespace SharpGrad.Tensors.KPU
 {
     public enum OpCode : short
     {

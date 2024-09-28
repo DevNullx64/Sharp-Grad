@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SharpGrad.Tensors
+namespace SharpGrad.Tensors.KPU
 {
     /// <summary>
     /// Shared code for reductions functions.

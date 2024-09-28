@@ -1,4 +1,5 @@
-﻿using SharpGrad.Tensors.Operators;
+﻿using SharpGrad.Tensors.KPU;
+using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;
 using System.Numerics;

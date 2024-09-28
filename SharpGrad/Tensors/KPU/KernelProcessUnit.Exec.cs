@@ -1,6 +1,7 @@
 ﻿using ILGPU;
 using ILGPU.Runtime;
 using SharpGrad.Memory;
+using SharpGrad.Tensors.KPU;
 using SharpGrad.Tensors.Operators;
 using System;
 using System.Collections.Generic;

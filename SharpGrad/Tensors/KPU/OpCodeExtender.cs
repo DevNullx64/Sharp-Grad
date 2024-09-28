@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace SharpGrad.Tensors
+namespace SharpGrad.Tensors.KPU
 {
     public static class OpCodeExtender
     {
@@ -10,7 +10,7 @@ namespace SharpGrad.Tensors
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFunction(this OpCode opCode)
-            => !IsOperator(opCode);
+            => !opCode.IsOperator();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static OpCode GetCodeOnly(this OpCode opCode)
@@ -18,10 +18,10 @@ namespace SharpGrad.Tensors
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Is(this OpCode opCode, SharedOpCode sharedOpCode)
-            => IsOperator(opCode) && (short)opCode.GetCodeOnly() == (short)sharedOpCode;
+            => opCode.IsOperator() && (short)opCode.GetCodeOnly() == (short)sharedOpCode;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Is(this OpCode opCode, SharedFuncCode sharedFuncCode)
-            => IsFunction(opCode) && (short)opCode.GetCodeOnly() == (short)sharedFuncCode;
+            => opCode.IsFunction() && (short)opCode.GetCodeOnly() == (short)sharedFuncCode;
     }
 }
