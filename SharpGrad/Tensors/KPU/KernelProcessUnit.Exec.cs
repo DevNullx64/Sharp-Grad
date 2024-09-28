@@ -19,7 +19,7 @@ namespace SharpGrad.Tensors
         /// </summary>
         /// <param name="operation">Operation to perform</param>
         /// <param name="operand1">Left operand</param>
-        /// <param name="result">Result of the operation</param>
+        /// <param name="result">Output of the operation</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static T Exec<T>(OpCode operation, T operand1, T operand2)
             where T : unmanaged, INumber<T>
@@ -70,17 +70,22 @@ namespace SharpGrad.Tensors
             {
                 OperationKPU op = ops[i];
 
-                T op1 = op.IndexOperand1 < 0 ? cache[~op.IndexOperand1] : tensors[op.IndexOperand1, idx];
-                result = op.IndexOperand2 == OperationKPU.NoOperand
+                short v1 = op.IndexOperand1.Value;
+                T op1 = op.IndexOperand1.Source == KPUIndexSource.Cache
+                    ? cache[v1]
+                    : tensors[v1, idx];
+
+                result = op.IndexOperand2.IsEmpty
                     ? Exec(op.OpCode, op1)
-                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2, idx]);
+                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2.Value, idx]);
 
                 if (i < ops.Length - 1)
                 {
-                    if (op.IndexResult >= 0)
-                        tensors[op.IndexResult, idx] = result;
+                    short v2 = op.IndexResult.Value;
+                    if (op.IndexResult.Source == KPUIndexSource.Cache)
+                        cache[v2] = result;
                     else
-                        cache[~op.IndexResult] = result;
+                        tensors[v2, idx] = result;
                 }
             }
 
@@ -175,7 +180,7 @@ namespace SharpGrad.Tensors
                     Index1D, // GPU Index in result tensor
                     ArrayView<OperationKPU>, // Operations to perform
                     ArrayView2D<T, Stride2D.DenseY>, // Tensors to operate on
-                    ArrayView1D<T, Stride1D.Dense>, // Result tensor
+                    ArrayView1D<T, Stride1D.Dense>, // Output tensor
                     SpecializedValue<short>> // Number of cached results
                     (ExecKernel);
                 func(
@@ -217,7 +222,7 @@ namespace SharpGrad.Tensors
                     Index1D, // GPU Index in result tensor
                     ArrayView< OperationKPU >, // Operations to perform
                     ArrayView2D<T, Stride2D.DenseY>, // Tensors to operate on
-                    ArrayView1D<T, Stride1D.Dense>, // Result tensor
+                    ArrayView1D<T, Stride1D.Dense>, // Output tensor
                     ArrayView1D< int, Stride1D.Dense > , // Shape of the input tensor
                     SpecializedValue<ByteArgs> > // Number of elements to reduce
                     (ReduceKernel<T, TOp>);
@@ -228,7 +233,7 @@ namespace SharpGrad.Tensors
                     shapeBuffer.AcceleratorData.View,
                     new SpecializedValue<ByteArgs>(args));
                 Synchronize();
-                return new TensorData<T>("Result", outputShape, resultBuffer);
+                return new TensorData<T>("Output", outputShape, resultBuffer);
             }
             else
                 return (TensorData<T>)tensor;

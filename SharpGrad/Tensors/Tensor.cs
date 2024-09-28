@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors
 {

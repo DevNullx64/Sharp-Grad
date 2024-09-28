@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
-namespace SharpGrad.Tensors
+namespace SharpGrad.Tensors.KPU
 {
     public class AllResultScript<T> : KpuScrip<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
@@ -29,14 +28,14 @@ namespace SharpGrad.Tensors
                 {
                     // Add the data tensor to the list of tensors
                     iResult = datas.Count;
-                    datas.Add(t);
+                    datas.Add(t); 
 
                     switch (t.OperandCount)
                     {
                         // Data tensor
                         case 0:
                             continue;
-                        
+
                         // One operand operation
                         case 1:
                             ITensorOperation1<T> operation1 = (ITensorOperation1<T>)t;
@@ -46,7 +45,7 @@ namespace SharpGrad.Tensors
                             iOp1 = datas.IndexOf(operation1.Operand);
                             Debug.Assert(iOp1 >= 0, $"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
 
-                            iOp2 = OperationKPU.NoOperand;
+                            iOp2 = -1;
                             break;
 
                         // Two operands operation
@@ -60,7 +59,7 @@ namespace SharpGrad.Tensors
 
                             // Operation result should contains the second operand
                             iOp2 = datas.IndexOf(operation2.Operand2);
-                            Debug.Assert(iOp1 >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                            Debug.Assert(iOp2 >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand2} not found.");
 
                             break;
 
@@ -83,7 +82,7 @@ namespace SharpGrad.Tensors
                             iOp1 = datas.IndexOf(operation1.Operand);
                             Debug.Assert(iOp1 >= 0, $"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
 
-                            iOp2 = OperationKPU.NoOperand;
+                            iOp2 = -1;
                             break;
 
                         case 2:
@@ -103,7 +102,10 @@ namespace SharpGrad.Tensors
                 }
                 checked
                 {
-                    operations.Add(new OperationKPU(opCode, (short)iResult, (short)iOp1, (short)iOp2));
+                    operations.Add(new OperationKPU(opCode,
+                        new KPUIndex(iResult, KPUIndexSource.Cache),
+                        new KPUIndex(iOp1, KPUIndexSource.Cache),
+                        new KPUIndex(iOp2, KPUIndexSource.Cache)));
                 }
             }
             CacheSize = 0;

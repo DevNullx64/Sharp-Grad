@@ -15,6 +15,7 @@ using System.Data.SqlTypes;
 using System.Data;
 using System.Net.Http.Headers;
 using System.Diagnostics;
+using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors
 {
@@ -27,10 +28,10 @@ namespace SharpGrad.Tensors
             {
                 OperationKPU op = ops[i];
 
-                T op1 = tensors[op.IndexOperand1, idx];
-                tensors[op.IndexResult, idx] = op.IndexOperand2 == OperationKPU.NoOperand 
+                T op1 = tensors[op.IndexOperand1.Value, idx];
+                tensors[op.IndexResult.Value, idx] = op.IndexOperand2.IsEmpty 
                     ? Exec(op.OpCode, op1)
-                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2, idx]);
+                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2.Value, idx]);
             }
         }
 

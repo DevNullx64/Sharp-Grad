@@ -28,7 +28,7 @@ namespace SharpGrad.Tensors
         /// <param name="idxResult">GPU Index in result tensor</param>
         /// <param name="ops">Operations to perform</param>
         /// <param name="input">Tensors to operate on</param>
-        /// <param name="result">Result tensor</param>
+        /// <param name="result">Output tensor</param>
         /// <param name="shape">Shape of the input tensor</param>
         /// <param name="args">Additional arguments. See <see cref="ByteArgs"/></param>
         /// <remarks>The reduction is performed in the applyDim dimension.</remarks>
@@ -101,7 +101,7 @@ namespace SharpGrad.Tensors
             for (int i = 0; i < dims; i++)
                 destinationShape[i] = (i == dim) ? (sourceShape[i] + count - 1) / count : sourceShape[i];
 
-            // Get the indices of input and output tensors.
+            // Get the indices of input and Output tensors.
             int[] indicesDestination = Shape.IndicesFrom(destinationShape, idxDestination);
             int[] indicesSource = new int[dims];
             for(int i = 0; i < dims; i++)

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpGrad.Tensors.KPU;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -21,8 +22,8 @@ namespace SharpGrad.Tensors
             {
                 var t = topo[i];
                 OpCode opCode;
-                short iOp1;
-                short iOp2;
+                int iOp1;
+                int iOp2 = int.MinValue;
 
                 if (t.Depth == 0)
                 {
@@ -37,8 +38,7 @@ namespace SharpGrad.Tensors
                         continue;
 
                     opCode = OpCode.Store;
-                    iOp1 = (short)datas.IndexOf(t);
-                    iOp2 = OperationKPU.NoOperand;
+                    iOp1 = datas.IndexOf(t);
                 }
                 else
                 {
@@ -50,75 +50,84 @@ namespace SharpGrad.Tensors
                         opCode = operation1.OpCode;
 
                         // Operation result or stored data should contains the operand
-                        iOp1 = (short)cacheList.IndexOf(operation1.Operand);
-                        if (iOp1 == -1)
+                        iOp1 = cacheList.IndexOf(operation1.Operand);
+                        if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)datas.IndexOf(operation1.Operand);
+                            iOp1 = datas.IndexOf(operation1.Operand);
                             // If not, something is wrong !
-                            if (iOp1 == -1)
+                            if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (NextUse(operation1.Operand, topo, i) != -1)
                                 cacheList[iOp1] = null;
-                            // Compute the KPU register index
-                            iOp1 = (short)(-iOp1 - 1);
+                            // Compute the KPU cache index
+                            iOp1 = ~iOp1;
                         }
-                        iOp2 = OperationKPU.NoOperand;
                     }
                     else if (t.OperandCount == 2 && t is ITensorOperation2<T> operation2)
                     {
                         opCode = operation2.OpCode;
 
                         // Operation result or stored data should contains the first operand
-                        iOp1 = (short)cacheList.IndexOf(operation2.Operand1);
-                        if (iOp1 == -1)
+                        iOp1 = cacheList.IndexOf(operation2.Operand1);
+                        if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)datas.IndexOf(operation2.Operand1);
+                            iOp1 = datas.IndexOf(operation2.Operand1);
                             // If not, something is wrong !
-                            if (iOp1 == -1)
+                            if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (NextUse(operation2.Operand1, topo, i) != -1)
                                 cacheList[iOp1] = null;
-                            // Compute the KPU register index
-                            iOp1 = (short)(-iOp1 - 1);
+                            // Compute the KPU cache index
+                            iOp1 = ~iOp1;
                         }
 
                         // Operation result or stored data should contains the second operand
-                        iOp2 = (short)cacheList.IndexOf(operation2.Operand2);
-                        if (iOp2 == -1)
+                        iOp2 = cacheList.IndexOf(operation2.Operand2);
+                        if (iOp2 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp2 = (short)datas.IndexOf(operation2.Operand2);
+                            iOp2 = datas.IndexOf(operation2.Operand2);
                             // If not, something is wrong !
-                            if (iOp2 == -1)
+                            if (iOp2 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
                         }
                         else
                         {
-                            // If the operand is not used anymore, free the register
+                            // If the operand is not used anymore, free the cache
                             if (NextUse(operation2.Operand2, topo, i) != -1)
                                 cacheList[iOp2] = null;
-                            // Compute the KPU register index
-                            iOp2 = (short)(-iOp2 - 1);
+                            // Compute the KPU cache index
+                            iOp2 = ~iOp2;
                         }
                     }
                     else
                         throw new NotSupportedException($"Operation {t} not supported.");
                 }
 
-                // If the operation is not the last one, the result is stored in a register. Otherwise, it's the final result.
-                short iResult;
-                checked { iResult = (short)(i != topo.Count - 1 ? ~cacheList.Insert(t) : OperationKPU.NoOperand); }
-                operations.Add(new OperationKPU(opCode, iResult, iOp1, iOp2));
+                operations.Add(new OperationKPU(opCode,
+                    // If the operation is not the last one, the result is stored in cache. Otherwise, it's the final result.
+                    i < topo.Count
+                        ? new KPUIndex(cacheList.Insert(t), KPUIndexSource.Cache)
+                        : KPUIndex.Empty,
+                    iOp1 < 0
+                        ? new KPUIndex(~iOp1, KPUIndexSource.Cache)
+                        : new KPUIndex(iOp1, KPUIndexSource.Operation),
+                    iOp2 == int.MinValue
+                        ? KPUIndex.Empty
+                        : iOp2 < 0
+                            ? new KPUIndex(~iOp2, KPUIndexSource.Cache)
+                            : new KPUIndex(iOp2, KPUIndexSource.Operation)
+                    ));
             }
 
             CacheSize = (byte)cacheList.Count;

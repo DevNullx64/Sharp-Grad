@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace SharpGrad.Tensors
+namespace SharpGrad.Tensors.KPU
 {
     public abstract class KpuScrip<T> : IReadOnlyList<OperationKPU>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
@@ -49,7 +49,7 @@ namespace SharpGrad.Tensors
         {
             int count = 0;
             int next;
-            while((next = NextUse(tensor, tensors, starting)) != -1)
+            while ((next = NextUse(tensor, tensors, starting)) != -1)
             {
                 count++;
                 starting = next;
