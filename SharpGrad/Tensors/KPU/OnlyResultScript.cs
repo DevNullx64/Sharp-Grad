@@ -22,14 +22,14 @@ namespace SharpGrad.Tensors
             {
                 var t = topo[i];
                 OpCode opCode;
-                int iOp1;
-                int iOp2 = int.MinValue;
+                OperandIndex indexOp1;
+                OperandIndex indexOp2 = OperandIndex.Empty;
 
                 if (t.Depth == 0)
                 {
                     // Add the data tensor to the list of data tensors only if it is not already present
-                    if (!datas.Contains(t))
-                        datas.Add(t);
+                    if (!operands.Contains(t))
+                        operands.Add(t);
 
 
                     int uCount = UsageCount(t, topo, i);
@@ -38,7 +38,7 @@ namespace SharpGrad.Tensors
                         continue;
 
                     opCode = OpCode.Store;
-                    iOp1 = datas.IndexOf(t);
+                    indexOp1 = new(operands.IndexOf(t), OperandIndexSource.Operand);
                 }
                 else
                 {
@@ -50,22 +50,24 @@ namespace SharpGrad.Tensors
                         opCode = operation1.OpCode;
 
                         // Operation result or stored data should contains the operand
-                        iOp1 = cacheList.IndexOf(operation1.Operand);
+                        int iOp1 = cacheList.IndexOf(operation1.Operand);
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = datas.IndexOf(operation1.Operand);
+                            iOp1 = operands.IndexOf(operation1.Operand);
                             // If not, something is wrong !
                             if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
+
+                            indexOp1 = new(iOp1, OperandIndexSource.Operand);
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
                             if (NextUse(operation1.Operand, topo, i) != -1)
                                 cacheList[iOp1] = null;
-                            // Compute the KPU cache index
-                            iOp1 = ~iOp1;
+
+                            indexOp1 = new(iOp1, OperandIndexSource.Cache);
                         }
                     }
                     else if (t.OperandCount == 2 && t is ITensorOperation2<T> operation2)
@@ -73,41 +75,45 @@ namespace SharpGrad.Tensors
                         opCode = operation2.OpCode;
 
                         // Operation result or stored data should contains the first operand
-                        iOp1 = cacheList.IndexOf(operation2.Operand1);
+                        int iOp1 = cacheList.IndexOf(operation2.Operand1);
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = datas.IndexOf(operation2.Operand1);
+                            iOp1 = operands.IndexOf(operation2.Operand1);
                             // If not, something is wrong !
                             if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+
+                            indexOp1 = new(iOp1, OperandIndexSource.Operand);
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
                             if (NextUse(operation2.Operand1, topo, i) != -1)
                                 cacheList[iOp1] = null;
-                            // Compute the KPU cache index
-                            iOp1 = ~iOp1;
+
+                            indexOp1 = new(iOp1, OperandIndexSource.Cache);
                         }
 
                         // Operation result or stored data should contains the second operand
-                        iOp2 = cacheList.IndexOf(operation2.Operand2);
+                        int iOp2 = cacheList.IndexOf(operation2.Operand2);
                         if (iOp2 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp2 = datas.IndexOf(operation2.Operand2);
+                            iOp2 = operands.IndexOf(operation2.Operand2);
                             // If not, something is wrong !
                             if (iOp2 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
+
+                            indexOp2 = new(iOp2, OperandIndexSource.Operand);
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
                             if (NextUse(operation2.Operand2, topo, i) != -1)
                                 cacheList[iOp2] = null;
-                            // Compute the KPU cache index
-                            iOp2 = ~iOp2;
+
+                            indexOp2 = new(iOp2, OperandIndexSource.Cache);
                         }
                     }
                     else
@@ -117,16 +123,10 @@ namespace SharpGrad.Tensors
                 operations.Add(new OperationKPU(opCode,
                     // If the operation is not the last one, the result is stored in cache. Otherwise, it's the final result.
                     i < topo.Count
-                        ? new KPUIndex(cacheList.Insert(t), KPUIndexSource.Cache)
-                        : KPUIndex.Empty,
-                    iOp1 < 0
-                        ? new KPUIndex(~iOp1, KPUIndexSource.Cache)
-                        : new KPUIndex(iOp1, KPUIndexSource.Operation),
-                    iOp2 == int.MinValue
-                        ? KPUIndex.Empty
-                        : iOp2 < 0
-                            ? new KPUIndex(~iOp2, KPUIndexSource.Cache)
-                            : new KPUIndex(iOp2, KPUIndexSource.Operation)
+                        ? new(cacheList.Insert(t), ResultIndexSource.Cache)
+                        : new(0, ResultIndexSource.Output),
+                    indexOp1,
+                    indexOp2
                     ));
             }
 

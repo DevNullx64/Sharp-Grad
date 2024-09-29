@@ -28,10 +28,10 @@ namespace SharpGrad.Tensors
             {
                 OperationKPU op = ops[i];
 
-                T op1 = tensors[op.IndexOperand1.Value, idx];
-                tensors[op.IndexResult.Value, idx] = op.IndexOperand2.IsEmpty 
+                T op1 = tensors[op.LeftOperand.Value, idx];
+                tensors[op.IndexResult.Value, idx] = op.RightOperand.IsEmpty 
                     ? Exec(op.OpCode, op1)
-                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2.Value, idx]);
+                    : Exec(op.OpCode, op1, tensors[op.RightOperand.Value, idx]);
             }
         }
 

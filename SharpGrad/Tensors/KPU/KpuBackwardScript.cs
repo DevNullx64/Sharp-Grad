@@ -78,8 +78,8 @@ namespace SharpGrad.Tensors
                 if (t.Depth == 0)
                 {
                     // Add the data tensor to the list of data tensors only if it is not already present
-                    if (!datas.Contains(t))
-                        datas.Add(t);
+                    if (!operands.Contains(t))
+                        operands.Add(t);
 
 
                     int uCount = UsageCount(t, topo, i);
@@ -88,7 +88,7 @@ namespace SharpGrad.Tensors
                         continue;
 
                     opCode = OpCode.Store;
-                    iOp1 = datas.IndexOf(t);
+                    iOp1 = operands.IndexOf(t);
                 }
                 else
                 {
@@ -104,7 +104,7 @@ namespace SharpGrad.Tensors
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)datas.IndexOf(operation1.Operand);
+                            iOp1 = (short)operands.IndexOf(operation1.Operand);
                             // If not, something is wrong !
                             if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation1}) : Operand 1 {operation1.Operand} not found.");
@@ -127,7 +127,7 @@ namespace SharpGrad.Tensors
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)datas.IndexOf(operation2.Operand1);
+                            iOp1 = (short)operands.IndexOf(operation2.Operand1);
                             // If not, something is wrong !
                             if (iOp1 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
@@ -146,7 +146,7 @@ namespace SharpGrad.Tensors
                         if (iOp2 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp2 = (short)datas.IndexOf(operation2.Operand2);
+                            iOp2 = (short)operands.IndexOf(operation2.Operand2);
                             // If not, something is wrong !
                             if (iOp2 < 0)
                                 throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
@@ -165,18 +165,17 @@ namespace SharpGrad.Tensors
                 }
 
                 operations.Add(new OperationKPU(opCode,
-                    // If the operation is not the last one, the result is stored in cache. Otherwise, it's the final result.
                     i < topo.Count
-                        ? new KPUIndex(cacheList.Insert(t), KPUIndexSource.Cache)
-                        : KPUIndex.Empty,
+                        ? new(cacheList.Insert(t), ResultIndexSource.Cache)
+                        : new(0, ResultIndexSource.Output),
                     iOp1 < 0
-                        ? new KPUIndex(~iOp1, KPUIndexSource.Cache)
-                        : new KPUIndex(iOp1, KPUIndexSource.Operation),
+                        ? new(~iOp1, OperandIndexSource.Cache)
+                        : new(iOp1, OperandIndexSource.Operation),
                     iOp2 == int.MinValue
-                        ? KPUIndex.Empty
+                        ? OperandIndex.Empty
                         : iOp2 < 0
-                            ? new KPUIndex(~iOp2, KPUIndexSource.Cache)
-                            : new KPUIndex(iOp2, KPUIndexSource.Operation)
+                            ? new(~iOp2, OperandIndexSource.Cache)
+                            : new(iOp2, OperandIndexSource.Operation)
                     ));
             }
 

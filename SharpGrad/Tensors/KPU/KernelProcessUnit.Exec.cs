@@ -71,19 +71,19 @@ namespace SharpGrad.Tensors
             {
                 OperationKPU op = ops[i];
 
-                short v1 = op.IndexOperand1.Value;
-                T op1 = op.IndexOperand1.Source == KPUIndexSource.Cache
+                short v1 = op.LeftOperand.Value;
+                T op1 = op.LeftOperand.Source == OperandIndexSource.Cache
                     ? cache[v1]
                     : tensors[v1, idx];
 
-                result = op.IndexOperand2.IsEmpty
+                result = op.RightOperand.IsEmpty
                     ? Exec(op.OpCode, op1)
-                    : Exec(op.OpCode, op1, tensors[op.IndexOperand2.Value, idx]);
+                    : Exec(op.OpCode, op1, tensors[op.RightOperand.Value, idx]);
 
                 if (i < ops.Length - 1)
                 {
                     short v2 = op.IndexResult.Value;
-                    if (op.IndexResult.Source == KPUIndexSource.Cache)
+                    if (op.IndexResult.Source == OperandIndexSource.Cache)
                         cache[v2] = result;
                     else
                         tensors[v2, idx] = result;

@@ -61,8 +61,8 @@ namespace SharpGrad.Tensors.KPU
         protected readonly List<OperationKPU> operations = [];
         public OperationKPU this[int index] => operations[index];
 
-        protected readonly List<Tensor<T>> datas = [];
-        public IReadOnlyList<Tensor<T>> Datas => datas;
+        protected readonly List<Tensor<T>> operands = [];
+        public IReadOnlyList<Tensor<T>> Datas => operands;
         public byte CacheSize { get; protected set; }
 
         public int Count => operations.Count;
