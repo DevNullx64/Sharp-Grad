@@ -205,7 +205,7 @@ namespace SharpGrad.Tensors
         /// <returns></returns>
         public TensorData<T> Compute<T, TOp>(Tensor<T> tensor, Index? dim = null)
             where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-            where TOp : IExecOperation<T, T, T>
+            where TOp : IExecBinary<T, T, T>
         {
             dim ??= ^1;
             byte dim_ = (byte)(dim.Value.IsFromEnd ? tensor.Shape.Count - dim.Value.Value : dim.Value.Value);

@@ -49,18 +49,18 @@ namespace SharpGrad.Tensors.KPU
                             indexLeft = new(iLeft, OperandIndexSource.Operand);
                             break;
 
-                        // Two operands operation
+                        // Two tensors operation
                         case 2:
                             ITensorOperation2<T> operation2 = (ITensorOperation2<T>)t;
                             opCode = operation2.OpCode;
 
                             // Operation result should contains the first operand
-                            iLeft = operands.IndexOf(operation2.Operand1);
-                            Debug.Assert(iLeft >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                            iLeft = operands.IndexOf(operation2.Left);
+                            Debug.Assert(iLeft >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Left} not found.");
                             
                             // Operation result should contains the second operand
-                            int iRight = operands.IndexOf(operation2.Operand2);
-                            Debug.Assert(iRight >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand2} not found.");
+                            int iRight = operands.IndexOf(operation2.Right);
+                            Debug.Assert(iRight >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Right} not found.");
 
                             indexLeft = new(iLeft, OperandIndexSource.Operand);
                             indexRight = new(iRight, OperandIndexSource.Operand);
@@ -94,11 +94,11 @@ namespace SharpGrad.Tensors.KPU
                             ITensorOperation2<T> operation2 = (ITensorOperation2<T>)t;
                             opCode = operation2.OpCode;
 
-                            iLeft = operands.IndexOf(operation2.Operand1);
-                            Debug.Assert(iLeft >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                            iLeft = operands.IndexOf(operation2.Left);
+                            Debug.Assert(iLeft >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Left} not found.");
 
-                            int iRight = operands.IndexOf(operation2.Operand2);
-                            Debug.Assert(iRight >= 0, $"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
+                            int iRight = operands.IndexOf(operation2.Right);
+                            Debug.Assert(iRight >= 0, $"Index {i} ({operation2}) : Operand 2 {operation2.Right} not found.");
 
                             indexLeft = new(iLeft, OperandIndexSource.Operand);
                             indexRight = new(iRight, OperandIndexSource.Operand);

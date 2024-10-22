@@ -28,9 +28,9 @@ namespace SharpGrad.Tensors.KPU
                 else if (t.OperandCount == 2)
                 {
                     ITensorOperation2<T> operation2 = (ITensorOperation2<T>)t;
-                    if (operation2.Operand1.Equals(tensor))
+                    if (operation2.Left.Equals(tensor))
                         return j;
-                    if (operation2.Operand2.Equals(tensor))
+                    if (operation2.Right.Equals(tensor))
                         return j;
                 }
             }

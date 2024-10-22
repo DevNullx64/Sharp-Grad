@@ -25,7 +25,7 @@ namespace SharpGrad.Tensors
         long Depth { get; }
 
         /// <summary>
-        /// The number of operands used by the tensor.
+        /// The number of tensors used by the tensor.
         /// </summary>
         int OperandCount { get; }
     }

@@ -75,42 +75,42 @@ namespace SharpGrad.Tensors
                         opCode = operation2.OpCode;
 
                         // Operation result or stored data should contains the first operand
-                        int iOp1 = cacheList.IndexOf(operation2.Operand1);
+                        int iOp1 = cacheList.IndexOf(operation2.Left);
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = operands.IndexOf(operation2.Operand1);
+                            iOp1 = operands.IndexOf(operation2.Left);
                             // If not, something is wrong !
                             if (iOp1 < 0)
-                                throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                                throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Left} not found.");
 
                             indexOp1 = new(iOp1, OperandIndexSource.Operand);
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (NextUse(operation2.Operand1, topo, i) != -1)
+                            if (NextUse(operation2.Left, topo, i) != -1)
                                 cacheList[iOp1] = null;
 
                             indexOp1 = new(iOp1, OperandIndexSource.Cache);
                         }
 
                         // Operation result or stored data should contains the second operand
-                        int iOp2 = cacheList.IndexOf(operation2.Operand2);
+                        int iOp2 = cacheList.IndexOf(operation2.Right);
                         if (iOp2 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp2 = operands.IndexOf(operation2.Operand2);
+                            iOp2 = operands.IndexOf(operation2.Right);
                             // If not, something is wrong !
                             if (iOp2 < 0)
-                                throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
+                                throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Right} not found.");
 
                             indexOp2 = new(iOp2, OperandIndexSource.Operand);
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (NextUse(operation2.Operand2, topo, i) != -1)
+                            if (NextUse(operation2.Right, topo, i) != -1)
                                 cacheList[iOp2] = null;
 
                             indexOp2 = new(iOp2, OperandIndexSource.Cache);

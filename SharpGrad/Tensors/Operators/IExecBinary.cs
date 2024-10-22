@@ -3,12 +3,12 @@
 namespace SharpGrad.Tensors.Operators
 {
     /// <summary>
-    /// Interface for an operation that takes two operands.
+    /// Interface for an operation that takes two tensors.
     /// </summary>
     /// <typeparam name="TOperand1">Type of the first operand.</typeparam>
     /// <typeparam name="TOperand2">Type of the second operand.</typeparam>
     /// <typeparam name="TResult">Type of the result.</typeparam>
-    public interface IExecOperation<TOperand1, TOperand2, TResult> : IExec
+    public interface IExecBinary<TOperand1, TOperand2, TResult> : IExec
         where TOperand1 : struct
         where TOperand2 : struct
     {
@@ -32,12 +32,12 @@ namespace SharpGrad.Tensors.Operators
         abstract static BackwardNeedOperand BackwardOperand { get; }
 
         /// <summary>
-        /// Compute the gradient of the operation for both operands.
+        /// Compute the gradient of the operation for both tensors.
         /// </summary>
         /// <param name="left">Value of the first operand.</param>
         /// <param name="right">Value of the second operand.</param>
         /// <param name="grad">Gradient of the operation.</param>
-        /// <returns>The gradient of the operation for, respectively, the first and second operands.</returns>
+        /// <returns>The gradient of the operation for, respectively, the first and second tensors.</returns>
         abstract static (TResult, TResult) Backward(TOperand1 left, TOperand2 right, TResult grad);
     }
 }

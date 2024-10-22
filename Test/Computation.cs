@@ -20,7 +20,7 @@ namespace Test
             TensorData<T> A = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> B = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> C = Operators<T>.NewRandom(256, 256, 256);
-            TensorData<T> Y = new("Y", new(256, 256, 256));
+            TensorData<T> Y = new(new(256, 256, 256), "Y");
 
             Operators<T>.Fill(Y, (i, j, k) =>
             {
@@ -50,13 +50,13 @@ namespace Test
             where T : unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
             //T epsilon = T.CreateChecked(1e-5);
-            TensorData<T> A = new("A", shape);
+            TensorData<T> A = new(shape, "A");
             Operators<T>.Fill(A, (i, j, k) => T.CreateChecked(((i * shape[0] + j) * shape[1]) + k));
 
-            TensorData<T> B = new("B", shape);
+            TensorData<T> B = new(shape, "B");
             Operators<T>.Fill(B, (i, j, k) => T.CreateChecked(k));
 
-            TensorData<T> Y = new("Y", new(shape[0], shape[1], shape[2]));
+            TensorData<T> Y = new(new(shape[0], shape[1], shape[2]), "Y");
 
             Operators<T>.Fill(Y, (i, j, k) =>
             {

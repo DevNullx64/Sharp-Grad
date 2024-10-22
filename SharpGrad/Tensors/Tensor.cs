@@ -10,13 +10,63 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors
 {
-    public abstract class Tensor<T> : ITensor<T>,
-        IAdditionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
-        ISubtractionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
-        IUnaryNegationOperators<Tensor<T>, Tensor<T>>,
-        IMultiplyOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
-        IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
+    internal static class TensorsCache<T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
+    {
+        private static List<Tensor<T>> tensors = [];
+        private static readonly object lockObj = new();
+        private static int nextId = 0;
+        private static string GetNextName(bool constant = false)
+        {
+            lock (lockObj)
+                return constant
+                    ? $"C{nextId++}"
+                    : $"T{nextId++}";
+        }
+
+        private static Tensor<T> GetOrCreate(Predicate<Tensor<T>> predicate, Func<Tensor<T>> create)
+        {
+            lock (lockObj)
+            {
+                Tensor<T>? tensor = tensors.Find(predicate);
+                if (tensor is not null)
+                    return tensor;
+                else
+                {
+                    tensor = create();
+                    tensors.Add(tensor);
+                    return tensor;
+                }
+            }
+        }
+
+        public static Tensor<T> GetOrCreate(T[] data, bool constant = false)
+            => GetOrCreate(
+                t => t.Buffer.IsDataReferenceEqual(data),
+                () => constant
+                        ? new TensorConst<T>(new(data.Length), data)
+                        : new TensorData<T>(new(data.Length), data));
+
+        public static Tensor<T> GetOrCreate<TOp>(Tensor<T> operand)
+            where TOp : IExecUnary<T, T>
+            => GetOrCreate(
+                t => t is TensorOperation1<T, TOp> op && op.Operand == operand,
+                () => new TensorOperation1<T, TOp>(operand));
+
+        public static Tensor<T> GetOrCreate<TOp>(Tensor<T> left, Tensor<T> right)
+            where TOp : IExecBinary<T, T, T>
+            => GetOrCreate(
+                t => t is TensorOperation2<T, TOp> op && op.Equals(TOp.OpCode, left, right),
+                () => new TensorOperation2<T, TOp>(left, right));
+    }
+
+    public abstract class Tensor<T> : ITensor<T>,
+    IAdditionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
+    ISubtractionOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
+    IUnaryNegationOperators<Tensor<T>, Tensor<T>>,
+    IMultiplyOperators<Tensor<T>, Tensor<T>, Tensor<T>>,
+    IDivisionOperators<Tensor<T>, Tensor<T>, Tensor<T>>
+    where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
     {
         private static readonly object lockObj = new();
         private static int nextId = 0;
@@ -34,7 +84,7 @@ namespace SharpGrad.Tensors
                 if (buffer is null)
                 {
                     buffer ??= KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(Shape.Length);
-                    if(NeedsGradient)
+                    if (NeedsGradient)
                         KernelProcessUnit.DefaultKPU.Forward(this);
                     else
                         KernelProcessUnit.DefaultKPU.Compute(this);
@@ -75,12 +125,12 @@ namespace SharpGrad.Tensors
 
         protected Shape Shape_;
 
-        public Tensor(string name, Shape shape, AcceleratorBuffer<T>? buffer = null)
+        public Tensor(Shape shape, AcceleratorBuffer<T>? buffer = null, string? name = null)
         {
-            Name = name;
+            Name = name ?? GetNextName();
             Shape_ = shape;
             if (buffer is not null && buffer.Length != shape.Length)
-                    throw new InvalidOperationException($"Buffer length {buffer.Length} does not match shape length {shape.Length}");
+                throw new InvalidOperationException($"Buffer length {buffer.Length} does not match shape length {shape.Length}");
             this.buffer = buffer;
         }
 
@@ -109,7 +159,7 @@ namespace SharpGrad.Tensors
         public static Tensor<T> operator /(Tensor<T> left, Tensor<T> right) => new TensorOperation2<T, DivOp<T>>(left, right);
 
 
-        public static implicit operator Tensor<T>(T[] data) => new TensorConst<T>(GetNextName(), new Shape(data.Length), data);
+        public static implicit operator Tensor<T>(T[] data) => new TensorConst<T>(new Shape(data.Length), data);
         public static implicit operator Tensor<T>((string Name, T[] Data) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
         public static implicit operator Tensor<T>((T[] Data, string Name) tensor) => new TensorData<T>(tensor.Name, new Shape(tensor.Data.Length), tensor.Data);
 

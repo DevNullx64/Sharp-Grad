@@ -290,6 +290,14 @@ namespace SharpGrad.Memory
         }
 
         /// <summary>
+        /// Check if the data is equal to the specified data.
+        /// </summary>
+        /// <param name="other">The data to compare with.</param>
+        /// <returns>True if the data is equal to the specified data, false otherwise.</returns>
+        public bool IsDataReferenceEqual(T[] other)
+            => IsOnRAM && ReferenceEquals(CPUData, other);
+
+        /// <summary>
         /// Fill the data with the specified value.
         /// </summary>
         /// <param name="value">The value to fill the data with.</param>

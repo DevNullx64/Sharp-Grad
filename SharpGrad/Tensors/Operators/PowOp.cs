@@ -3,7 +3,7 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class PowOp<T> : BaseOperation<T>, IExecOperation<T, T, T>
+    internal class PowOp<T> : BaseOperation<T>, IExecBinary<T, T, T>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
     {
         public static OpCode OpCode => OpCode.Pow;

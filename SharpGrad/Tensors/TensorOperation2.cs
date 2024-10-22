@@ -9,14 +9,14 @@ namespace SharpGrad.Tensors
     internal class TensorOperation2<T, TOp>(Tensor<T> operand1, Tensor<T> operand2)
         : TensorOperation<T, TOp>(TOp.ResultingShape(operand1.Shape, operand2.Shape)), ITensorOperation2<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-        where TOp : IExecOperation<T, T, T>
+        where TOp : IExecBinary<T, T, T>
     {
-        public Tensor<T> Operand1 { get; } = operand1;
-        public Tensor<T> Operand2 { get; } = operand2;
+        public Tensor<T> Left { get; } = operand1;
+        public Tensor<T> Right { get; } = operand2;
 
         public override long Depth { get; } = Math.Max(operand1.Depth, operand2.Depth) + 1;
 
-        public override bool NeedsGradient => Operand1.NeedsGradient || Operand2.NeedsGradient;
+        public override bool NeedsGradient => Left.NeedsGradient || Right.NeedsGradient;
 
         public override int OperandCount => 2;
 
@@ -28,15 +28,15 @@ namespace SharpGrad.Tensors
                  || NeedsGradient)
             {
                 if (options.HasFlag(DepthFirstSearchOption.LowDepthFirst)
-                 || Operand1.Depth >= Operand2.Depth)
+                 || Left.Depth >= Right.Depth)
                 {
-                    Operand1.DepthFirstSearch(topoSort, options);
-                    Operand2.DepthFirstSearch(topoSort, options);
+                    Left.DepthFirstSearch(topoSort, options);
+                    Right.DepthFirstSearch(topoSort, options);
                 }
                 else
                 {
-                    Operand2.DepthFirstSearch(topoSort, options);
-                    Operand1.DepthFirstSearch(topoSort, options);
+                    Right.DepthFirstSearch(topoSort, options);
+                    Left.DepthFirstSearch(topoSort, options);
                 }
                 topoSort.Add(this, new(this, topoSort.Count, 1));
             }
@@ -44,26 +44,33 @@ namespace SharpGrad.Tensors
 
         public override void Backward()
         {
-            if (Operand1 is ITensorOperation<T> op1)
+            if (Left is ITensorOperation<T> op1)
                 op1.Backward();
-            if (Operand2 is ITensorOperation<T> op2)
+            if (Right is ITensorOperation<T> op2)
                 op2.Backward();
         }
 
+        public bool Equals(OpCode opCode, ITensor? left, ITensor? right)
+            => OpCode == opCode &&
+            (
+                Left.Equals(left) && Right.Equals(right) ||
+                (TOp.OpCode.HasFlag(OpCode.IsCommutative) && Left.Equals(right) && Right.Equals(left))
+            );
+
         public override bool Equals(ITensor? other) => other is TensorOperation2<T, TOp> tensor &&
             (
-                Operand1.Equals(tensor.Operand1) && Operand2.Equals(tensor.Operand2) ||
-                TOp.OpCode.HasFlag(OpCode.IsCommutative) && Operand1.Equals(tensor.Operand2) && Operand2.Equals(tensor.Operand1)
+                Left.Equals(tensor.Left) && Right.Equals(tensor.Right) ||
+                TOp.OpCode.HasFlag(OpCode.IsCommutative) && Left.Equals(tensor.Right) && Right.Equals(tensor.Left)
             );
 
         public override bool Equals(object? obj) => obj is TensorOperation2<T, TOp> tensor && Equals(tensor);
         public override int GetHashCode(){
             if (TOp.OpCode.HasFlag(OpCode.IsCommutative))
-                return ((typeof(TOp).GetHashCode() * 31 + Operand1.GetHashCode()) * 31 + Operand2.GetHashCode()) * 31;
-            return typeof(TOp).GetHashCode() * 31 + (Operand1.GetHashCode() * 31 + Operand2.GetHashCode() * 31) * 31;
+                return ((typeof(TOp).GetHashCode() * 31 + Left.GetHashCode()) * 31 + Right.GetHashCode()) * 31;
+            return typeof(TOp).GetHashCode() * 31 + (Left.GetHashCode() * 31 + Right.GetHashCode() * 31) * 31;
         }
 
-        public override string ToString() => $"({Operand1} {Name} {Operand2})";
+        public override string ToString() => $"({Left} {Name} {Right})";
 
         public static bool operator ==(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => left.Equals(right);
         public static bool operator !=(TensorOperation2<T, TOp> left, TensorOperation2<T, TOp> right) => !left.Equals(right);

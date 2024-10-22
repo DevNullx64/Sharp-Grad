@@ -3,7 +3,7 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class LogOp<T> : BaseFunction<T>, IExecFunction<T, T> where T : unmanaged, INumber<T>, ILogarithmicFunctions<T>
+    internal class LogOp<T> : BaseFunction<T>, IExecUnary<T, T> where T : unmanaged, INumber<T>, ILogarithmicFunctions<T>
     {
         public static OpCode OpCode => OpCode.Log;
         public static string Symbol => "log";

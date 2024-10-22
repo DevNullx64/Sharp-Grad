@@ -7,7 +7,7 @@ namespace SharpGrad.Tensors.Operators
         where T : unmanaged, INumber<T>
     {
         /// <summary>
-        /// Broadcasts the <see cref="Shape"/>s of the operands.
+        /// Broadcasts the <see cref="Shape"/>s of the tensors.
         /// </summary>
         /// <param name="left">The <see cref="Shape"/> of the first operand. </param>
         /// <param name="right">The <see cref="Shape"/> of the second operand. </param>

@@ -36,25 +36,16 @@ namespace SharpGrad.Tensors
             }
         }
 
-        internal TensorData(string name, Shape shape, AcceleratorBuffer<T> buffer, bool needGradient = true)
-            : base(name, shape, buffer)
+        internal TensorData(Shape shape, AcceleratorBuffer<T> buffer, string? name = null, bool needGradient = true)
+            : base(shape, buffer, name)
         { if (needGradient) EnableGradient(); }
 
-        protected TensorData(Shape shape, AcceleratorBuffer<T> buffer, bool needGradient = true)
-            : this(GetNextName(), shape, buffer, needGradient)
-        { }
-
-
-        public TensorData(string name, Shape shape, bool needGradient = true)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length), needGradient)
-        { }
-
-        public TensorData(Shape shape, bool needGradient = true)
-            : this(GetNextName(), shape, needGradient)
+        public TensorData(Shape shape, string? name = null, bool needGradient = true)
+            : this(shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length), name, needGradient)
         { }
 
         public TensorData(string name, Shape shape, T[] data, bool needGradient = true)
-            : this(name, shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data), needGradient)
+            : this(shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data), name, needGradient)
         { }
 
         public TensorData(Shape shape, T[] data, bool needGradient = true)
@@ -62,9 +53,9 @@ namespace SharpGrad.Tensors
         { }
 
         public static implicit operator TensorData<T>((string Name, Shape Shape) tensor)
-            => new(tensor.Name, tensor.Shape);
+            => new(tensor.Shape, tensor.Name);
         public static implicit operator TensorData<T>((Shape Shape, string Name) tensor)
-            => new(tensor.Name, tensor.Shape);
+            => new(tensor.Shape, tensor.Name);
 
         public static implicit operator TensorData<T>((string Name, Shape Shape, T[] Data) tensor)
             => new(tensor.Name, tensor.Shape, tensor.Data);

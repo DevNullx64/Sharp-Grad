@@ -7,7 +7,7 @@ namespace SharpGrad.Tensors
     internal class TensorOperation1<T, TOp>
         : TensorOperation<T, TOp>, ITensorOperation1<T, TOp>
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
-        where TOp : IExecFunction<T, T>
+        where TOp : IExecUnary<T, T>
     {
         public Tensor<T> Operand { get; }
 

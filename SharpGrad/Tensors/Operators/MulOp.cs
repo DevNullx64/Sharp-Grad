@@ -3,7 +3,7 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class MulOp<T> : BaseOperation<T>, IExecOperation<T, T, T> where T : unmanaged, INumber<T>
+    internal class MulOp<T> : BaseOperation<T>, IExecBinary<T, T, T> where T : unmanaged, INumber<T>
     {
         public static OpCode OpCode => OpCode.Mul;
         public static string Symbol => "Mul";

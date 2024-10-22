@@ -29,7 +29,7 @@ namespace Test
         }
 
         public static TensorData<T> Reduce<TOp>(TensorData<T> input, int dim)
-            where TOp : IExecOperation<T, T, T>
+            where TOp : IExecBinary<T, T, T>
         {
             Shape resultShape = input.Shape.SetDim(dim, 1);
             TensorData<T> result = new(resultShape);
@@ -176,7 +176,7 @@ namespace Test
             Tensor<T> ta = NewRandom(testShape);
             Tensor<T> tb = NewRandom(testShape);
 
-            TensorData<T> ty = new TensorData<T>(nameof(ty), new(testShape));
+            TensorData<T> ty = new TensorData<T>(new(testShape), nameof(ty));
             Fill(ty, (d, i, j) => ta[d, i, j] / tb[d, i, j]);
 
             Tensor<T> tc = ta / tb;

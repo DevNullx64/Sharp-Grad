@@ -1,7 +1,7 @@
 ﻿namespace SharpGrad.Tensors.KPU
 {
     /// <summary>
-    /// Enum for the need of the backward operation for the operands.
+    /// Enum for the need of the backward operation for the tensors.
     /// </summary>
     public enum BackwardNeedOperand
     {
@@ -18,7 +18,7 @@
         /// </summary>
         Right,
         /// <summary>
-        /// Need both operands.
+        /// Need both tensors.
         /// </summary>
         Both
     }

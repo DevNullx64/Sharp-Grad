@@ -3,7 +3,7 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class NegOp<T> : BaseFunction<T>, IExecFunction<T, T>
+    internal class NegOp<T> : BaseFunction<T>, IExecUnary<T, T>
         where T : unmanaged, INumber<T>
     {
         public static OpCode OpCode => OpCode.Neg;

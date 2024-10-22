@@ -54,14 +54,14 @@ namespace SharpGrad.Tensors
                 else
                 {
                     ITensorOperation2<T> operation2 = (ITensorOperation2<T>)current;
-                    if(operation2.Operand1.Depth >= operation2.Operand2.Depth)
+                    if(operation2.Left.Depth >= operation2.Right.Depth)
                     {
-                        current = operation2.Operand1;
-                        treated[topo.IndexOf(operation2.Operand2)] = TreatmentState.LeftBranchTreated;
+                        current = operation2.Left;
+                        treated[topo.IndexOf(operation2.Right)] = TreatmentState.LeftBranchTreated;
                     } else
                     {
-                        current = operation2.Operand2;
-                        treated[topo.IndexOf(operation2.Operand1)] = TreatmentState.RightBranchTreated;
+                        current = operation2.Right;
+                        treated[topo.IndexOf(operation2.Left)] = TreatmentState.RightBranchTreated;
                     }
                 }
             }
@@ -123,38 +123,38 @@ namespace SharpGrad.Tensors
                         opCode = operation2.OpCode;
 
                         // Operation result or stored data should contains the first operand
-                        iOp1 = (short)cacheList.IndexOf(operation2.Operand1);
+                        iOp1 = (short)cacheList.IndexOf(operation2.Left);
                         if (iOp1 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp1 = (short)operands.IndexOf(operation2.Operand1);
+                            iOp1 = (short)operands.IndexOf(operation2.Left);
                             // If not, something is wrong !
                             if (iOp1 < 0)
-                                throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Operand1} not found.");
+                                throw new Exception($"Index {i} ({operation2}) : Operand 1 {operation2.Left} not found.");
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (NextUse(operation2.Operand1, topo, i) != -1)
+                            if (NextUse(operation2.Left, topo, i) != -1)
                                 cacheList[iOp1] = null;
                             // Compute the KPU cache index
                             iOp1 = ~iOp1;
                         }
 
                         // Operation result or stored data should contains the second operand
-                        iOp2 = (short)cacheList.IndexOf(operation2.Operand2);
+                        iOp2 = (short)cacheList.IndexOf(operation2.Right);
                         if (iOp2 < 0)
                         {
                             // If not, it's a data used only once
-                            iOp2 = (short)operands.IndexOf(operation2.Operand2);
+                            iOp2 = (short)operands.IndexOf(operation2.Right);
                             // If not, something is wrong !
                             if (iOp2 < 0)
-                                throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Operand2} not found.");
+                                throw new Exception($"Index {i} ({operation2}) : Operand 2 {operation2.Right} not found.");
                         }
                         else
                         {
                             // If the operand is not used anymore, free the cache
-                            if (NextUse(operation2.Operand2, topo, i) != -1)
+                            if (NextUse(operation2.Right, topo, i) != -1)
                                 cacheList[iOp2] = null;
                             // Compute the KPU cache index
                             iOp2 = ~iOp2;

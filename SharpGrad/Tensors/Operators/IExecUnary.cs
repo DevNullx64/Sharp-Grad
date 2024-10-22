@@ -5,7 +5,7 @@
     /// </summary>
     /// <typeparam name="TOperand">The type of the operand.</typeparam>
     /// <typeparam name="TResult">The type of the result.</typeparam>
-    public interface IExecFunction<TOperand, TResult>: IExec
+    public interface IExecUnary<TOperand, TResult>: IExec
     {
         /// <summary>
         /// Compute the resulting <see cref="Shape"/> of the operation.
