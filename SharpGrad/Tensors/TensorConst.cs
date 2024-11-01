@@ -15,11 +15,11 @@ namespace SharpGrad.Tensors
 
         public override bool NeedsGradient => false;
 
-        protected TensorConst(Shape shape, AcceleratorBuffer<T> buffer, string? name = null)
+        internal TensorConst(Shape shape, AcceleratorBuffer<T> buffer, string? name = null)
             : base(shape, buffer, name)
         { }
 
-        public TensorConst(Shape shape, T[] data, string? name = null)
+        internal TensorConst(Shape shape, T[] data, string? name = null)
             : this(shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data), name)
         { }
 

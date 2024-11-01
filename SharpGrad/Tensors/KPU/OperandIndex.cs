@@ -11,8 +11,8 @@ namespace SharpGrad.Tensors.KPU
 
         private readonly ushort value = (source == OperandIndexSource.None)
             ? ushort.MaxValue
-            : (value >= MaxValue) ? throw new ArgumentOutOfRangeException(nameof(value), $"Value must be less than {MaxValue}.")
-            : (value < 0) ? throw new ArgumentOutOfRangeException(nameof(value), "Value must be greater than or equal to 0.")
+            : (value >= MaxValue) ? throw new ArgumentOutOfRangeException(nameof(value), $"Result must be less than {MaxValue}.")
+            : (value < 0) ? throw new ArgumentOutOfRangeException(nameof(value), "Result must be greater than or equal to 0.")
             : (ushort)((short)source * MaxValue + value);
 
         public readonly bool IsEmpty => value == ushort.MaxValue;

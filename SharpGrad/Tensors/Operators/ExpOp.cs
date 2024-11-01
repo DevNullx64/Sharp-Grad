@@ -3,7 +3,8 @@ using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {
-    internal class ExpOp<T> : BaseFunction<T>, IExecUnary<T, T> where T : unmanaged, INumber<T>, IExponentialFunctions<T>
+    internal class ExpOp<T> : BaseFunction<T>, IExecUnary<T, T>
+        where T : unmanaged, INumber<T>, IExponentialFunctions<T>
     {
         public static OpCode OpCode => OpCode.Exp;
         public static string Symbol => "exp";

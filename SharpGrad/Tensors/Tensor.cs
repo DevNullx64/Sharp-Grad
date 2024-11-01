@@ -21,7 +21,7 @@ namespace SharpGrad.Tensors
             lock (lockObj)
                 return constant
                     ? $"C{nextId++}"
-                    : $"T{nextId++}";
+                    : $"TResult{nextId++}";
         }
 
         private static Tensor<T> GetOrCreate(Predicate<Tensor<T>> predicate, Func<Tensor<T>> create)
@@ -73,7 +73,7 @@ namespace SharpGrad.Tensors
         protected static string GetNextName()
         {
             lock (lockObj)
-                return $"T{nextId++}";
+                return $"TResult{nextId++}";
         }
 
         private AcceleratorBuffer<T>? buffer;
@@ -94,7 +94,7 @@ namespace SharpGrad.Tensors
             set
             {
                 if (value.Length != Shape.Length)
-                    throw new InvalidOperationException($"Buffer length {value.Length} does not match shape length {Shape.Length}");
+                    throw new InvalidOperationException($"Content length {value.Length} does not match shape length {Shape.Length}");
                 buffer = value;
             }
         }
@@ -125,12 +125,12 @@ namespace SharpGrad.Tensors
 
         protected Shape Shape_;
 
-        public Tensor(Shape shape, AcceleratorBuffer<T>? buffer = null, string? name = null)
+        internal Tensor(Shape shape, AcceleratorBuffer<T>? buffer = null, string? name = null)
         {
             Name = name ?? GetNextName();
             Shape_ = shape;
             if (buffer is not null && buffer.Length != shape.Length)
-                throw new InvalidOperationException($"Buffer length {buffer.Length} does not match shape length {shape.Length}");
+                throw new InvalidOperationException($"Content length {buffer.Length} does not match shape length {shape.Length}");
             this.buffer = buffer;
         }
 

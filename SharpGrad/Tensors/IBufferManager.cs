@@ -6,7 +6,7 @@ namespace SharpGrad.Tensors
     /// <summary>
     /// Interface for memory management.
     /// </summary>
-    public interface IBufferManager
+    internal interface IBufferManager
     {
         /// <summary>
         /// Gets an <see cref="AcceleratorBuffer"/> with the specified length.

@@ -71,7 +71,7 @@ internal class Program
             loss.Backpropagate();
             cerebrin.Step(lr);
 
-            Console.WriteLine("Loss: " + loss.Data);
+            Console.WriteLine("Loss: " + (loss.Data / v.Count));
             DataSet.Scatter(preds);
             if (lastLoss > loss.Data)
             {
@@ -79,7 +79,7 @@ internal class Program
             }
             else
             {
-                Console.WriteLine("Final loss: " + loss.Data);
+                Console.WriteLine("Final loss: " + (loss.Data / v.Count));
                 Console.WriteLine("Last epoch: " + i);
                 Console.WriteLine("Loss is increasing. Stopping training...");
                 break;
@@ -95,14 +95,14 @@ internal class Program
 
 
 
-// Value<float> a = new Value<float>(1.5f,"a");
-// Value<float> b = new Value<float>(2.0f,"b");
-// Value<float> c = new Value<float>(6.0f,"b");
+// Result<float> a = new Result<float>(1.5f,"a");
+// Result<float> b = new Result<float>(2.0f,"b");
+// Result<float> c = new Result<float>(6.0f,"b");
 
-// Value<float> d=(a+b*c);
-// Value<float> e=d/(new Value<float>(2.0f,"2"));
-// Value<float> f=e.Pow(new Value<float>(2.0f,"2"));
-// Value<float> g=f.ReLU();   
+// Result<float> d=(a+b*c);
+// Result<float> e=d/(new Result<float>(2.0f,"2"));
+// Result<float> f=e.Pow(new Result<float>(2.0f,"2"));
+// Result<float> g=f.ReLU();   
 
 // g.Grad=1.0f;
 // g.Backpropagate();
@@ -111,10 +111,10 @@ internal class Program
 // Console.WriteLine(b.Grad);
 // Console.WriteLine(c.Grad);
 
-// Value<float> j= new Value<float>(0.5f,"j");
-// Value<float> k= j.Tanh();
-// Value<float> l= k.Sigmoid();
-// Value<float> m= l.LeakyReLU(1.0f);
+// Result<float> j= new Result<float>(0.5f,"j");
+// Result<float> k= j.Tanh();
+// Result<float> l= k.Sigmoid();
+// Result<float> m= l.LeakyReLU(1.0f);
 // m.Grad=1.0f;
 // m.Backpropagate();
 // Console.WriteLine(j.Grad);

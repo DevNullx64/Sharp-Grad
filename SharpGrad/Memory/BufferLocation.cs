@@ -22,12 +22,12 @@ namespace SharpGrad.Memory
         /// <summary>
         /// Data is available on the local storage.
         /// </summary>
-        [Obsolete("/!\\ Not implemented /!\\")]
-        LocalStorage,
+        //[Obsolete("/!\\ Not implemented /!\\")]
+        //LocalStorage,
         /// <summary>
         /// Data is available on the distributed hash table.
         /// </summary>
-        [Obsolete("/!\\ Not implemented /!\\")]
-        DHT,
+        //[Obsolete("/!\\ Not implemented /!\\")]
+        //DHT,
     }
 }

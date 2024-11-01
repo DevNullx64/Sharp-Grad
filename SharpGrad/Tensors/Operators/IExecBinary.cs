@@ -34,8 +34,8 @@ namespace SharpGrad.Tensors.Operators
         /// <summary>
         /// Compute the gradient of the operation for both tensors.
         /// </summary>
-        /// <param name="left">Value of the first operand.</param>
-        /// <param name="right">Value of the second operand.</param>
+        /// <param name="left">Result of the first operand.</param>
+        /// <param name="right">Result of the second operand.</param>
         /// <param name="grad">Gradient of the operation.</param>
         /// <returns>The gradient of the operation for, respectively, the first and second tensors.</returns>
         abstract static (TResult, TResult) Backward(TOperand1 left, TOperand2 right, TResult grad);

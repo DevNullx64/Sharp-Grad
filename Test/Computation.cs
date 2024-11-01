@@ -16,11 +16,12 @@ namespace Test
         private void TestComputation<T>()
             where T : unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            //T epsilon = T.CreateChecked(1e-5);
+            //TResult epsilon = TResult.CreateChecked(1e-5);
             TensorData<T> A = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> B = Operators<T>.NewRandom(256, 256, 256);
             TensorData<T> C = Operators<T>.NewRandom(256, 256, 256);
-            TensorData<T> Y = new(new(256, 256, 256), "Y");
+            T[,,] Y = new T[256, 256, 256];
+            // TensorData<TResult> Y = new(new(256, 256, 256), "Y");
 
             Operators<T>.Fill(Y, (i, j, k) =>
             {
@@ -42,14 +43,14 @@ namespace Test
 
             (T mean, T min, T max) = Operators<T>.Test(Y, cY);
 
-            //Assert.IsTrue(mean <= Operators<T>.Epsilon && min <= Operators<T>.Epsilon && max <= Operators<T>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
+            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && max <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Computation test passed with error mean={mean}, min={min}, max={max}");
         }
 
         private void TestComputeAndReduce<T>(Shape shape, int dim = 2)
             where T : unmanaged, INumber<T>, IFloatingPoint<T>, IPowerFunctions<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>
         {
-            //T epsilon = T.CreateChecked(1e-5);
+            //TResult epsilon = TResult.CreateChecked(1e-5);
             TensorData<T> A = new(shape, "A");
             Operators<T>.Fill(A, (i, j, k) => T.CreateChecked(((i * shape[0] + j) * shape[1]) + k));
 
@@ -72,7 +73,7 @@ namespace Test
 
             (T mean, T min, T max) = Operators<T>.Test(Y, cY);
 
-            //Assert.IsTrue(mean <= Operators<T>.Epsilon && min <= Operators<T>.Epsilon && max <= Operators<T>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
+            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && max <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
             Debug.WriteLine($"Compute & Reduce test passed with error mean={mean}, min={min}, max={max}");
         }
 

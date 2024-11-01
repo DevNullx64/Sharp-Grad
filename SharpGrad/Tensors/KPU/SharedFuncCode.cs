@@ -29,7 +29,7 @@ namespace SharpGrad.Tensors.KPU
         Sqrt,
 
         /// <summary>
-        /// Take the absolute value of the left operand
+        /// Take the absolute @this of the left operand
         /// </summary>
         Abs,
 
@@ -50,35 +50,35 @@ namespace SharpGrad.Tensors.KPU
 
         #region Free codes for future use
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine8,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine9,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine10,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine11,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine12,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine13,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine14,
 
         // Free code for future use
-        [Obsolete("Do not use this value")]
+        [Obsolete("Do not use this @this")]
         Undefine15,
         #endregion
     }

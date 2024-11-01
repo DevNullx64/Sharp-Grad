@@ -18,6 +18,17 @@ namespace Test
         static readonly Random rnd = new();
 
         public static T Epsilon = T.CreateChecked(1e-6);
+
+        public static void Fill(T[,,] result, Func<int, int, int, T> fnc)
+        {
+            long begin = DateTime.Now.Ticks;
+            for (int i = 0; i < result.GetLength(0); i++)
+                for (int j = 0; j < result.GetLength(1); j++)
+                    for (int k = 0; k < result.GetLength(2); k++)
+                        result[i, j, k] = fnc(i, j, k);
+            Debug.WriteLine($"Filling took {(DateTime.Now.Ticks - begin) / 10000} ms");
+        }
+
         public static void Fill(TensorData<T> result, Func<int, int, int, T> fnc)
         {
             long begin = DateTime.Now.Ticks;
@@ -342,13 +353,13 @@ namespace Test
     [TestClass]
     public class CastTestOperatorsULong : Operators<double>
     {
-        private bool Test<T>(Tensor<T> tensor)
-            where T : unmanaged, INumber<T>
+        private bool Test<TResult>(Tensor<TResult> tensor)
+            where TResult : unmanaged, INumber<TResult>
         {
             for(int i =0;i < tensor.Shape[0]; i++)
                 for(int j = 0; j < tensor.Shape[1]; j++)
                     for(int k = 0; k < tensor.Shape[2]; k++)
-                        if(tensor[i, j, k] != T.One)
+                        if(tensor[i, j, k] != TResult.One)
                             return false;
             return true;
         }

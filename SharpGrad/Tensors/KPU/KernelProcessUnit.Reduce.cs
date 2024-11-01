@@ -43,8 +43,8 @@ namespace SharpGrad.Tensors
             where T : unmanaged, INumber<T>
             where TOp : IExecBinary<T, T, T>
         {
-            //Debug.Assert(args.Value.ShapeDims == shape.Length, $"Invalid shape dims {args.Value.ShapeDims} for shape {shape.Length}");
-            //Debug.Assert(args.Value.ReduceCount > 0 && args.Value.ReduceCount <= 32, $"Invalid reduce count args.Value.{args.Value.ReduceCount}");
+            //Debug.Assert(args.Result.ShapeDims == shape.Length, $"Invalid shape dims {args.Result.ShapeDims} for shape {shape.Length}");
+            //Debug.Assert(args.Result.ReduceCount > 0 && args.Result.ReduceCount <= 32, $"Invalid reduce count args.Result.{args.Result.ReduceCount}");
 
             // First, we compute the indices of result.
             int[] indices = new int[args.Value.ShapeDims];

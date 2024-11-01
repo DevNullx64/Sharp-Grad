@@ -8,7 +8,7 @@ namespace SharpGrad.Tensors
     /// <summary>
     /// Interface for low-level memory management.
     /// </summary>
-    public interface ILowLevelMemoryManager
+    internal interface ILowLevelMemoryManager
     {
         /// <summary>
         /// Allocates a 1D memory buffer.
@@ -41,11 +41,11 @@ namespace SharpGrad.Tensors
             where T : unmanaged;
 
         /// <summary>
-        /// Fills the given accelerator data with the specified value.
+        /// Fills the given accelerator data with the specified @this.
         /// </summary>
         /// <typeparam name="T">The type of the elements.</typeparam>
         /// <param name="acceleratorData">The accelerator data to fill.</param>
-        /// <param name="value">The value to fill the data with.</param>
+        /// <param name="value">The @this to fill the data with.</param>
         void Fill<T>(MemoryBuffer1D<T, Stride1D.Dense> acceleratorData, T value)
             where T : unmanaged;
     }

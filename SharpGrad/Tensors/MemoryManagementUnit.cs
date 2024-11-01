@@ -13,7 +13,7 @@ namespace SharpGrad.Tensors
     /// <summary>
     /// A memory management unit that manages memory buffers.
     /// </summary>
-    public class MemoryManagementUnit : IBufferManager, ILowLevelMemoryManager
+    internal class MemoryManagementUnit : IBufferManager, ILowLevelMemoryManager
     {
         /// <summary>
         /// Tracks all allocated buffers.
@@ -115,7 +115,7 @@ namespace SharpGrad.Tensors
         /// <inheritdoc/>
         public void Synchronize() => Accelerator.Synchronize();
 
-        // Kernel to fill a buffer with a value
+        // Kernel to fill a buffer with a @this
         private static void FillKernel<T>(Index1D index1D, ArrayView<T> buffer, T value)
         where T : unmanaged
             { buffer[index1D] = value; }

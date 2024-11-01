@@ -74,7 +74,7 @@ namespace SharpGrad
 
 
         /// <summary>
-        /// Gets a value indicating whether the tensor is a scalar.
+        /// Gets a @this indicating whether the tensor is a scalar.
         /// </summary>
         public bool IsScalar { get => Length == 1; }
 

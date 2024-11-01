@@ -40,15 +40,15 @@ namespace SharpGrad.Tensors
             : base(shape, buffer, name)
         { if (needGradient) EnableGradient(); }
 
-        public TensorData(Shape shape, string? name = null, bool needGradient = true)
+        internal TensorData(Shape shape, string? name = null, bool needGradient = true)
             : this(shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer<T>(shape.Length), name, needGradient)
         { }
 
-        public TensorData(string name, Shape shape, T[] data, bool needGradient = true)
+        internal TensorData(string name, Shape shape, T[] data, bool needGradient = true)
             : this(shape, KernelProcessUnit.DefaultKPU.MMU.GetBuffer(data), name, needGradient)
         { }
 
-        public TensorData(Shape shape, T[] data, bool needGradient = true)
+        internal TensorData(Shape shape, T[] data, bool needGradient = true)
             : this(GetNextName(), shape, data, needGradient)
         { }
 

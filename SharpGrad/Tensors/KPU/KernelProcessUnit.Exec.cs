@@ -27,16 +27,16 @@ namespace SharpGrad.Tensors
         {
             return operation switch
             {
-                //OpCode.Reset => T.Zero,
+                //OpCode.Reset => TResult.Zero,
                 OpCode.Store => operand1,
                 OpCode.Add => AddOp<T>.Exec(operand1, operand2),
                 OpCode.Sub => SubOp<T>.Exec(operand1, operand2),
                 OpCode.Mul => MulOp<T>.Exec(operand1, operand2),
                 OpCode.Div => DivOp<T>.Exec(operand1, operand2),
-                // OpCode.Pow => PowOp<T>.Exec(operand1, operand2),
+                // OpCode.Pow => PowOp<TResult>.Exec(operand1, operand2),
                 OpCode.Neg => NegOp<T>.Exec(operand1),
-                //OpCode.Log => LogOp<T>.Exec(operand1),
-                //OpCode.Exp => ExpOp<T>.Exec(operand1),
+                //OpCode.Log => LogOp<TResult>.Exec(operand1),
+                //OpCode.Exp => ExpOp<TResult>.Exec(operand1),
                 _ => T.Zero,
             };
         }
@@ -47,10 +47,10 @@ namespace SharpGrad.Tensors
         {
             return operation switch
             {
-                //OpCode.Reset => T.Zero,
+                //OpCode.Reset => TResult.Zero,
                 OpCode.Neg => NegOp<T>.Exec(operand1),
-                //OpCode.Log => LogOp<T>.Exec(operand1),
-                //OpCode.Exp => ExpOp<T>.Exec(operand1),
+                //OpCode.Log => LogOp<TResult>.Exec(operand1),
+                //OpCode.Exp => ExpOp<TResult>.Exec(operand1),
                 _ => T.Zero,
             };
         }

@@ -8,53 +8,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace SharpGrad.Memory
 {
     /// <summary>
-    /// Internal interface for class that can create an <see cref="AcceleratorBuffer{T}"/>.
-    /// </summary>
-    /// <typeparam name="T">The type of the data.</typeparam>
-    internal interface ICreateAcceleratorBuffer<T>
-        where T : unmanaged, INumber<T>, IPowerFunctions<T>
-    {
-        /// <summary>
-        /// Create a new <see cref="AcceleratorBuffer{T}"/> with the specified length.
-        /// </summary>
-        /// <param name="length">The length of the data.</param>
-        /// <returns>A new <see cref="AcceleratorBuffer{T}"/> with the specified length.</returns>
-        abstract static AcceleratorBuffer<T> Create(long length);
-
-        /// <summary>
-        /// Create a new <see cref="AcceleratorBuffer{T}"/> with the specified data.
-        /// </summary>
-        /// <param name="data">The data to be copied to the RAM.</param>
-        /// <returns>A new <see cref="AcceleratorBuffer{T}"/> with the specified data.</returns>
-        abstract static AcceleratorBuffer<T> Create(T[] data);
-
-        /// <summary>
-        /// Create a new <see cref="AcceleratorBuffer{T}"/> with the specified data.
-        /// </summary>
-        /// <param name="data">The data to be copied to the RAM.</param>
-        /// <returns>A new <see cref="AcceleratorBuffer{T}"/> with the specified data.</returns>
-        abstract static AcceleratorBuffer<T> Create(AcceleratorBuffer<T> data);
-
-        /// <summary>
-        /// Create a new <see cref="AcceleratorBuffer{T}"/> with the specified data.
-        /// </summary>
-        /// <param name="data">The data to be copied to the RAM.</param>
-        /// <returns>A new <see cref="AcceleratorBuffer{T}"/> with the specified data.</returns>
-        abstract static AcceleratorBuffer<T> Create(MemoryBuffer1D<T, Stride1D.Dense> data);
-    }
-
-    /// <summary>
     /// A structure that manages data on the RAM and a <see cref="Accelerator"/> (GPU). It free the RAM data when the data is available on the <see cref="Accelerator"/>. And vice versa.
     /// </summary>
     /// <param name="length">The length of the data.</param>
-    public abstract class AcceleratorBuffer(MemoryManagementUnit mmu, long length) : IAcceleratorBuffer
+    internal abstract class AcceleratorBuffer(MemoryManagementUnit mmu, long length) : IAcceleratorBuffer
     {
         protected MemoryManagementUnit MemoryManager = mmu ?? throw new ArgumentNullException(nameof(mmu));
         /// <summary>
@@ -111,14 +74,9 @@ namespace SharpGrad.Memory
     /// </summary>
     /// <typeparam name="T">The type of the data</typeparam>
     /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
-    public class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>, IReadOnlyList<T>
+    internal class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>, IReadOnlyList<T>
         where T : unmanaged
     {
-        /// <summary>
-        /// Get or set the threshold to force the data to be copied to the <see cref="Accelerator"/>.
-        /// </summary>
-        public static int CopyToAcceleratorThreshold = 512;
-
         // The data on the RAM.
         private T[]? cpuData = null;
 
@@ -131,7 +89,7 @@ namespace SharpGrad.Memory
             get
             {
                 Location = BufferLocation.Ram;
-                return cpuData;
+                return cpuData!;
             }
             set
             {
@@ -140,6 +98,24 @@ namespace SharpGrad.Memory
                 cpuData = value;
                 acceleratorData?.Dispose();
                 acceleratorData = null;
+            }
+        }
+
+        /// <summary>
+        /// Return a copy of the data.
+        /// </summary>
+        public T[] GetData()
+        {
+            switch (Location)
+            {
+                case BufferLocation.Ram:
+                    return (T[])CPUData.Clone();
+                case BufferLocation.Accelerator:
+                    T[] data = new T[Length];
+                    AcceleratorData.CopyToCPU(data);
+                    return data;
+                default:
+                    return [];
             }
         }
 
@@ -155,7 +131,7 @@ namespace SharpGrad.Memory
             {
                 Location = BufferLocation.Accelerator;
                 LastAccess = DateTime.UtcNow.Ticks;
-                return acceleratorData;
+                return acceleratorData!;
             }
             set
             {
@@ -199,18 +175,22 @@ namespace SharpGrad.Memory
                             if (acceleratorData is not null)
                             {
                                 acceleratorData.CopyToCPU(cpuData);
-                                MemoryManager.Synchronize();
+                                acceleratorData.Accelerator.Synchronize();
                                 acceleratorData.Dispose();
                                 acceleratorData = null;
                             }
                             break;
                         case BufferLocation.Accelerator:
-                            acceleratorData ??= ((ILowLevelMemoryManager) MemoryManager).MemoryBuffer1D<T>(Length);
-                            if (cpuData is not null)
+                            if (acceleratorData is null)
                             {
-                                acceleratorData = ((ILowLevelMemoryManager)MemoryManager).MemoryBuffer1D(CPUData);
-                                MemoryManager.Synchronize();
-                                cpuData = null;
+                                if (cpuData is not null)
+                                {
+                                    acceleratorData = ((ILowLevelMemoryManager)MemoryManager).MemoryBuffer1D(CPUData);
+                                    acceleratorData.Accelerator.Synchronize();
+                                    cpuData = null;
+                                }
+                                else
+                                    acceleratorData = ((ILowLevelMemoryManager)MemoryManager).MemoryBuffer1D<T>(Length);
                             }
                             break;
                         case BufferLocation.Empty:
@@ -298,9 +278,9 @@ namespace SharpGrad.Memory
             => IsOnRAM && ReferenceEquals(CPUData, other);
 
         /// <summary>
-        /// Fill the data with the specified value.
+        /// Fill the data with the specified @this.
         /// </summary>
-        /// <param name="value">The value to fill the data with.</param>
+        /// <param name="value">The @this to fill the data with.</param>
         public void Fill(T value)
         {
             if (Location == BufferLocation.Ram)
@@ -334,15 +314,5 @@ namespace SharpGrad.Memory
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
         public static implicit operator MemoryBuffer1D<T, Stride1D.Dense>(AcceleratorBuffer<T> gpu) => gpu.AcceleratorData;
         public static explicit operator T(AcceleratorBuffer<T> gpu) => gpu.Length == 1 ? gpu.CPUData[0] : throw new InvalidCastException($"Cannot cast a buffer of length {gpu.Length} to a scalar.");
-    }
-
-    public class AcceleratorBufferReal<T> : AcceleratorBuffer<T>
-        where T : unmanaged, IFloatingPoint<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
-    {
-        public AcceleratorBufferReal(MemoryManagementUnit mmu, long length) : base(mmu, length) { }
-
-        public AcceleratorBufferReal(MemoryManagementUnit mmu, T[] data) : base(mmu, data) { }
-
-        public AcceleratorBufferReal(MemoryManagementUnit mmu, MemoryBuffer1D<T, Stride1D.Dense> data) : base(mmu, data) { }
     }
 }

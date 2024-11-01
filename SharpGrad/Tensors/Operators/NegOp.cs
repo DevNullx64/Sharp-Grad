@@ -12,5 +12,4 @@ namespace SharpGrad.Tensors.Operators
         public static T Backward(T right, T grad) => -grad;
         public static T Exec(T right) => -right;
     }
-
 }

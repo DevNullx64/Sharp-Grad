@@ -19,7 +19,7 @@ namespace SharpGrad.Tensors
         protected readonly Context context;
         protected readonly Device device;
         protected readonly Accelerator Accelerator;
-        public readonly MemoryManagementUnit MMU;
+        internal readonly MemoryManagementUnit MMU;
         private bool disposedValue;
 
         public KernelProcessUnit()
