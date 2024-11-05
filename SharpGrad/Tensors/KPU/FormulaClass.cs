@@ -428,6 +428,9 @@ namespace SharpGrad.Tensors.KPU
 
         public static implicit operator ComputeElement<TResult>(OutputData<TResult> output)
             => output.BaseElement;
+
+        public static implicit operator OutputData<TResult>(ComputeElement<TResult> element)
+            => new(element);
     }
 
     /// <summary>
