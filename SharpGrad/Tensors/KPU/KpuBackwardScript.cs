@@ -99,7 +99,7 @@ namespace SharpGrad.Tensors
                     {
                         opCode = operation1.OpCode;
 
-                        // Operation result or stored data should contains the operand
+                        // OperationIndeces result or stored data should contains the operand
                         iOp1 = (short)cacheList.IndexOf(operation1.Operand);
                         if (iOp1 < 0)
                         {
@@ -122,7 +122,7 @@ namespace SharpGrad.Tensors
                     {
                         opCode = operation2.OpCode;
 
-                        // Operation result or stored data should contains the first operand
+                        // OperationIndeces result or stored data should contains the first operand
                         iOp1 = (short)cacheList.IndexOf(operation2.Left);
                         if (iOp1 < 0)
                         {
@@ -141,7 +141,7 @@ namespace SharpGrad.Tensors
                             iOp1 = ~iOp1;
                         }
 
-                        // Operation result or stored data should contains the second operand
+                        // OperationIndeces result or stored data should contains the second operand
                         iOp2 = (short)cacheList.IndexOf(operation2.Right);
                         if (iOp2 < 0)
                         {
@@ -161,7 +161,7 @@ namespace SharpGrad.Tensors
                         }
                     }
                     else
-                        throw new NotSupportedException($"Operation {t} not supported.");
+                        throw new NotSupportedException($"OperationIndeces {t} not supported.");
                 }
 
                 operations.Add(new OperationKPU(opCode,

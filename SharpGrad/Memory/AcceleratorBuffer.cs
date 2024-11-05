@@ -7,9 +7,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad.Memory
 {
@@ -24,6 +26,55 @@ namespace SharpGrad.Memory
         /// The last time the data was accessed on the <see cref="Accelerator"/>.
         /// </summary>
         public long LastAccess { get; protected set; } = DateTime.UtcNow.Ticks;
+
+        private bool isLock;
+        public bool IsLock => isLock;
+
+        public void Atomic(Action action)
+        {
+            if (!Lock())
+                throw new InvalidOperationException("The buffer is not locked.");
+            try
+            {
+                action();
+            }
+            finally
+            {
+                Unlock();
+            }
+        }
+
+        public T Atomic<T>(Func<T> func)
+        {
+            if (!Lock())
+                throw new InvalidOperationException("The buffer is not locked.");
+            try
+            {
+                return func();
+            }
+            finally
+            {
+                Unlock();
+            }
+        }
+        private bool Lock()
+        {
+            Monitor.Enter(this, ref isLock);
+            if (!isLock)
+                throw new InvalidOperationException("The buffer is not locked.");
+            LastAccess = DateTime.UtcNow.Ticks;
+            return isLock;
+        }
+
+        private bool Unlock()
+        {
+            if (!isLock)
+                throw new InvalidOperationException("The buffer is not locked.");
+
+            Monitor.Exit(this);
+            LastAccess = DateTime.UtcNow.Ticks;
+            return isLock = false;
+        }
 
         /// <summary>
         /// The length of the data.
@@ -52,7 +103,8 @@ namespace SharpGrad.Memory
             {
                 if (disposing)
                 {
-                    mmu.Release(this);
+                    lock (this)
+                        mmu.Release(this);
                 }
 
                 // TODO: libérer les ressources non managées (objets non managés) et substituer le finaliseur
@@ -73,7 +125,7 @@ namespace SharpGrad.Memory
     /// A structure that manages data on the RAM and a <see cref="Accelerator"/> (GPU). It free the RAM data when the data is available on the <see cref="Accelerator"/>. And vice versa.
     /// </summary>
     /// <typeparam name="T">The type of the data</typeparam>
-    /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. Data will be allocated and set to zero at the first access.</remarks>
+    /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. DataIndices will be allocated and set to zero at the first access.</remarks>
     internal class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>, IReadOnlyList<T>
         where T : unmanaged
     {
@@ -157,12 +209,20 @@ namespace SharpGrad.Memory
         /// </summary>
         /// <remarks>Set <see cref="BufferLocation.Empty"/> to free the ressources. If and empty buffer is accessed using the <see cref="AcceleratorData"/>, the data will be allocated but not set to zero.</remarks>
         public override BufferLocation Location {
-            get {
-                return IsOnRAM
-                    ? BufferLocation.Ram
-                    : IsOnAccelerator
-                        ? BufferLocation.Accelerator
-                        : BufferLocation.Empty;
+            get
+            {
+                if (IsOnRAM)
+                {
+                    return BufferLocation.Ram;
+                }
+                else if (IsOnAccelerator)
+                {
+                    return BufferLocation.Accelerator;
+                }
+                else
+                {
+                    return BufferLocation.Empty;
+                }
             }
             set
             {
@@ -171,17 +231,22 @@ namespace SharpGrad.Memory
                     switch (value)
                     {
                         case BufferLocation.Ram:
-                            cpuData ??= new T[Length];
+                            Debug.Assert(cpuData is null);
+                            cpuData = new T[Length];
                             if (acceleratorData is not null)
                             {
-                                acceleratorData.CopyToCPU(cpuData);
-                                acceleratorData.Accelerator.Synchronize();
-                                acceleratorData.Dispose();
-                                acceleratorData = null;
+                                Atomic(() =>
+                                {
+                                    acceleratorData.CopyToCPU(cpuData);
+                                    acceleratorData.Accelerator.Synchronize();
+                                    acceleratorData.Dispose();
+                                    acceleratorData = null;
+                                });
                             }
                             break;
                         case BufferLocation.Accelerator:
-                            if (acceleratorData is null)
+                            Debug.Assert(acceleratorData is null);
+                            Atomic(() =>
                             {
                                 if (cpuData is not null)
                                 {
@@ -191,12 +256,16 @@ namespace SharpGrad.Memory
                                 }
                                 else
                                     acceleratorData = ((ILowLevelMemoryManager)MemoryManager).MemoryBuffer1D<T>(Length);
-                            }
+                            });
+
                             break;
                         case BufferLocation.Empty:
-                            cpuData = null;
-                            acceleratorData?.Dispose();
-                            acceleratorData = null;
+                            Atomic(() =>
+                            {
+                                cpuData = null;
+                                acceleratorData?.Dispose();
+                                acceleratorData = null;
+                            });
                             break;
                     }
                 }

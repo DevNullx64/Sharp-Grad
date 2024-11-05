@@ -5,7 +5,7 @@ namespace SharpGrad.Tensors.KPU
     /// <summary>
     /// An operation to perform using the KPU
     /// </summary>
-    /// <param name="opCode">Operation to perform</param>
+    /// <param name="opCode">OperationIndeces to perform</param>
     /// <param name="result">Index of the result</param>
     /// <param name="leftOperand">Left operand</param>
     /// <param name="rightOperand">Right operand</param>

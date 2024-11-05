@@ -44,7 +44,7 @@ namespace SharpGrad.Tensors.KPU
         /// <param name="tensor">The tensor to count the usage of.</param>
         /// <param name="tensors">The list of tensors.</param>
         /// <param name="starting">The index to start counting from.</param>
-        /// <returns>Operation that uses tensort twice is counted once.</returns>
+        /// <returns>OperationIndeces that uses tensort twice is counted once.</returns>
         protected int UsageCount(Tensor<T> tensor, List<Tensor<T>> tensors, int starting)
         {
             int count = 0;

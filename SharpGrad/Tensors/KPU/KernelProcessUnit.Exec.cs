@@ -18,7 +18,7 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// Kernel Processing Unit
         /// </summary>
-        /// <param name="operation">Operation to perform</param>
+        /// <param name="operation">OperationIndeces to perform</param>
         /// <param name="operand1">Left operand</param>
         /// <param name="result">Output of the operation</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -33,7 +33,7 @@ namespace SharpGrad.Tensors.KPU
 
                     switch (t.OperandCount)
                     {
-                        // Data tensor
+                        // DataIndices tensor
                         case 0:
                             continue;
 
@@ -54,11 +54,11 @@ namespace SharpGrad.Tensors.KPU
                             ITensorOperation2<T> operation2 = (ITensorOperation2<T>)t;
                             opCode = operation2.OpCode;
 
-                            // Operation result should contains the first operand
+                            // OperationIndeces result should contains the first operand
                             iLeft = operands.IndexOf(operation2.Left);
                             Debug.Assert(iLeft >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Left} not found.");
                             
-                            // Operation result should contains the second operand
+                            // OperationIndeces result should contains the second operand
                             int iRight = operands.IndexOf(operation2.Right);
                             Debug.Assert(iRight >= 0, $"Index {i} ({operation2}) : Operand 1 {operation2.Right} not found.");
 
@@ -68,7 +68,7 @@ namespace SharpGrad.Tensors.KPU
 
                         // Unsupported operation
                         default:
-                            throw new NotSupportedException($"Operation {t} not supported.");
+                            throw new NotSupportedException($"OperationIndeces {t} not supported.");
                     }
                 }
                 else
@@ -105,7 +105,7 @@ namespace SharpGrad.Tensors.KPU
                             break;
 
                         default:
-                            throw new NotSupportedException($"Operation {t} not supported.");
+                            throw new NotSupportedException($"OperationIndeces {t} not supported.");
                     }
                 }
                 checked

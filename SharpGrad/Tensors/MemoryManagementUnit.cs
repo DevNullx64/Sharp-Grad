@@ -99,7 +99,7 @@ namespace SharpGrad.Tensors
 
                 long toFree = length < 1 ? long.MaxValue : length;
                 long Freed = 0;
-                foreach (var buf in Allocs.Where(e => e.Location == BufferLocation.Accelerator).OrderBy(e => e.LastAccess))
+                foreach (var buf in Allocs.Where(e => e.Location == BufferLocation.Accelerator && !e.IsLock).OrderBy(e => e.LastAccess))
                 {
                     buf.Location = BufferLocation.Ram;
                     Freed += buf.Length;

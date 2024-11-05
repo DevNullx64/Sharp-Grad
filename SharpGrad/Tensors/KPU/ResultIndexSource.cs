@@ -5,7 +5,7 @@
         //None = OperandIndexSource.None,
         //Operand = OperandIndexSource.Operand,
         //BroadcastOperand = OperandIndexSource.BroadcastOperand,
-        //Operation = OperandIndexSource.Operation,
+        //OperationIndeces = OperandIndexSource.OperationIndeces,
         Cache = OperandIndexSource.Cache,
         Output = OperandIndexSource.Output,
 

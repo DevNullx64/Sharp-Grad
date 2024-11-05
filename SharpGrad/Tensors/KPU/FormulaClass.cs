@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace SharpGrad.Tensors.KPU
 {
@@ -69,27 +70,27 @@ namespace SharpGrad.Tensors.KPU
         public readonly sbyte OutputIndex = outputIndex;
 
         /// <summary>
-        /// The index of the left operand.
+        /// The index of the leftIndex operandIndex.
         /// </summary>
         public readonly MultiIndex<DFS<TResult>.SourceOfOperand> LeftIndex = leftIndex;
 
         /// <summary>
-        /// The index of the right operand.
+        /// The index of the rightIndex operandIndex.
         /// </summary>
         public readonly MultiIndex<DFS<TResult>.SourceOfOperand> RightIndex = rightIndex;
     }
 
-    internal readonly struct DFS<TResult> : IEnumerable<DFSOperation<TResult>>
+    public readonly struct DFS<TResult> : IEnumerable<DFSOperation<TResult>>
         where TResult : unmanaged, INumber<TResult>
     {
         public enum SourceOfOperand : byte { Data, BCData, Operation, BCOperation }
-        public readonly AcceleratorBuffer<TResult>[] Datas;
-        public readonly sbyte[] GradiableIndex;
-        public readonly AcceleratorBuffer<TResult>[] Gradients;
+        internal readonly AcceleratorBuffer<TResult>[] Datas;
+        internal readonly sbyte[] GradiableIndex;
+        internal readonly AcceleratorBuffer<TResult>[] Gradients;
         //public readonly DFSData<TResult>[] BCDatas = bcDatas;
-        public readonly DFSOperation<TResult>[] Operations;
+        internal readonly DFSOperation<TResult>[] Operations;
 
-        public DFS(AcceleratorBuffer<TResult>[] datas, sbyte[] gradiableIndex, AcceleratorBuffer<TResult>[] gradients, DFSOperation<TResult>[] operations)
+        internal DFS(AcceleratorBuffer<TResult>[] datas, sbyte[] gradiableIndex, AcceleratorBuffer<TResult>[] gradients, DFSOperation<TResult>[] operations)
         {
             if (datas.Length != gradiableIndex.Length)
                 throw new ArgumentException($"The length of {nameof(datas)}({datas.Length}) and {nameof(gradiableIndex)}({gradiableIndex.Length}) must be the same.");
@@ -100,7 +101,7 @@ namespace SharpGrad.Tensors.KPU
                 {
                     if (gIndex > maxGradIndex)
                         maxGradIndex = gIndex;
-                    if(datas[gIndex].Length != gradients[gIndex].Length)
+                    if (datas[gIndex].Length != gradients[gIndex].Length)
                         throw new ArgumentException($"The length of {nameof(datas)}({datas[gIndex].Length}) and {nameof(gradients)}({gradients[gIndex].Length}) must be the same.");
                 }
             }
@@ -115,11 +116,11 @@ namespace SharpGrad.Tensors.KPU
 
         //public readonly DFSOperation<TResult>[] BCOperations = bcOperations;
 
-        public IEnumerator<DFSOperation<TResult>> GetEnumerator()
+        IEnumerator<DFSOperation<TResult>> IEnumerable<DFSOperation<TResult>>.GetEnumerator()
             => Operations.AsEnumerable().GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator()
-            => GetEnumerator();
+            => Operations.AsEnumerable().GetEnumerator();
 
         public static DFS<TResult> CreateFrom(ComputeElement<TResult> element)
         {
@@ -133,93 +134,137 @@ namespace SharpGrad.Tensors.KPU
     }
 
     /// <summary>
-    /// Represents a computation element.
+    /// Represents a computation elementIndex.
     /// </summary>
-    /// <typeparam name="TResult">The type of the computation element.</typeparam>
+    /// <typeparam name="TResult">The type of the computation elementIndex.</typeparam>
     /// <remarks>
     /// This class is the base class for all computation elements.
     /// </remarks>
-    public abstract class ComputeElement<TResult>(OpCode opCode, params ComputeElement<TResult>[] operands)
+    public abstract class ComputeElement<TResult> : IEquatable<ComputeElement<TResult>>
         where TResult : unmanaged, INumber<TResult>
     {
-        public class DFS
+        #region Cache management
+        private static readonly List<ComputeElement<TResult>> ExisitingElements = [];
+        private static readonly Dictionary<ComputeElement<TResult>, int> ElementIndices = [];
+
+        internal static ComputeElement<TResult> Add(ComputeElement<TResult> element)
         {
-            public List<ComputeElement<TResult>> Data { get; } = [];
+            lock (ElementIndices)
+            {
+                ElementIndices.Add(element, ExisitingElements.Count);
+                ExisitingElements.Add(element);
+                return element;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ComputeElement<TResult> Get(int index)
+            => ExisitingElements[index];
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int IndexOf(ComputeElement<TResult> element)
+            => ElementIndices[element];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int AddOrIndexOf(InputData<TResult> element)
+        {
+            if(ElementIndices.TryGetValue(element, out int result))
+                return result;
+            else
+            {
+                Add(element);
+                return IndexOf(element);
+            }
+        }
+
+        internal static int[] IndecesOf(ComputeElement<TResult>[] operands)
+        {
+            switch (operands.Length)
+            {
+                case 0:
+                    return [];
+                case 1:
+                    return [AddOrIndexOf((InputData<TResult>)operands[0])];
+                case 2:
+                    return [AddOrIndexOf((InputData<TResult>)operands[0]), AddOrIndexOf((InputData<TResult>)operands[1])];
+                default:
+                    List<int> indeces = [];
+                    foreach (var operand in operands)
+                        indeces.Add(AddOrIndexOf((InputData<TResult>)operand));
+                    return indeces.ToArray();
+            }
+        }
+        #endregion
+
+
+        internal class DFS
+        {
+            public List<int> DataIndices { get; } = [];
             // public List<ComputeElement<TResult>> BCData { get; } = [];
-            public List<ComputeElement<TResult>> Operation { get; } = [];
+            public List<int> OperationIndeces { get; } = [];
             // public List<ComputeElement<TResult>> BCOperation { get; } = [];
 
+            internal void Add(int elementIndex)
+            {
+                if (Get(elementIndex).HasResult)
+                {
+                    if (!DataIndices.Contains(elementIndex))
+                        DataIndices.Add(elementIndex);
+                }
+                else if (!OperationIndeces.Contains(elementIndex))
+                {
+                    if (!DataIndices.Contains(elementIndex))
+                    OperationIndeces.Add(elementIndex);
+                }
+            }
+
             internal void Add(ComputeElement<TResult> element)
-            {
-                if (!Data.Contains(element))
-                    Data.Add(element);
-            }
+                => Add(IndexOf(element));
 
-            internal void Add(ComputeBase<TResult> element)
-            {
-                if (element.HasResult)
-                    Add((ComputeElement<TResult>)element);
-                else if (!Operation.Contains(element))
-                    Operation.Add(element);
-            }
-
-            private MultiIndex<DFS<TResult>.SourceOfOperand> GetIndex(ComputeElement<TResult> element)
-            {
-                if(element.HasResult)
-                {
-                    int index = Data.IndexOf(element);
-                    if (index == -1)
-                        throw new ArgumentException($"The element {element} should be in the data list.");
-                    return new MultiIndex<DFS<TResult>.SourceOfOperand>(DFS<TResult>.SourceOfOperand.Data, (byte)index);
-                }
-                else
-                {
-                    int index = Operation.IndexOf(element);
-                    if (index == -1)
-                        throw new ArgumentException($"The element {element} should be in the operation list.");
-                    return new MultiIndex<DFS<TResult>.SourceOfOperand>(DFS<TResult>.SourceOfOperand.Operation, (byte)index);
-                }
-            }
+            private static MultiIndex<DFS<TResult>.SourceOfOperand> GetIndex(int elementIndex)
+                => new(Get(elementIndex).HasResult ? DFS<TResult>.SourceOfOperand.Data : DFS<TResult>.SourceOfOperand.Operation, (byte)elementIndex);
 
             internal DFS<TResult> ToStruct()
             {
-                AcceleratorBuffer<TResult>[] datas = new AcceleratorBuffer<TResult>[Data.Count];
+                AcceleratorBuffer<TResult>[] datas = new AcceleratorBuffer<TResult>[DataIndices.Count];
                 List<AcceleratorBuffer<TResult>> gradients = [];
-                sbyte[] gradiableIndex = new sbyte[Data.Count];
+                sbyte[] gradiableIndex = new sbyte[DataIndices.Count];
                 sbyte gIndex = 0;
-                for (int i = 0; i < Data.Count; i++)
+                for (int i = 0; i < DataIndices.Count; i++)
                 {
-                    datas[i] = Data[i].GetResult().Content!;
-                    if (Data[i].IsNeedGrad)
+                    var data = Get(DataIndices[i]);
+                    datas[i] = data.Result.Content!;
+                    if (data.IsGradiable)
                     {
                         gradiableIndex[i] = ++gIndex;
-                        gradients[i] = Data[i].GetResult().Gradient!;
+                        gradients[i] = data.Result.Gradient!;
                     }
                     else
                     {
                         gradiableIndex[i] = (sbyte)-1;
                     }
                 }
-                //var grads = Data.Where(e => e.IsGradiable).Select(e => new Result<TResult>(e.Shape));
+                //var grads = DataIndices.Where(e => e.IsGradiable).Select(e => new Result<TResult>(e.Shape));
                 List<Result<TResult>> outputs = [];
-                DFSOperation<TResult>[] operations = new DFSOperation<TResult>[Operation.Count];
-                int iLast = Operation.Count - 1;
+                DFSOperation<TResult>[] operations = new DFSOperation<TResult>[OperationIndeces.Count];
+                int iLast = OperationIndeces.Count - 1;
                 for (int i = 0; i <= iLast; i++)
                 {
-                    var e = Operation[i];
+                    var e = Get(OperationIndeces[i]);
 
                     sbyte oIndex;
                     if (e.IsOuput || i == iLast)
                     {
                         oIndex = (sbyte)outputs.Count;
-                        outputs.Add(e.GetResult());
+                        outputs.Add(e.Result);
                     }
                     else
                         oIndex = -1;
 
-                    MultiIndex<DFS<TResult>.SourceOfOperand> lIndex = GetIndex(e.Operands[0]);
-                    MultiIndex<DFS<TResult>.SourceOfOperand> rIndex = (e.Operands.Length == 2)
-                         ? GetIndex(e.Operands[1])
+                    MultiIndex<DFS<TResult>.SourceOfOperand> lIndex = GetIndex(e.OperandIndices[0]);
+                    MultiIndex<DFS<TResult>.SourceOfOperand> rIndex = (e.OperandsLength == 2)
+                         ? GetIndex(e.OperandIndices[1])
                          : MultiIndex<DFS<TResult>.SourceOfOperand>.Empty;
                     operations[i] = new DFSOperation<TResult>(e.OpCode, oIndex, lIndex, rIndex);
                 }
@@ -228,15 +273,25 @@ namespace SharpGrad.Tensors.KPU
             }
         }
 
-        internal abstract Result<TResult> GetResult();
+        internal readonly Result<TResult> Result;
+        public Shape Shape => Result.Shape;
 
-        public Shape Shape => GetResult().Shape;
-        public readonly OpCode OpCode = opCode;
-        public readonly ComputeElement<TResult>[] Operands = operands;
+        public readonly OpCode OpCode;
+        protected readonly int[] OperandIndices = [];
+        public IReadOnlyList<ComputeElement<TResult>> Operands => OperandIndices.Select(e => Get(e)).ToList();
+        public int OperandsLength => OperandIndices.Length;
+
+        internal ComputeElement(Result<TResult> result, OpCode opCode, params int[] operandsIndices)
+        {
+            Result = result;
+            OpCode = opCode;
+            OperandIndices = operandsIndices;
+        }
 
         public abstract bool IsOuput { get; set; }
-        public abstract bool IsNeedGrad { get; set; }
-        public bool HasResult => GetResult().HasContent;
+        public abstract bool IsGradiable { get; set; }
+        public bool HasResult => Result.HasContent;
+
 
         public event Action? ResultChanged;
 
@@ -244,47 +299,101 @@ namespace SharpGrad.Tensors.KPU
             => ResultChanged?.Invoke();
 
         internal abstract DFS DeepFirstSearch(DFS dfs);
-        public DFS DeepFirstSearch() => DeepFirstSearch(new());
+        public DFS<TResult> DeepFirstSearch() => DeepFirstSearch(new()).ToStruct();
+
+        protected abstract bool OperandsEquals(params int[] operands);
+        public bool Equals(ComputeElement<TResult>? other)
+        {
+            if (other == null)
+                return false;
+
+            if (ReferenceEquals(this, other))
+                return true;
+
+            if (OpCode != other.OpCode || OperandsLength != other.OperandsLength)
+                return false;
+
+            return OperandsLength == 0
+                ? Result.Equals(other.Result)
+                : OperandsEquals(other.OperandIndices);
+        }
+
+        public override bool Equals(object? obj)
+            => obj is ComputeElement<TResult> other && Equals(other);
+
+        protected abstract int GetOperandsHashCode();
+        public override int GetHashCode()
+            => (OpCode.GetHashCode() * 31) + GetOperandsHashCode();
 
         public static ComputeElement<TResult> operator +(ComputeElement<TResult> left, ComputeElement<TResult> right)
-            => new ComputeBinaryClass<AddOp<TResult>, TResult>(left, right);
+            => Create<AddOp<TResult>>(left, right);
         public static ComputeElement<TResult> operator +(ComputeElement<TResult> operand)
             => operand;
         public static ComputeElement<TResult> operator -(ComputeElement<TResult> left, ComputeElement<TResult> right)
-            => new ComputeBinaryClass<SubOp<TResult>, TResult>(left, right);
+            => Create<SubOp<TResult>>(left, right);
         public static ComputeElement<TResult> operator -(ComputeElement<TResult> operand)
-            => new ComputeUnaryClass<NegOp<TResult>, TResult>(operand);
+            => Create<NegOp<TResult>>(operand);
         public static ComputeElement<TResult> operator *(ComputeElement<TResult> left, ComputeElement<TResult> right)
-            => new ComputeBinaryClass<MulOp<TResult>, TResult>(left, right);
+            => Create<MulOp<TResult>>(left, right);
         public static ComputeElement<TResult> operator /(ComputeElement<TResult> left, ComputeElement<TResult> right)
-            => new ComputeBinaryClass<DivOp<TResult>, TResult>(left, right);
+            => Create<DivOp<TResult>>(left, right);
+
+        private static ComputeElement<TResult>? Find(OpCode opCode, params int[] operands)
+            => ExisitingElements.FirstOrDefault(e => e.OpCode == opCode && e.OperandsEquals(operands));
+
+        public static ComputeElement<TResult> Create<TOp>(ComputeElement<TResult> operand)
+            where TOp : IExecUnary<TResult, TResult>
+        {
+            int iOperand = IndexOf(operand);
+            return Find(TOp.OpCode, iOperand) ?? Add(new ComputeUnaryClass<TOp, TResult>(iOperand));
+        }
+
+        public static ComputeElement<TResult> Create<TOp>(ComputeElement<TResult> left, ComputeElement<TResult> right)
+            where TOp : IExecBinary<TResult, TResult, TResult>
+        {
+            int iLeft = IndexOf(left);
+            int iRight = IndexOf(right);
+            return Find(TOp.OpCode, iLeft, iRight)
+             ?? Add(new ComputeBinaryClass<TOp, TResult>(iLeft, iRight));
+        }
+
+        internal TResult[] Compute()
+        {
+            // 1. Get DFS
+            // 2. Convert to KPU script
+            // 3. Execute and get result
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
-    /// Represents an input data element.
+    /// Represents an input data elementIndex.
     /// </summary>
-    /// <typeparam name="TResult">The type of the input data element.</typeparam>
-    internal class InputData<TResult>(Result<TResult> value, bool isGradiable = true) : ComputeElement<TResult>(OpCode.Store)
+    /// <typeparam name="TResult">The type of the input data elementIndex.</typeparam>
+    public class InputData<TResult> : ComputeElement<TResult>
         where TResult : unmanaged, INumber<TResult>
     {
         public override bool IsOuput { get => false; set { } }
-        public override bool IsNeedGrad { get; set; } = isGradiable;
-
-        private Result<TResult> result = value;
-
-        internal override Result<TResult> GetResult() => result;
+        public override bool IsGradiable { get; set; }
 
         public TResult[] Value
         {
-            get => result.Content.CPUData;
+            get => Result.Content!.CPUData;
             set
             {
-                if(!Value.SequenceEqual(value))
+                if (!Value.SequenceEqual(value))
                 {
-                    result.Content!.CPUData = value;
+                    Result.Content!.CPUData = value;
                     OnResultChanged();
                 }
             }
+        }
+
+        internal InputData(Result<TResult> value, bool isGradiable = true)
+            : base(value, OpCode.Store)
+        {
+            IsGradiable = isGradiable;
+            Add(this);
         }
 
         public InputData(Shape shape, bool isGradiable, TResult[]? data)
@@ -297,27 +406,48 @@ namespace SharpGrad.Tensors.KPU
             return dfs;
         }
 
-        public override int GetHashCode()
-            => Value.GetHashCode();
+        protected override bool OperandsEquals(params int[] operands)
+            => Result.Equals(Get(operands[0]).Result);
+
+        protected override int GetOperandsHashCode()
+            => Result.GetHashCode();
+    }
+
+    public class OutputData<TResult> where TResult : unmanaged, INumber<TResult>
+    {
+        private readonly ComputeElement<TResult> BaseElement;
+        public TResult[] Value => !BaseElement.HasResult
+            ? BaseElement.Compute()
+            : BaseElement.Result.Content!.CPUData;
+
+        public OutputData(ComputeElement<TResult> baseElement)
+        {
+            BaseElement = baseElement;
+            BaseElement.IsOuput = true;
+        }
+
+        public static implicit operator ComputeElement<TResult>(OutputData<TResult> output)
+            => output.BaseElement;
     }
 
     /// <summary>
     /// Represents a computation operation.
     /// </summary>
     /// <typeparam name="TOp">The type of the operation.</typeparam>
-    /// <typeparam name="TResult">The type of the computation element.</typeparam>
+    /// <typeparam name="TResult">The type of the computation elementIndex.</typeparam>
     internal abstract class ComputeBase<TResult> : ComputeElement<TResult>
         where TResult : unmanaged, INumber<TResult>
     {
-        public ComputeBase(OpCode opCode, params ComputeElement<TResult>[] operands)
-            : base(opCode, operands)
+        internal ComputeBase(Result<TResult> result, OpCode opCode, params int[] operands)
+            : base(result, opCode, operands)
         {
             foreach (var operand in operands)
-                operand.ResultChanged += OnResultChangedHandler;
+                Get(operand).ResultChanged += OnResultChangedHandler;
+            Add(this);
         }
 
         public override bool IsOuput { get; set; }
-        public override bool IsNeedGrad { get => false; set { } }
+        public override bool IsGradiable { get => false; set { } }
 
         internal override DFS DeepFirstSearch(DFS dfs)
         {
@@ -332,7 +462,7 @@ namespace SharpGrad.Tensors.KPU
             if (IsOuput)
             {
                 if (HasResult)
-                    GetResult().Content = null;
+                    Result.Content = null;
                 else
                     return;
             }
@@ -344,38 +474,52 @@ namespace SharpGrad.Tensors.KPU
     /// Represents a unary computation operation.
     /// </summary>
     /// <typeparam name="TOp">The type of the operation.</typeparam>
-    /// <typeparam name="TResult">The type of the computation element.</typeparam>
-    internal class ComputeUnaryClass<TOp, TResult>(ComputeElement<TResult> operand) : ComputeBase<TResult>(TOp.OpCode, operand)
+    /// <typeparam name="TResult">The type of the computation elementIndex.</typeparam>
+    internal class ComputeUnaryClass<TOp, TResult>(int operandIndex) :
+        ComputeBase<TResult>(new(TOp.ResultingShape(Get(operandIndex).Shape)), TOp.OpCode, operandIndex)
         where TOp : IExecUnary<TResult, TResult>
         where TResult : unmanaged, INumber<TResult>
     {
         public ComputeElement<TResult> Operand => Operands[0];
 
-        private readonly Result<TResult> result = new(TOp.ResultingShape(operand.Shape));
+        protected override bool OperandsEquals(params int[] other)
+            => OperandIndices[0] == other[0];
 
-        internal override Result<TResult> GetResult()
-        {
-            return result;
-        }
+        protected override int GetOperandsHashCode()
+            => Operand.GetHashCode();
     }
 
     /// <summary>
     /// Represents a binary computation operation.
     /// </summary>
     /// <typeparam name="TOp">The type of the operation.</typeparam>
-    /// <typeparam name="TResult">The type of the computation element.</typeparam>
-    internal class ComputeBinaryClass<TOp, TResult>(ComputeElement<TResult> left, ComputeElement<TResult> right) : ComputeBase<TResult>(TOp.OpCode, left, right)
+    /// <typeparam name="TResult">The type of the computation elementIndex.</typeparam>
+    internal class ComputeBinaryClass<TOp, TResult>(int leftIndex, int rightIndex) :
+        ComputeBase<TResult>(new(TOp.ResultingShape(Get(leftIndex).Shape, Get(rightIndex).Shape)), TOp.OpCode, leftIndex, rightIndex)
         where TOp : IExecBinary<TResult, TResult, TResult>
         where TResult : unmanaged, INumber<TResult>
     {
-        public ComputeElement<TResult> Left => Operands[0];
-        public ComputeElement<TResult> Right => Operands[1];
+        public ComputeElement<TResult> Left => Get(OperandIndices[0]);
+        public ComputeElement<TResult> Right => Get(OperandIndices[1]);
 
-        private readonly Result<TResult> result = new(TOp.ResultingShape(left.Shape, right.Shape));
-
-        internal override Result<TResult> GetResult()
+        protected override bool OperandsEquals(params int[] operandIndeces)
         {
+            bool result = OperandIndices[0] == operandIndeces[0] && OperandIndices[1] == operandIndeces[1];
+            if(!result && (OpCode & OpCode.IsCommutative) == OpCode.IsCommutative)
+                result = OperandIndices[0] == operandIndeces[1] && OperandIndices[1] == operandIndeces[0];
             return result;
+        }
+
+        protected override int GetOperandsHashCode()
+        {
+            int hash = Operands[0].GetHashCode();
+            if ((OpCode & OpCode.IsCommutative) == OpCode.IsCommutative)
+                for (int i = 1; i < OperandsLength; i++)
+                    hash ^= Operands[i].GetHashCode();
+            else
+                for (int i = 1; i < OperandsLength; i++)
+                    hash = hash * 31 + Operands[i].GetHashCode();
+            return HashCode.Combine(OpCode, hash);
         }
     }
 
