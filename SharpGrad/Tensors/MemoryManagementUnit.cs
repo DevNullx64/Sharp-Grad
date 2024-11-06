@@ -13,7 +13,11 @@ namespace SharpGrad.Tensors
     /// <summary>
     /// A memory management unit that manages memory buffers.
     /// </summary>
-    internal class MemoryManagementUnit : IBufferManager, ILowLevelMemoryManager
+    /// <remarks>
+    /// Instantiates a new <see cref="MemoryManagementUnit"/>.
+    /// </remarks>
+    /// <param name="accelerator">The associated accelerator.</param>
+    internal class MemoryManagementUnit(Accelerator accelerator) : IBufferManager, ILowLevelMemoryManager
     {
         /// <summary>
         /// Tracks all allocated buffers.
@@ -23,16 +27,7 @@ namespace SharpGrad.Tensors
         /// <summary>
         /// The associated accelerator.
         /// </summary>
-        public Accelerator Accelerator { get; }
-
-        /// <summary>
-        /// Instantiates a new <see cref="MemoryManagementUnit"/>.
-        /// </summary>
-        /// <param name="accelerator">The associated accelerator.</param>
-        public MemoryManagementUnit(Accelerator accelerator)
-        {
-            Accelerator = accelerator;
-        }
+        public Accelerator Accelerator { get; } = accelerator;
 
         /// <inheritdoc/>
         public AcceleratorBuffer<T> GetBuffer<T>(long length)

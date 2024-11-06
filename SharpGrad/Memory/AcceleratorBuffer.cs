@@ -126,7 +126,12 @@ namespace SharpGrad.Memory
     /// </summary>
     /// <typeparam name="T">The type of the data</typeparam>
     /// <remarks>If only <paramref name="length"/> is provided, no memory will be allocated on the RAM or the <see cref="Accelerator"/>. DataIndices will be allocated and set to zero at the first access.</remarks>
-    internal class AcceleratorBuffer<T> : AcceleratorBuffer, IAcceleratorBuffer<T>, IReadOnlyList<T>
+    /// <remarks>
+    /// Create a new DeviceBuffer with the specified length.
+    /// </remarks>
+    /// <param name="data">The data to be copied to the RAM.</param>
+    /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
+    internal class AcceleratorBuffer<T>(MemoryManagementUnit mmu, long length) : AcceleratorBuffer(mmu, length), IAcceleratorBuffer<T>, IReadOnlyList<T>
         where T : unmanaged
     {
         // The data on the RAM.
@@ -301,14 +306,6 @@ namespace SharpGrad.Memory
         /// </summary>
         /// <param name="data">The data to be copied to the RAM.</param>
         /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
-        public AcceleratorBuffer(MemoryManagementUnit mmu, long length)
-            : base(mmu, length) { }
-
-        /// <summary>
-        /// Create a new DeviceBuffer with the specified length.
-        /// </summary>
-        /// <param name="data">The data to be copied to the RAM.</param>
-        /// <remarks><paramref name="data"/> will be copied as reference. But this link will be broken when the data is copied to the <see cref="Accelerator"/>.</remarks>
         public AcceleratorBuffer(MemoryManagementUnit mmu, T[] data)
             : this(mmu, data.Length)
         {
@@ -378,6 +375,14 @@ namespace SharpGrad.Memory
                 destination.CPUData = CPUData;
             else if (IsOnAccelerator)
                 destination.AcceleratorData.CopyToCPU(destination.CPUData);
+        }
+
+        public void Reset()
+        {
+            if (IsOnAccelerator)
+                AcceleratorData.MemSetToZero();
+            else
+                Array.Clear(CPUData, 0, CPUData.Length);
         }
 
         public static implicit operator T[](AcceleratorBuffer<T> gpu) => gpu.CPUData;
