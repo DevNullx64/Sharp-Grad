@@ -8,12 +8,12 @@ namespace SharpGrad.Tensors.KPU
     public enum SharedReduceCode : short // short[0:2]
     {
         /// <summary>
-        /// Get the minimum @this
+        /// Get the minimum @SafeAccelerator
         /// </summary>
         Min = 0,
 
         /// <summary>
-        /// Get the maximum @this
+        /// Get the maximum @SafeAccelerator
         /// </summary>
         Max = 1,
 
@@ -38,12 +38,12 @@ namespace SharpGrad.Tensors.KPU
         Prod = SharedOpCode.Mul, // 5
 
         /// <summary>
-        /// Get the mean @this
+        /// Get the mean @SafeAccelerator
         /// </summary>
         Mean = 6,
 
         //Free code for future use
-        [Obsolete("Do not use this @this")]
+        [Obsolete("Do not use SafeAccelerator @SafeAccelerator")]
         Undefine7 = 7,
     }
 }

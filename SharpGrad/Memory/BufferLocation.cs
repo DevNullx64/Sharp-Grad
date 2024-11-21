@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SharpGrad.Memory
+﻿namespace SharpGrad.Memory
 {
     /// <summary>
     /// The location of the data.

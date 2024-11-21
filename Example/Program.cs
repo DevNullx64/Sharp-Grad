@@ -118,7 +118,7 @@ internal class Program
 // m.Grad=1.0f;
 // m.Backpropagate();
 // Console.WriteLine(j.Grad);
-// Console.WriteLine(m.Data);
+// Console.WriteLine(m.DataInfos);
 
 
 /***

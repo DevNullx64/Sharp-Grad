@@ -1,11 +1,6 @@
 ﻿namespace SharpGrad.Tensors.Operators
 {
-    /// <summary>
-    /// Interface for an operation that takes one operand.
-    /// </summary>
-    /// <typeparam name="TOperand">The type of the operand.</typeparam>
-    /// <typeparam name="TResult">The type of the result.</typeparam>
-    public interface IExecUnary<TOperand, TResult>: IExec
+    public interface IExecUnary : IExec
     {
         /// <summary>
         /// Compute the resulting <see cref="Shape"/> of the operation.
@@ -13,13 +8,21 @@
         /// <param name="operand">The <see cref="Shape"/> of the operand. </param>
         /// <returns></returns>
         abstract static Shape ResultingShape(Shape operand);
+    }
 
+    /// <summary>
+    /// Interface for an operation that takes one operand.
+    /// </summary>
+    /// <typeparam name="TOperand">The type of the operand.</typeparam>
+    /// <typeparam name="TResult">The type of the result.</typeparam>
+    public interface IExecUnary<TOperand, TResult>: IExecUnary
+    {
         /// <summary>
         /// Execute the operation.
         /// </summary>
         /// <param name="operand"></param>
         /// <returns></returns>
-        abstract static TResult Exec(TOperand operand);
+        abstract static TResult Invoke(TOperand operand);
 
         /// <summary>
         /// Compute the gradient of the operation.

@@ -1,9 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using SharpGrad.Tensors.KPU;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using SharpGrad.Tensors.KPU;
 
 namespace SharpGrad.Tensors.Operators
 {

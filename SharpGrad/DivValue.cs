@@ -10,7 +10,7 @@ namespace SharpGrad.DifEngine
         {
         }
 
-        // TODO: Is this a good way to backpropagate division?
+        // TODO: Is SafeAccelerator a good way to backpropagate division?
         protected override void Backward()
         {
             LeftChildren!.Grad += Grad / RightChildren!.Data;

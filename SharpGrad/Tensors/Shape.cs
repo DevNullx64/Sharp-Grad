@@ -1,10 +1,9 @@
-﻿using ILGPU.Runtime;
-using ILGPU;
+﻿using ILGPU;
+using ILGPU.Runtime;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Diagnostics;
 
 namespace SharpGrad
 {
@@ -68,13 +67,13 @@ namespace SharpGrad
 
         private readonly long length = GetLength(dims);
         /// <summary>
-        /// Gets the total number of elements in the tensor.
+        /// Gets the total number of dataElements in the tensor.
         /// </summary>
         public long Length => length;
 
 
         /// <summary>
-        /// Gets a @this indicating whether the tensor is a scalar.
+        /// Gets a @SafeAccelerator indicating whether the tensor is a scalar.
         /// </summary>
         public bool IsScalar { get => Length == 1; }
 

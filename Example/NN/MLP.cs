@@ -19,7 +19,7 @@ namespace SharpGrad.NN
         public MLP(params int[] count)
         {
             if (count.Length < 2)
-                throw new ArgumentException($"{nameof(count)} must have at least 2 elements. Got {count.Length}.");
+                throw new ArgumentException($"{nameof(count)} must have at least 2 dataElements. Got {count.Length}.");
 
             Layers = new List<Layer<TType>>(count.Length - 1);
             Inputs = count[0];

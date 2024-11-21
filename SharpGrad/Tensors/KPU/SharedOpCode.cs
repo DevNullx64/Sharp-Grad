@@ -39,15 +39,15 @@ namespace SharpGrad.Tensors.KPU
         Pow = 2,
 
         // Free code for future use
-        [Obsolete("Do not use this @this")]
+        [Obsolete("Do not use SafeAccelerator @SafeAccelerator")]
         Undefine6 = Pow | IsCommutative,
 
         // Free code for future use
-        [Obsolete("Do not use this @this")]
+        [Obsolete("Do not use SafeAccelerator @SafeAccelerator")]
         Undefine3 = 3,
 
         // Free code for future use
-        [Obsolete("Do not use this @this")]
+        [Obsolete("Do not use SafeAccelerator @SafeAccelerator")]
         Undefine7 = Undefine3 | IsCommutative,
     }
 }

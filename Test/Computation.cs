@@ -43,8 +43,8 @@ namespace Test
 
             (T mean, T min, T max) = Operators<T>.Test(Y, cY);
 
-            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && max <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Computation test passed with error mean={mean}, min={min}, max={max}");
+            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && MaxValue <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={MaxValue}/0");
+            Debug.WriteLine($"Computation test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
 
         private void TestComputeAndReduce<T>(Shape shape, int dim = 2)
@@ -73,8 +73,8 @@ namespace Test
 
             (T mean, T min, T max) = Operators<T>.Test(Y, cY);
 
-            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && max <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Compute & Reduce test passed with error mean={mean}, min={min}, max={max}");
+            //Assert.IsTrue(mean <= Operators<TResult>.Epsilon && min <= Operators<TResult>.Epsilon && MaxValue <= Operators<TResult>.Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={MaxValue}/0");
+            Debug.WriteLine($"Compute & Reduce test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
 
         [TestMethod]

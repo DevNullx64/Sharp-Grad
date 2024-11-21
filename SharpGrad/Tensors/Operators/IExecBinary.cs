@@ -1,6 +1,4 @@
-﻿using SharpGrad.Tensors.KPU;
-
-namespace SharpGrad.Tensors.Operators
+﻿namespace SharpGrad.Tensors.Operators
 {
     /// <summary>
     /// Interface for an operation that takes two tensors.
@@ -27,9 +25,7 @@ namespace SharpGrad.Tensors.Operators
         /// <param name="left">The first operand.</param>
         /// <param name="right">The second operand.</param>
         /// <returns>The result of the operation.</returns>
-        abstract static TResult Exec(TOperand1 left, TOperand2 right);
-
-        abstract static BackwardNeedOperand BackwardOperand { get; }
+        abstract static TResult Invoke(TOperand1 left, TOperand2 right);
 
         /// <summary>
         /// Compute the gradient of the operation for both tensors.

@@ -1,5 +1,5 @@
-﻿using System.Numerics;
-using SharpGrad.Tensors.KPU;
+﻿using SharpGrad.Tensors.KPU;
+using System.Numerics;
 
 namespace SharpGrad.Tensors.Operators
 {
@@ -10,6 +10,6 @@ namespace SharpGrad.Tensors.Operators
         public static string Symbol => "-";
 
         public static T Backward(T right, T grad) => -grad;
-        public static T Exec(T right) => -right;
+        public static T Invoke(T right) => -right;
     }
 }

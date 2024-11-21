@@ -23,7 +23,7 @@ namespace SharpGrad
         int[] this[Range range] { get; }
 
         /// <summary>
-        /// Get the total number of elements in the shape.
+        /// Get the total number of dataElements in the shape.
         /// </summary>
         long Length { get; }
 

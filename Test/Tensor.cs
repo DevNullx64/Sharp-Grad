@@ -36,7 +36,7 @@ namespace Test
                 for (int j = 0; j < result.Shape[1]; j++)
                     for (int k = 0; k < result.Shape[2]; k++)
                         result[i, j, k] = fnc(i, j, k);
-            Debug.WriteLine($"Fill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
+            Debug.WriteLine($"UnsafeFill of {result.Name} took {(DateTime.Now.Ticks - begin) / 10000} ms");
         }
 
         public static TensorData<T> Reduce<TOp>(TensorData<T> input, int dim)
@@ -51,19 +51,19 @@ namespace Test
                     for (int i = 0; i < input.Shape[0]; i++)
                         for (int j = 0; j < input.Shape[1]; j++)
                             for (int k = 0; k < input.Shape[2]; k++)
-                                result[0, j, k] = TOp.Exec(result[0, j, k], input[i, j, k]);
+                                result[0, j, k] = TOp.Invoke(result[0, j, k], input[i, j, k]);
                     break;
                 case 1:
                     for (int i = 0; i < input.Shape[0]; i++)
                         for (int j = 0; j < input.Shape[1]; j++)
                             for (int k = 0; k < input.Shape[2]; k++)
-                                result[i, 0, k] = TOp.Exec(result[i, 0, k], input[i, j, k]);
+                                result[i, 0, k] = TOp.Invoke(result[i, 0, k], input[i, j, k]);
                     break;
                 case 2:
                     for (int i = 0; i < input.Shape[0]; i++)
                         for (int j = 0; j < input.Shape[1]; j++)
                             for (int k = 0; k < input.Shape[2]; k++)
-                                result[i, j, 0] = TOp.Exec(result[i, j, 0], input[i, j, k]);
+                                result[i, j, 0] = TOp.Invoke(result[i, j, 0], input[i, j, k]);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(dim));
@@ -131,8 +131,8 @@ namespace Test
             Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 
             (T mean, T min, T max) = Test(tc, ty);
-            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, max={max}");
+            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={max}/0");
+            Debug.WriteLine($"Addition test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
 
         public static void Subtraction()
@@ -153,8 +153,8 @@ namespace Test
             Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 
             (T mean, T min, T max) = Test(tc, ty);
-            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Subtraction test passed with error mean={mean}, min={min}, max={max}");
+            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={max}/0");
+            Debug.WriteLine($"Subtraction test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
 
         public static void Multiplication()
@@ -175,8 +175,8 @@ namespace Test
             Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 
             (T mean, T min, T max) = Test(tc, ty);
-            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Multiplication test passed with error mean={mean}, min={min}, max={max}");
+            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={max}/0");
+            Debug.WriteLine($"Multiplication test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
 
         public static void Division()
@@ -197,8 +197,8 @@ namespace Test
             Debug.WriteLine($"Get result of {nameof(tc)} takes {(DateTime.Now.Ticks - begin) / 10000} ms");
 
             (T mean, T min, T max) = Test(tc, ty);
-            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, max={max}/0");
-            Debug.WriteLine($"Division test passed with error mean={mean}, min={min}, max={max}");
+            Assert.IsTrue(mean <= Epsilon && min <= Epsilon && max <= Epsilon, $"mean={mean}/0, min={min}/0, MaxValue={max}/0");
+            Debug.WriteLine($"Division test passed with error mean={mean}, min={min}, MaxValue={max}");
         }
     }
 
@@ -367,7 +367,7 @@ namespace Test
         public void CastDoubleToFloat()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<double> tDouble = Tensor<double>.CastTo<double>(ta);
             Assert.IsTrue(Test(tDouble), $"double to double casting failed");
         }
@@ -375,7 +375,7 @@ namespace Test
         public void CastDoubleToULong()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<ulong> tULong = Tensor<double>.CastTo<ulong>(ta);
             Assert.IsTrue(Test(tULong), $"double to ulong casting failed");
         }
@@ -383,7 +383,7 @@ namespace Test
         public void CastDoubleToLong()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<long> tLong = Tensor<double>.CastTo<long>(ta);
             Assert.IsTrue(Test(tLong), $"double to long casting failed");
         }
@@ -391,7 +391,7 @@ namespace Test
         public void CastDoubleToUInt()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<uint> tUInt = Tensor<double>.CastTo<uint>(ta);
             Assert.IsTrue(Test(tUInt), $"double to uint casting failed");
         }
@@ -399,7 +399,7 @@ namespace Test
         public void CastDoubleToInt()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<int> tInt = Tensor<double>.CastTo<int>(ta);
             Assert.IsTrue(Test(tInt), $"double to int casting failed");
         }
@@ -407,7 +407,7 @@ namespace Test
         public void CastDoubleToUShort()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<ushort> tUShort = Tensor<double>.CastTo<ushort>(ta);
             Assert.IsTrue(Test(tUShort), $"double to ushort casting failed");
         }
@@ -415,7 +415,7 @@ namespace Test
         public void CastDoubleToShort()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<short> tShort = Tensor<double>.CastTo<short>(ta);
             Assert.IsTrue(Test(tShort), $"double to short casting failed");
         }
@@ -423,7 +423,7 @@ namespace Test
         public void CastDoubleToByte()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<byte> tByte = Tensor<double>.CastTo<byte>(ta);
             Assert.IsTrue(Test(tByte), $"double to byte casting failed");
         }
@@ -431,7 +431,7 @@ namespace Test
         public void CastDoubleToSByte()
         {
             Tensor<double> ta = NewRandom(256, 256, 256);
-            Fill(ta, (i, j, k) => 1);
+            UnsafeFill(ta, (i, j, k) => 1);
             Tensor<sbyte> tSByte = Tensor<double>.CastTo<sbyte>(ta);
             Assert.IsTrue(Test(tSByte), $"double to sbyte casting failed");
         }
