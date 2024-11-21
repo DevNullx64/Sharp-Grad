@@ -11,12 +11,13 @@ namespace SharpGrad.NN
     public static partial class Loss
     {
         public static Value<TType> MSE<TType>(List<Value<TType>> Y, List<Value<TType>> Y_hat)
-            where TType : IBinaryFloatingPointIeee754<TType>
+            where TType : unmanaged, IBinaryFloatingPointIeee754<TType>
         {
             Value<TType> loss = Value<TType>.Zero;
             for (int i = 0; i < Y.Count; i++)
             {
-                var nl = loss + ((Y[i] - Y_hat[i]).Pow(TType.CreateSaturating(2.0)));
+                var l = Y[i] - Y_hat[i];
+                var nl = loss + (l * l);
                 loss = nl;
             }
             return loss;

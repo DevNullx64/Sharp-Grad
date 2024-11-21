@@ -3,7 +3,7 @@ using System.Numerics;
 namespace SharpGrad.DifEngine
 {
     public class LeakyReLUValue<TType> : Value<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, INumber<TType>
     {
         private readonly TType _alpha;
 

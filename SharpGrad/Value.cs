@@ -6,16 +6,16 @@ namespace SharpGrad.DifEngine
 {
     //TODO: Use class inheritance instead of switch-case
     public class Value<TType>(TType data, string name, Value<TType>? leftChild = null, Value<TType>? rightChild = null)
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, INumber<TType>
     {
         private static int InstanceCount = 0;
 
         public static readonly Value<TType> e = new(TType.CreateSaturating(Math.E), "e");
-        public static readonly Value<TType> Zero = new(TType.CreateSaturating(0.0), "zero");
+        public static readonly Value<TType> Zero = new(TType.Zero, "zero");
 
         public delegate void BackwardPass();
 
-        public TType Grad = TType.CreateSaturating(0.0);
+        public TType Grad = TType.Zero;
         public TType Data = data;
         public readonly Value<TType>? LeftChildren = leftChild;
         public readonly Value<TType>? RightChildren = rightChild;
@@ -47,12 +47,6 @@ namespace SharpGrad.DifEngine
             => new DivValue<TType>(left, right);
         public static Value<TType> operator /(Value<TType> left, Value<TType> right)
             => Div(left, right);
-
-
-        public static Value<TType> Pow(Value<TType> left, Value<TType> right)
-            => new PowValue<TType>(left, right);
-        public Value<TType> Pow(Value<TType> other)
-            => new PowValue<TType>(this, other);
         #endregion
 
         #region ACTIVATION FUNCTIONS
@@ -60,12 +54,6 @@ namespace SharpGrad.DifEngine
         public Value<TType> ReLU()
             => new ReLUValue<TType>(this);
 
-        public Value<TType> Tanh()
-            => new TanhValue<TType>(this);
-
-        public Value<TType> Sigmoid()
-            => new SigmoidValue<TType>(this);
-        
         public Value<TType> LeakyReLU(TType alpha)
             => new LeakyReLUValue<TType>(this,alpha);
 
@@ -91,7 +79,7 @@ namespace SharpGrad.DifEngine
 
         public void Backpropagate()
         {
-            Grad = TType.CreateSaturating(1.0);
+            Grad = TType.One;
             List<Value<TType>> TopOSort = [];
             HashSet<Value<TType>> Visited = [];
             DFS(TopOSort, Visited);

@@ -4,7 +4,7 @@ using System.Numerics;
 namespace SharpGrad
 {
     public class Neuron<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, IBinaryFloatingPointIeee754<TType>
     {
         public static readonly Random Rand = new();
 

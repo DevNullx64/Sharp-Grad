@@ -3,7 +3,7 @@ using System.Numerics;
 namespace SharpGrad.DifEngine
 {
     public class TanhValue<TType> : Value<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, INumber<TType>, IHyperbolicFunctions<TType>
     {
         public TanhValue(Value<TType> value)
             : base(TType.Tanh(value.Data), "tanh", value)

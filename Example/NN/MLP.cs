@@ -5,7 +5,7 @@ using System.Numerics;
 namespace SharpGrad.NN
 {
     public class MLP<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, IBinaryFloatingPointIeee754<TType>
     {
         public List<Layer<TType>> Layers;
         public int Inputs;

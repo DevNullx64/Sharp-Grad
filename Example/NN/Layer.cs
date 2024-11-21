@@ -4,7 +4,7 @@ using System.Numerics;
 namespace SharpGrad.NN
 {
     public class Layer<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : unmanaged, IBinaryFloatingPointIeee754<TType>
     {
         public List<Neuron<TType>> Neurons;
         public int NeuronsCount;
