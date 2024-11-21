@@ -1,3 +1,5 @@
+using SharpGrad.Activation;
+using SharpGrad.Operators;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -24,46 +26,34 @@ namespace SharpGrad.DifEngine
 
         #region BASIC ARITHMETIC OPERATIONS
         public static Value<TType> Add(Value<TType> left, Value<TType> right)
-            => new AddValue<TType>(left, right);
+            => new BinaryOperation<AddOp<TType>, TType>(left, right);
         public static Value<TType> operator +(Value<TType> left, Value<TType> right)
             => Add(left, right);
 
         public static Value<TType> Sub(Value<TType> left, Value<TType> right)
-            => new SubValue<TType>(left, right);
+            => new BinaryOperation<SubOp<TType>, TType>(left, right);
         public static Value<TType> operator -(Value<TType> left, Value<TType> right)
             => Sub(left, right);
         public static Value<TType> Sub(Value<TType> @this)
-            => new SubValue<TType>(Zero, @this);
+            => new BinaryOperation<SubOp<TType>, TType>(Zero, @this);
         public static Value<TType> operator -(Value<TType> @this)
             => Sub(@this);
 
-
         public static Value<TType> Mul(Value<TType> left, Value<TType> right)
-            => new MulValue<TType>(left, right);
+            => new BinaryOperation<MulOp<TType>, TType>(left, right);
         public static Value<TType> operator *(Value<TType> left, Value<TType> right)
             => Mul(left, right);
 
         public static Value<TType> Div(Value<TType> left, Value<TType> right)
-            => new DivValue<TType>(left, right);
+            => new BinaryOperation<DivOp<TType>, TType>(left, right);
         public static Value<TType> operator /(Value<TType> left, Value<TType> right)
             => Div(left, right);
-        #endregion
-
-        #region ACTIVATION FUNCTIONS
-
-        public Value<TType> ReLU()
-            => new ReLUValue<TType>(this);
-
-        public Value<TType> LeakyReLU(TType alpha)
-            => new LeakyReLUValue<TType>(this,alpha);
-
-
         #endregion
 
         #region BACKPROPAGATION
         protected virtual void Backward()
         {
-            if(LeftChildren != null)
+            if (LeftChildren != null)
                 LeftChildren.Grad += Grad;
         }
 
@@ -83,7 +73,7 @@ namespace SharpGrad.DifEngine
             List<Value<TType>> TopOSort = [];
             HashSet<Value<TType>> Visited = [];
             DFS(TopOSort, Visited);
-            for(int i = TopOSort.Count - 1; i >= 0; i--)
+            for (int i = TopOSort.Count - 1; i >= 0; i--)
             {
                 TopOSort[i].Backward();
             }

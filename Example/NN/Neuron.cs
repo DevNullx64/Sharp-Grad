@@ -1,4 +1,5 @@
-﻿using SharpGrad.DifEngine;
+﻿using SharpGrad.Activation;
+using SharpGrad.DifEngine;
 using System.Numerics;
 
 namespace SharpGrad
@@ -32,7 +33,7 @@ namespace SharpGrad
                 sum += X[i] * Weights[i];
             }
             sum += Biai;
-            return ActFunc ? sum.ReLU() : sum;
+            return ActFunc ? Activations.ReLU(sum) : sum;
         }
     }
 }

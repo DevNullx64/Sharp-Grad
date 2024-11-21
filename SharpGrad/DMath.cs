@@ -1,4 +1,6 @@
-﻿using System.Numerics;
+﻿using SharpGrad.Activation;
+using SharpGrad.Operators;
+using System.Numerics;
 
 namespace SharpGrad.DifEngine
 {
@@ -6,10 +8,11 @@ namespace SharpGrad.DifEngine
     {
         public static Value<T> Pow<T>(Value<T> left, Value<T> right)
         where T : unmanaged, INumber<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
-            => new PowValue<T>(left, right);
+            => new BinaryOperation<PowOp<T>, T>(left, right);
+
         public static Value<T> Tanh<T>(Value<T> @this)
             where T : unmanaged, INumber<T>, IHyperbolicFunctions<T>
-            => new TanhValue<T>(@this);
+            => new UnaryOperation<TanH<T>, T>(@this);
 
         public static Value<T> Sigmoid<T>(Value<T> @this)
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>

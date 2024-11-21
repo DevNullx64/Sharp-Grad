@@ -1,9 +1,5 @@
-﻿
-using SharpGrad;
-using SharpGrad.DifEngine;
+﻿using SharpGrad.DifEngine;
 using SharpGrad.NN;
-using SharpGrad.Tensors;
-using System.ComponentModel.DataAnnotations;
 
 internal class Program
 {

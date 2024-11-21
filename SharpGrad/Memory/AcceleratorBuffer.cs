@@ -1,7 +1,7 @@
 ﻿using ILGPU;
 using ILGPU.IR;
 using ILGPU.Runtime;
-using SharpGrad.Tensors.Formula;
+using SharpGrad.Formula;
 using System;
 using System.Collections;
 using System.Collections.Generic;
