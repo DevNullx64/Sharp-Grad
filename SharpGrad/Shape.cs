@@ -45,11 +45,11 @@ namespace SharpGrad
                 int start = range.Start.IsFromEnd ? Count - range.Start.Value : range.Start.Value;
                 int end = range.End.IsFromEnd ? Count - range.End.Value : range.End.Value;
 
-                if(start < 0 || start >= Count)
+                if (start < 0 || start >= Count)
                     throw new ArgumentOutOfRangeException(nameof(range), start, "Start index out of range.");
-                if(end < 0 || end >= Count)
+                if (end < 0 || end >= Count)
                     throw new ArgumentOutOfRangeException(nameof(range), end, "End index out of range.");
-                if(start > end)
+                if (start > end)
                     throw new ArgumentOutOfRangeException(nameof(range), "Start index is greater than end index.");
 
                 int[] result = new int[end - start];
@@ -174,9 +174,9 @@ namespace SharpGrad
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices from the specified flattened index.</returns>
         /// <remarks>This funtion considers the indices as column-major.</remarks>
-        public static int[] IndicesFrom(int[] shape, int flattenedIndex)
+        public static Index[] IndicesFrom(int[] shape, int flattenedIndex)
         {
-            int[] results = new int[shape.Length];
+            Index[] results = new Index[shape.Length];
 
             for (int i = shape.Length - 1; i >= 0; i--)
             {
@@ -249,7 +249,7 @@ namespace SharpGrad
         internal static int GetLength(IEnumerable<int> sourceShape)
         {
             int length = 1;
-            foreach(int dim in sourceShape)
+            foreach (int dim in sourceShape)
                 length *= dim;
             return length;
         }
