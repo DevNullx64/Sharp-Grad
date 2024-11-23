@@ -8,11 +8,12 @@ namespace SharpGrad.NN
 {
     public static class DataSet
     {
+        public const int N = 30; // TODO: Rename it to a more meaningful name.
 
         public class Data(List<int> X, List<int> Y)
         {
-            public List<int> X = X;
-            public List<int> Y = Y;
+            public readonly List<int> X = X;
+            public readonly List<int> Y = Y;
         }
 
         public static List<Data> GetDataSet(int n)
@@ -21,8 +22,8 @@ namespace SharpGrad.NN
             List<Data> dataset = [];
             for (int i = 0; i < n; i++)
             {
-                List<int> X = [];
-                List<int> Y = [];
+                List<int> X = new();
+                List<int> Y = new();
                 X.Add(rand.Next(-15, 15));
                 X.Add(rand.Next(-15, 15));
                 int x = X[0];
@@ -36,51 +37,33 @@ namespace SharpGrad.NN
             }
             return dataset;
         }
-
-        private static readonly string UpperRow = "╔" + new string('═', Program.n) + "╗";
-        private static readonly string LowerRow = "╚" + new string('═', Program.n) + "╝";
-
-        public static int[,] GetMat(List<Data> v)
+        
+        public static void Scatter(List<Data> v)
         {
-            int[,] mat = new int[Program.n, Program.n];
+            Console.Clear();
+            Console.WriteLine("\x1b[3J");
+
+            int[,] mat = new int[300, 300];
             for (int i = 0; i < v.Count; i++)
-                mat[v[i].X[0] + Program.n / 2, v[i].X[1] + Program.n / 2] = v[i].Y[0];
-            return mat;
-        }
-
-        public static void Scatter(List<Data> x, List<Data> y)
-        {
-            int[,] matX = GetMat(x);
-            int[,] matY = GetMat(y);
-
-            Console.Write(UpperRow);
-            Console.WriteLine(UpperRow);
-
-            for (int r = 0; r < Program.n; r++)
+            {
+                mat[v[i].X[0] + 15, v[i].X[1] + 15] = v[i].Y[0];
+            }
+            Console.Write("╔");
+            for (int i = 0; i < 30; i++)
+            {
+                Console.Write("═");
+            }
+            Console.WriteLine("╗");
+            for (int i = 0; i < 30; i++)
             {
                 Console.Write("║");
-                for (int c = 0; c < Program.n; c++)
+                for (int j = 0; j < 30; j++)
                 {
                     switch (matX[r, c])
                     {
-                        case 0:
-                            Console.Write(" ");
-                            break;
-                        case 1:
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.Write("o");
-                            break;
-                        case 2:
-                            Console.ForegroundColor = ConsoleColor.Blue;
-                            Console.Write("o");
-                            break;
+                        Console.Write(" ");
                     }
-                    Console.ResetColor();
-                }
-                Console.Write("║║");
-                for (int j = 0; j < Program.n; j++)
-                {
-                    switch (matY[r, j])
+                    if (mat[i, j] == 1)
                     {
                         case 0:
                             Console.Write(" ");
