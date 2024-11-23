@@ -1,27 +1,19 @@
-﻿using SharpGrad.DifEngine;
+﻿
+using SharpGrad;
+using SharpGrad.DifEngine;
 using SharpGrad.NN;
 
 internal class Program
 {
-    
+    private static void Main(string[] args)
+    {
+        Console.SetWindowSize(DataSet.N * 2 + 4, DataSet.N + 4);
+        var v = DataSet.GetDataSet(400);
 
+        MLP<float> cerebrin = new(2, 8, 1);
 
-MLP<float> cerebrin = new(2, 8, 1);
-
-List<Value<float>> X =
-[
-    v[0].X[0],
-    v[0].X[1]
-];
-List<Value<float>> Y = cerebrin.Forward(X);
-
-
-Console.WriteLine(Y[0].Data);
-
-
-
-int epochs = 1000;
-float lr = 1e-9f;
+        int epochs = 1000;
+        float lr = 1e-9f;
 
         float lastLoss = float.MaxValue;
 
@@ -32,20 +24,20 @@ float lr = 1e-9f;
             Value<float> loss = Value<float>.Zero;
             List<DataSet.Data> preds = [];
 
-    for (int j = 0; j < v.Count; j++)
-    {
-        X =
-        [
-            v[j].X[0],
-            v[j].X[1]
-        ];
-        Y = cerebrin.Forward(X);
-        List<Value<float>> Ygt =
-        [
-            v[j].Y[0]
-        ];
-        var nl = loss + Loss.MSE(Y, Ygt);
-        loss = nl;
+            for (int j = 0; j < v.Count; j++)
+            {
+                List<Value<float>> X =
+                [
+                    v[j].X[0],
+                    v[j].X[1]
+                ];
+                List<Value<float>> Y = cerebrin.Forward(X);
+                List<Value<float>> Ygt =
+                [
+                    v[j].Y[0]
+                ];
+                var nl = loss + Loss.MSE(Y, Ygt);
+                loss = nl;
 
                 int val;
                 if (Math.Abs(Y[0].Data - 1) < Math.Abs(Y[0].Data - 2))
@@ -63,18 +55,21 @@ float lr = 1e-9f;
             loss.Backpropagate();
             cerebrin.Step(lr);
 
-    Console.WriteLine("Loss: " + loss.Data);
-    DataSet.Scatter(preds);
-    if (lastLoss > loss.Data)
-    {
-        lastLoss = loss.Data;
-    }
-    else
-    {
-        Console.WriteLine("Final loss: " + loss.Data);
-        Console.WriteLine("Last epoch: " + i);
-        Console.WriteLine("Loss is increasing. Stopping training...");
-        break;
+            Console.WriteLine("Loss: " + loss.Data);
+            DataSet.Scatter(v, preds);
+            if (lastLoss > loss.Data)
+            {
+                lastLoss = loss.Data;
+            }
+            else
+            {
+                Console.SetWindowSize(DataSet.N * 2 + 4, DataSet.N + 15);
+                Console.WriteLine("Final loss: " + loss.Data);
+                Console.WriteLine("Last epoch: " + i);
+                Console.WriteLine("Loss is increasing. Stopping training...");
+                break;
+            }
+        }
     }
 }
 
@@ -85,14 +80,18 @@ float lr = 1e-9f;
 
 
 
-// Result<float> a = new Result<float>(1.5f,"a");
-// Result<float> b = new Result<float>(2.0f,"b");
-// Result<float> c = new Result<float>(6.0f,"b");
 
-// Result<float> d=(a+b*c);
-// Result<float> e=d/(new Result<float>(2.0f,"2"));
-// Result<float> f=e.Pow(new Result<float>(2.0f,"2"));
-// Result<float> g=f.ReLU();   
+
+
+
+// Value<float> a = new Value<float>(1.5f,"a");
+// Value<float> b = new Value<float>(2.0f,"b");
+// Value<float> c = new Value<float>(6.0f,"b");
+
+// Value<float> d=(a+b*c);
+// Value<float> e=d/(new Value<float>(2.0f,"2"));
+// Value<float> f=e.Pow(new Value<float>(2.0f,"2"));
+// Value<float> g=f.ReLU();   
 
 // g.Grad=1.0f;
 // g.Backpropagate();
@@ -101,14 +100,14 @@ float lr = 1e-9f;
 // Console.WriteLine(b.Grad);
 // Console.WriteLine(c.Grad);
 
-// Result<float> j= new Result<float>(0.5f,"j");
-// Result<float> k= j.Tanh();
-// Result<float> l= k.Sigmoid();
-// Result<float> m= l.LeakyReLU(1.0f);
+// Value<float> j= new Value<float>(0.5f,"j");
+// Value<float> k= j.Tanh();
+// Value<float> l= k.Sigmoid();
+// Value<float> m= l.LeakyReLU(1.0f);
 // m.Grad=1.0f;
 // m.Backpropagate();
 // Console.WriteLine(j.Grad);
-// Console.WriteLine(m.DataInfos);
+// Console.WriteLine(m.Data);
 
 
 /***
