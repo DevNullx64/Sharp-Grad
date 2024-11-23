@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace SharpGrad.Operators
 {
-    internal class MulOp<T> : BaseOperation<T>, IExecBinary<T, T, T> where T : unmanaged, INumber<T>
+    public class MulOp<T> : BaseOperation<T>, IExecBinary<T, T, T> where T : unmanaged, INumber<T>
     {
         public static Shape ResultingShape(Shape left, Shape right)
         {
