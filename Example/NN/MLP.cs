@@ -8,6 +8,7 @@ namespace SharpGrad.NN
         where TType : unmanaged, IBinaryFloatingPointIeee754<TType>
     {
         public List<Layer<TType>> Layers;
+        public List<Layer<TType>> LayersDiff;
         public int Inputs;
 
         /// <summary>
@@ -22,20 +23,27 @@ namespace SharpGrad.NN
                 throw new ArgumentException($"{nameof(count)} must have at least 2 dataElements. Got {count.Length}.");
 
             Layers = new List<Layer<TType>>(count.Length - 1);
+            LayersDiff = new List<Layer<TType>>(count.Length - 1);
             Inputs = count[0];
             Layers.Add(new Layer<TType>(count[1], Inputs, false));
+            LayersDiff.Add(new Layer<TType>(count[1], Inputs, true));
             for (int i = 2; i < count.Length; i++)
             {
                 Layers.Add(new Layer<TType>(count[i], count[i - 1], true));
+                LayersDiff.Add(new Layer<TType>(count[i], count[i - 1], true));
             }
         }
 
         public List<Value<TType>> Forward(List<Value<TType>> X)
         {
             List<Value<TType>> Y;
-            foreach (Layer<TType> l in Layers)
+            for(int i = 0; i < Layers.Count; i++)
             {
-                Y = l.Forward(X);
+                Y = Layers[i].Forward(X);
+                var diff = LayersDiff[i].Forward(X);
+                for(int j = 0; j < Y.Count; j++)
+                    Y[j].Data = Y[j].Data - diff[j].Data;
+
                 X = Y;
             }
             return X;
@@ -43,15 +51,18 @@ namespace SharpGrad.NN
 
         public void Step(TType lr)
         {
-            foreach (Layer<TType> l in Layers)
+            for (int l = 0; l < Layers.Count; l++)
             {
-                foreach (Neuron<TType> n in l.Neurons)
+                foreach (var n in Layers[l].Neurons)
                 {
-                    foreach (Value<TType> w in n.Weights)
-                    {
-                        // Console.WriteLine(w.data);
+                    foreach (var w in n.Weights)
                         w.Data -= lr * w.Grad;
-                    }
+                    n.Biai.Data -= lr * n.Biai.Grad;
+                }
+                foreach (var n in LayersDiff[l].Neurons)
+                {
+                    foreach (var w in n.Weights)
+                        w.Data -= lr * w.Grad;
                     n.Biai.Data -= lr * n.Biai.Grad;
                 }
             }

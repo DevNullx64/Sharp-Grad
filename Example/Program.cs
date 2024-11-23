@@ -3,15 +3,14 @@ using SharpGrad.NN;
 
 internal class Program
 {
+    public const int n = 30;
     static Random rnd = new();
 
     private static void Main(string[] args)
     {
         var v = DataSet.GetDataSet(400);
-        Console.WriteLine("Dataset:");
-        DataSet.Scatter(v);
 
-        MLP<float> cerebrin = new(2, 8, 1);
+        MLP<float> cerebrin = new(2, 3, 1);
 
         List<Value<float>> X =
         [
@@ -32,6 +31,7 @@ internal class Program
 
         for (int i = 0; i < epochs; i++)
         {
+            Console.SetCursorPosition(0, 0);
             Console.WriteLine("Epoch: " + i);
             Value<float> loss = Value<float>.Zero;
             List<DataSet.Data> preds = [];
@@ -68,17 +68,17 @@ internal class Program
             cerebrin.Step(lr);
 
             Console.WriteLine("Loss: " + (loss.Data / v.Count));
-            DataSet.Scatter(preds);
-            if (lastLoss > loss.Data)
-            {
-                lastLoss = loss.Data;
-            }
-            else
+            DataSet.Scatter(v, preds);
+            if (lastLoss == loss.Data)
             {
                 Console.WriteLine("Final loss: " + (loss.Data / v.Count));
                 Console.WriteLine("Last epoch: " + i);
                 Console.WriteLine("Loss is increasing. Stopping training...");
                 break;
+            }
+            else
+            {
+                lastLoss = loss.Data;
             }
         }
     }
