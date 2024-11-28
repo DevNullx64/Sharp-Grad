@@ -2,12 +2,12 @@
 
 namespace SharpGrad
 {
-    public class DimentionalIndex
+    public class DimensionalIndex
     {
         public Dimension Dimension { get; }
         public int Index { get; }
 
-        public DimentionalIndex
+        public DimensionalIndex
             (Dimension dimension, Index index)
         {
             Dimension = dimension;

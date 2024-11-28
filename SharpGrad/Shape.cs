@@ -131,14 +131,14 @@ namespace SharpGrad
         public bool SetEquals(IEnumerable<Dimension> other)
             => IsSubsetOf(other) && IsSupersetOf(other);
 
-        public static int GetFlattenIndex(params DimentionalIndex[] indices)
+        public static int GetFlattenIndex(params DimensionalIndex[] indices)
         {
             var indice = indices[0];
-            var index = indice.Dimension.Size * indice.Index.Value;
+            var index = indice.Dimension.Size * indice.Index;
             for (int i = 1; i < indices.Length; i++)
             {
                 indice = indices[i];
-                index += indice.Dimension.Size * indice.Index.GetOffset(indice.Dimension.Size);
+                index += indice.Dimension.Size * indice.Index;
             }
             return index;
         }
@@ -165,30 +165,30 @@ namespace SharpGrad
             return index;
         }
 
-        public DimentionalIndex[] GetIndices(int flattenedIndex)
+        public DimensionalIndex[] GetIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Length)
                 throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
 
-            DimentionalIndex[] indices = new DimentionalIndex[dimensions.Length];
+            DimensionalIndex[] indices = new DimensionalIndex[dimensions.Length];
             for (int i = dimensions.Length - 1; i >= 0; i--)
             {
-                indices[i] = new DimentionalIndex(dimensions[i], flattenedIndex % dimensions[i].Size);
+                indices[i] = new DimensionalIndex(dimensions[i], flattenedIndex % dimensions[i].Size);
                 flattenedIndex /= dimensions[i].Size;
             }
             return indices;
         }
 
-        public DimentionalIndex[] GetDimIndices(int flattenedIndex)
+        public DimensionalIndex[] GetDimIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Length)
                 throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
 
-            var indices = new DimentionalIndex[dimensions.Length];
+            var indices = new DimensionalIndex[dimensions.Length];
             for (int i = dimensions.Length - 1; i >= 0; i--)
             {
                 Dimension dim = dimensions[i];
-                indices[i] = new DimentionalIndex(dim, flattenedIndex % dim.Size);
+                indices[i] = new DimensionalIndex(dim, flattenedIndex % dim.Size);
                 flattenedIndex /= dim.Size;
             }
             return indices;
