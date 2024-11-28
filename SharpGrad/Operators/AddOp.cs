@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace SharpGrad.Operators
@@ -6,19 +8,6 @@ namespace SharpGrad.Operators
     public class AddOp<T> : BaseOperation<T>, IExecBinary<T, T, T>
         where T : unmanaged, INumber<T>
     {
-        public static Shape ResultingShape(Shape left, Shape right)
-        {
-            if (left.IsScalar)
-                return right;
-            if (right.IsScalar)
-                return left;
-
-            if (left != right)
-                throw new NotSupportedException($"Multiplication of shapes {left} and {right} is not supported");
-
-            return left;
-        }
-        public static Shape ResultingShape(Shape operand) => operand;
         public static OpCode OpCode => OpCode.Add;
         public static string Symbol => "+";
 

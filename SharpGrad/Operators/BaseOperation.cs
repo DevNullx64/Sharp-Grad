@@ -13,16 +13,7 @@ namespace SharpGrad.Operators
         /// <param name="right">The <see cref="Shape"/> of the second operand. </param>
         /// <returns>The broadcasted <see cref="Shape"/>. </returns>
         /// <exception cref="InvalidOperationException"></exception>
-        //public static Shape ResultingShape(Shape left, Shape right)
-        //{
-        //    if(left.IsScalar)
-        //        return right;
-        //    if(right is T)
-        //        return left;
-        //    if(left.Length != right.Length)
-        //        throw new InvalidOperationException($"Cannot broadcast shapes {left} and {right}");
-        //    return left;
-        //}
+        public static Shape ResultingShape(Shape left, Shape right) => Shape.Broadcast(left, right);
     }
 
 }
