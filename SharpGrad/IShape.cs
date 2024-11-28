@@ -30,13 +30,13 @@ namespace SharpGrad
         /// </summary>
         /// <param name="indices">The indices to flatten.</param>
         /// <returns>The flattened index.</returns>
-        int GetFlattenIndex(params DimIndex[] indices);
+        int GetFlattenIndex(params DimensionalIndex[] indices);
 
         /// <summary>
         /// Return the indices from the flattened index.
         /// </summary>
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices.</returns>
-        DimIndex[] GetIndices(int flattenedIndex);
+        DimensionalIndex[] GetIndices(int flattenedIndex);
     }
 }

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace SharpGrad
 {
-    public class ShapeIndex : IReadOnlyList<DimIndex>
+    public class ShapeIndex : IReadOnlyList<DimensionalIndex>
     {
         public Shape Shape { get; }
 
@@ -13,7 +13,7 @@ namespace SharpGrad
 
         public int Count => indices.Length;
 
-        public DimIndex this[int index] => new(Shape[index], indices[index]);
+        public DimensionalIndex this[int index] => new(Shape[index], indices[index]);
 
         public ShapeIndex(Shape shape, params Index[] indices)
         {
@@ -45,23 +45,23 @@ namespace SharpGrad
         public int GetFlattenIndex()
             => GetFlattenIndex(Shape, Indices);
 
-        public DimIndex[] GetIndices(int flattenedIndex)
+        public DimensionalIndex[] GetIndices(int flattenedIndex)
         {
             if (flattenedIndex < 0 || flattenedIndex >= Shape.Length)
                 throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Shape.Length - 1}. Got {flattenedIndex}.");
-            DimIndex[] dimIndices = new DimIndex[Shape.Length];
+            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Length];
             for (int i = (int)Shape.Length - 1; i >= 0; i--)
             {
                 Dimension dim = Shape[i];
-                dimIndices[i] = new DimIndex(dim, flattenedIndex % dim.Size);
+                dimIndices[i] = new DimensionalIndex(dim, flattenedIndex % dim.Size);
                 flattenedIndex /= dim.Size;
             }
             return dimIndices;
         }
 
-        public DimIndex[] GetDimIndices()
+        public DimensionalIndex[] GetDimIndices()
         {
-            DimIndex[] dimIndices = new DimIndex[Shape.Length];
+            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Length];
             for (int i = 0; i < Shape.Length; i++)
             {
                 dimIndices[i] = this[i];
@@ -69,7 +69,7 @@ namespace SharpGrad
             return dimIndices;
         }
 
-        public IEnumerator<DimIndex> GetEnumerator()
+        public IEnumerator<DimensionalIndex> GetEnumerator()
         {
             for (int i = 0; i < Count; i++)
             {
