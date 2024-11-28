@@ -4,31 +4,24 @@ using System.Collections.Generic;
 namespace SharpGrad
 {
     /// <summary>
-    /// Interface for a shape of a tensor.
+    /// Interface for a dimension of a tensor.
     /// </summary>
-    public interface IShape : IReadOnlyList<int>
+    public interface IShape : IReadOnlyList<Dimension>, IReadOnlySet<Dimension>, IEquatable<IShape>
     {
         /// <summary>
-        /// Gets the <see cref="int"/> at the specified index.
+        /// Get ranges of <see cref="Dimension"/> from the dimension.
         /// </summary>
-        /// <param name="index">The index of the <see cref="int"/> to get.</param>
-        /// <returns>The <see cref="int"/> at the specified index.</returns>
-        int this[Index index] { get; }
+        /// <param name="ranges">The ranges of <see cref="Dimension"/> to get.</param>
+        /// <returns>The ranges of the dimension.</returns>
+        Shape this[params Range[] ranges] { get; }
 
         /// <summary>
-        /// Gets the <see cref="int"/>s at the specified range.
-        /// </summary>
-        /// <param name="range">The range of the <see cref="int"/>s to get.</param>
-        /// <returns>The <see cref="int"/>s at the specified range.</returns>
-        int[] this[Range range] { get; }
-
-        /// <summary>
-        /// Get the total number of dataElements in the shape.
+        /// Get the total number of dataElements in the dimension.
         /// </summary>
         long Length { get; }
 
         /// <summary>
-        /// Return true if the shape is a scalar.
+        /// Return true if the dimension is a scalar.
         /// </summary>
         bool IsScalar { get; }
 
@@ -37,13 +30,13 @@ namespace SharpGrad
         /// </summary>
         /// <param name="indices">The indices to flatten.</param>
         /// <returns>The flattened index.</returns>
-        int GetFlattenIndex(params Index[] indices);
+        int GetFlattenIndex(params DimIndex[] indices);
 
         /// <summary>
         /// Return the indices from the flattened index.
         /// </summary>
         /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
         /// <returns>The indices.</returns>
-        Index[] GetIndices(int flattenedIndex);
+        DimIndex[] GetIndices(int flattenedIndex);
     }
 }

@@ -1,265 +1,207 @@
-﻿using ILGPU;
-using ILGPU.Runtime;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace SharpGrad
 {
-    /// <summary>
-    /// Represents the shape of a tensor.
-    /// </summary>
-    /// <param name="dims">The dimensions of the tensor.</param>
-    public readonly struct Shape(IEnumerable<int> dims) : IShape, IEquatable<Shape>
+    public class Shape(params Dimension[] dimensions) : IShape
     {
-        public Shape(params int[] ints) : this(ints.AsEnumerable()) { }
-
-        /// <summary>
-        /// An empty shape.
-        /// </summary>
-        public static readonly Shape Empty = new();
-
-        /// <summary>
-        /// The dimensions of the tensor.
-        /// </summary>
-        private readonly int[] dims = dims.ToArray();
-
-        /// <summary>
-        /// Gets the dimension at the specified index.
-        /// </summary>
-        public int this[Index index] => dims[index];
-        int IReadOnlyList<int>.this[int index] => dims[index];
-
-        /// <summary>
-        /// Gets the dimensions in the specified range.
-        /// </summary>
-        /// <param name="range">The range of dimensions to get.</param>
-        /// <returns>The dimensions in the specified range.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public int[] this[Range range]
+        public static Shape Broadcast(params Shape[] shapes)
         {
-            get
+            List<Dimension> dims = [.. shapes[0]];
+            for (int i = 1; i < shapes.Length; i++)
             {
-                // compute the range
-                int start = range.Start.IsFromEnd ? Count - range.Start.Value : range.Start.Value;
-                int end = range.End.IsFromEnd ? Count - range.End.Value : range.End.Value;
-
-                if (start < 0 || start >= Count)
-                    throw new ArgumentOutOfRangeException(nameof(range), start, "Start index out of range.");
-                if (end < 0 || end >= Count)
-                    throw new ArgumentOutOfRangeException(nameof(range), end, "End index out of range.");
-                if (start > end)
-                    throw new ArgumentOutOfRangeException(nameof(range), "Start index is greater than end index.");
-
-                int[] result = new int[end - start];
-                for (int i = start; i < end; i++)
-                    result[i - start] = dims[i];
-
-                return result;
-            }
-        }
-
-        /// <summary>
-        /// Gets the number of dimensions in the tensor.
-        /// </summary>
-        public int Count => dims.Length;
-
-        private readonly long length = GetLength(dims);
-        /// <summary>
-        /// Gets the total number of dataElements in the tensor.
-        /// </summary>
-        public long Length => length;
-
-
-        /// <summary>
-        /// Gets a @SafeAccelerator indicating whether the tensor is a scalar.
-        /// </summary>
-        public bool IsScalar { get => Length == 1; }
-
-        public Shape SetDim(Index dim, int size)
-        {
-            int[] newDims = (int[])dims.Clone();
-            newDims[dim.IsFromEnd ? Count - dim.Value : dim.Value] = size;
-            return new Shape(newDims);
-        }
-        /// <summary>
-        /// Gets the indices from the specified flattened index.
-        /// </summary>
-        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
-        /// <returns>The indices from the specified flattened index.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public Index[] GetIndices(int flattenedIndex)
-        {
-            if (flattenedIndex < 0 || flattenedIndex >= Length)
-                throw new ArgumentOutOfRangeException(nameof(flattenedIndex));
-            return IndicesFrom(this, flattenedIndex);
-        }
-
-        /// <inheritdoc/>
-        public IEnumerator<int> GetEnumerator() => ((IEnumerable<int>)dims).GetEnumerator();
-        /// <inheritdoc/>
-        IEnumerator IEnumerable.GetEnumerator() => dims.GetEnumerator();
-
-        /// <summary>
-        /// Flattens the specified indices.
-        /// </summary>
-        /// <param name="Shape">The shape of the tensor.</param>
-        /// <param name="indices">The indices to flatten.</param>
-        /// <returns>The flattened index.</returns>
-        /// <exception cref="ArgumentException"></exception>
-        public int GetFlattenIndex(params Index[] indices)
-        {
-            // check if the number of indices is equal to the number of dimensions
-            if (indices.Length != dims.Length)
-            {
-                // check if the last dimension is 1 and the number of indices is equal to the number of dimensions - 1
-                if (dims[^1] == 1 && indices.Length == dims.Length - 1)
+                foreach (var dim in shapes[i])
                 {
-                    List<Index> newIndices = new(indices) { Index.FromStart(0) };
-                    indices = [.. newIndices];
+                    if (!dims.Contains(dim))
+                    {
+                        dims.Add(dim);
+                    }
                 }
-                else
-                    throw new ArgumentException($"Expected {dims.Length} indices, got {indices.Length}");
             }
-
-            // convert the indices to integers
-            int[] intsIndices = new int[indices.Length];
-            for (int i = 0; i < indices.Length; i++)
-            {
-                // check if the index is from the end and convert it to an integer
-                intsIndices[i] = indices[i].IsFromEnd ? dims[i] - indices[i].Value : indices[i].Value;
-                if (intsIndices[i] < 0 || intsIndices[i] >= dims[i])
-                    throw new ArgumentOutOfRangeException(nameof(indices), i, "Index out of range.");
-            }
-
-            return GetFlattenIndices(dims, intsIndices);
-        }
-
-
-        /// <summary>
-        /// Flattens the specified <paramref name="indices"/> within the <paramref name="shape"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="indices">The indices to flatten.</param>
-        /// <returns>The flattened index.</returns>
-        /// <remarks>This funtion considers the indices as column-major.</remarks>
-        /// </remarks>
-        public static int GetFlattenIndices(int[] shape, params int[] indices)
-        {
-            int r = indices[0];
-            for (int i = 1; i < shape.Length; i++)
-            {
-                r *= shape[i];
-                r += indices[i];
-            }
-            return r;
-        }
-
-        public static int GetFlattenIndices(ArrayView1D<int, Stride1D.Dense> shape, params int[] indices)
-        {
-            int r = indices[0];
-            for (int i = 1; i < shape.IntLength; i++)
-            {
-                r *= shape[i];
-                r += indices[i];
-            }
-            return r;
-        }
-
-        /// <summary>
-        /// Gets the indices within the <paramref name="shape"/> from the specified <paramref name="flattenedIndex"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
-        /// <returns>The indices from the specified flattened index.</returns>
-        /// <remarks>This funtion considers the indices as column-major.</remarks>
-        public static Index[] IndicesFrom(int[] shape, int flattenedIndex)
-        {
-            Index[] results = new Index[shape.Length];
-
-            for (int i = shape.Length - 1; i >= 0; i--)
-            {
-                results[i] = flattenedIndex % shape[i];
-                flattenedIndex /= shape[i];
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Gets the indices from the specified flattened index.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
-        /// <returns>The indices from the specified flattened index.</returns>
-        public static int[] IndicesFrom(ArrayView1D<int, Stride1D.Dense> shape, int flattenedIndex)
-        {
-            int[] results = new int[shape.Length];
-
-            for (int i = shape.IntLength - 1; i >= 0; i--)
-            {
-                results[i] = flattenedIndex % shape[i];
-                flattenedIndex /= shape[i];
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Gets the indices from the specified flattened index.
-        /// </summary>
-        /// <param name="shape">The shape of the tensor.</param>
-        /// <param name="flattenedIndex">The flattened index to get the indices from.</param>
-        /// <returns>The indices from the specified flattened index.</returns>
-        public static Index[] IndicesFrom(Shape shape, int flattenedIndex)
-        {
-            Index[] indices = new Index[shape.Count];
-            for (int i = shape.Count - 1; i >= 0; i--)
-            {
-                indices[i] = flattenedIndex % shape[i];
-                flattenedIndex /= shape[i];
-            }
-
-            return indices;
-        }
-
-        /// <inheritdoc/>
-        public bool Equals(Shape other) => dims.SequenceEqual(other.dims);
-        /// <inheritdoc/>
-        public override bool Equals(object? obj) => obj is Shape shape && Equals(shape);
-        /// <inheritdoc/>
-        public static bool operator ==(Shape left, Shape right) => left.Equals(right);
-        /// <inheritdoc/>
-        public static bool operator !=(Shape left, Shape right) => !left.Equals(right);
-
-        /// <inheritdoc/>
-        public override int GetHashCode() => HashCode.Combine(dims);
-
-        /// <inheritdoc/>
-        public override string ToString() => $"[{string.Join(", ", dims)}]";
-
-        internal Shape Reduce(Index dim)
-        {
-            var dims = (int[])this.dims.Clone();
-            dims[dim] = 1;
             return new Shape(dims);
         }
 
-        internal static int GetLength(IEnumerable<int> sourceShape)
+        public Shape(IEnumerable<Dimension> dimensions) : this(dimensions.Distinct().ToArray()) { }
+
+        public int Count => dimensions.Length;
+
+        public long Length { get; } = dimensions.Aggregate(1, (acc, dim) => acc * dim.Size);
+
+        public bool IsScalar => Length == 1;
+
+        public Dimension this[Index index] => dimensions[index];
+        public Shape this[params Range[] ranges]
         {
-            int length = 1;
-            foreach (int dim in sourceShape)
-                length *= dim;
-            return length;
+            get
+            {
+                List<Dimension> dims = [];
+                foreach (var range in ranges)
+                {
+                    dims.AddRange(dimensions[range]);
+                }
+                return new Shape(dims);
+            }
         }
 
-        /// <summary>
-        /// Implicitly converts an array of integers to a shape.
-        /// </summary>
-        /// <param name="dims">The dimensions of the tensor.</param>
-        /// <returns>The shape of the tensor.</returns>
-        public static implicit operator Shape(int[] dims) => new(dims);
-        public static explicit operator int[](Shape shape) => shape.dims;
+        public Dimension this[int index] => dimensions[index];
+
+        public bool Contains(Dimension item) => dimensions.Contains(item);
+
+        public IEnumerator<Dimension> GetEnumerator()
+            => dimensions.AsEnumerable().GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => dimensions.GetEnumerator();
+
+        public override string ToString()
+            => $"({string.Join(", ", dimensions.AsEnumerable())})";
+
+        public bool IsProperSubsetOf(IEnumerable<Dimension> other)
+        {
+            bool found = false;
+            foreach (var dim in other)
+            {
+                if (!dimensions.Contains(dim))
+                {
+                    if (found)
+                    {
+                        return false;
+                    }
+                    found = true;
+                }
+            }
+            return found;
+        }
+
+        public bool IsProperSupersetOf(IEnumerable<Dimension> other)
+        {
+            bool found = false;
+            foreach (var dim in dimensions)
+            {
+                if (!other.Contains(dim))
+                {
+                    if (found)
+                    {
+                        return false;
+                    }
+                    found = true;
+                }
+            }
+            return found;
+        }
+
+        public bool IsSubsetOf(IEnumerable<Dimension> other)
+        {
+            foreach (var dim in dimensions)
+            {
+                if (!other.Contains(dim))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public bool IsSupersetOf(IEnumerable<Dimension> other)
+        {
+            foreach (var dim in other)
+            {
+                if (!dimensions.Contains(dim))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public bool Overlaps(IEnumerable<Dimension> other)
+        {
+            foreach (var dim in dimensions)
+            {
+                if (other.Contains(dim))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public bool SetEquals(IEnumerable<Dimension> other)
+            => IsSubsetOf(other) && IsSupersetOf(other);
+
+        public static int GetFlattenIndex(params DimIndex[] indices)
+        {
+            var indice = indices[0];
+            var index = indice.Dimention.Size * indice.Index.Value;
+            for (int i = 1; i < indices.Length; i++)
+            {
+                indice = indices[i];
+                index += indice.Dimention.Size * indice.Index.GetOffset(indice.Dimention.Size);
+            }
+            return index;
+        }
+
+        private static int GetOffset(Dimension dimension, Index index)
+        {
+            int offset = index.GetOffset(dimension.Size);
+            if (offset < 0 || offset >= dimension.Size)
+                throw new ArgumentOutOfRangeException(nameof(index), $"The index must be between 0 and {dimension.Size - 1}. Got {offset}.");
+            return offset;
+        }
+
+        public int GetFlattenIndex(params Index[] indices)
+        {
+            if(indices.Length != dimensions.Length)
+                throw new ArgumentException($"The number of indices must be {dimensions.Length}. Got {indices.Length}.");
+
+            var index = GetOffset(dimensions[0], indices[0]);
+            for (int i = 1; i < indices.Length; i++)
+            {
+                index *= dimensions[i].Size;
+                index += GetOffset(dimensions[i], indices[i]);
+            }
+            return index;
+        }
+
+        public DimIndex[] GetIndices(int flattenedIndex)
+        {
+            if (flattenedIndex < 0 || flattenedIndex >= Length)
+                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
+
+            DimIndex[] indices = new DimIndex[dimensions.Length];
+            for (int i = dimensions.Length - 1; i >= 0; i--)
+            {
+                indices[i] = new DimIndex(dimensions[i], flattenedIndex % dimensions[i].Size);
+                flattenedIndex /= dimensions[i].Size;
+            }
+            return indices;
+        }
+
+        public DimIndex[] GetDimIndices(int flattenedIndex)
+        {
+            if (flattenedIndex < 0 || flattenedIndex >= Length)
+                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
+
+            var indices = new DimIndex[dimensions.Length];
+            for (int i = dimensions.Length - 1; i >= 0; i--)
+            {
+                Dimension dim = dimensions[i];
+                indices[i] = new DimIndex(dim, flattenedIndex % dim.Size);
+                flattenedIndex /= dim.Size;
+            }
+            return indices;
+        }
+
+        public bool Equals(IShape? other)
+        {
+            if (other is null)
+                return false;
+            if (ReferenceEquals(this, other))
+                return true;
+
+            return Count == other.Count && dimensions.All(dim => other.Contains(dim));
+        }
     }
 }
