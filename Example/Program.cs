@@ -57,17 +57,17 @@ internal class Program
 
             Console.WriteLine("Loss: " + loss.Data);
             DataSet.Scatter(v, preds);
-            if (lastLoss > loss.Data)
-            {
-                lastLoss = loss.Data;
-            }
-            else
+            if (lastLoss == loss.Data)
             {
                 Console.SetWindowSize(DataSet.N * 2 + 4, DataSet.N + 15);
                 Console.WriteLine("Final loss: " + loss.Data);
                 Console.WriteLine("Last epoch: " + i);
                 Console.WriteLine("Loss is increasing. Stopping training...");
                 break;
+            }
+            else
+            {
+                lastLoss = loss.Data;
             }
         }
     }
