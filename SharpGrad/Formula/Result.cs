@@ -32,7 +32,7 @@ namespace SharpGrad.Formula
                 {
                     if (value)
                     {
-                        Content = AcceleratorExtender.DefaultExtender.Allocate<TResult>(Shape.Length);
+                        Content = AcceleratorExtender.DefaultExtender.Allocate<TResult>(Shape.Rank);
                         isComputed = false;
                     }
                     else
@@ -61,7 +61,7 @@ namespace SharpGrad.Formula
                     if (value)
                     {
                         HasContent = true;
-                        Gradient = AcceleratorExtender.DefaultExtender.Allocate<TResult>(Shape.Length);
+                        Gradient = AcceleratorExtender.DefaultExtender.Allocate<TResult>(Shape.Rank);
                     }
                     else
                     {
@@ -84,7 +84,7 @@ namespace SharpGrad.Formula
         }
 
         internal Result(Shape shape, bool isGradiable, bool init, bool isComputable)
-            : this(shape, isGradiable, init ? AcceleratorExtender.DefaultExtender.Allocate<TResult>(shape.Length) : null, isComputable)
+            : this(shape, isGradiable, init ? AcceleratorExtender.DefaultExtender.Allocate<TResult>(shape.Rank) : null, isComputable)
         { }
 
         internal void ResetGradient()

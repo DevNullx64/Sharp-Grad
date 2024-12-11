@@ -7,29 +7,24 @@ namespace SharpGrad
 {
     public class Shape(params Dimension[] dimensions) : IShape
     {
+        public static readonly Shape Scalar = new();
+
+        public static Shape Broadcast(IEnumerable<Dimension> dimensions)
+            => new(dimensions);
+
+        public static Shape Broadcast(IEnumerable<Shape> shapes)
+            => Broadcast(shapes.SelectMany(shape => shape));
+
         public static Shape Broadcast(params Shape[] shapes)
-        {
-            List<Dimension> dims = [.. shapes[0]];
-            for (int i = 1; i < shapes.Length; i++)
-            {
-                foreach (var dim in shapes[i])
-                {
-                    if (!dims.Contains(dim))
-                    {
-                        dims.Add(dim);
-                    }
-                }
-            }
-            return new Shape(dims);
-        }
+            => Broadcast(shapes.AsEnumerable());
 
         public Shape(IEnumerable<Dimension> dimensions) : this(dimensions.Distinct().ToArray()) { }
 
         public int Count => dimensions.Length;
 
-        public long Length { get; } = dimensions.Aggregate(1, (acc, dim) => acc * dim.Size);
+        public long Rank { get; } = dimensions.Aggregate(1, (acc, dim) => acc * dim.Size);
 
-        public bool IsScalar => Length == 1;
+        public bool IsScalar => dimensions.All(e => e.Size == 1);
 
         public Dimension this[Index index] => dimensions[index];
         public Shape this[params Range[] ranges]
@@ -151,9 +146,9 @@ namespace SharpGrad
             return offset;
         }
 
-        public int GetFlattenIndex(params Index[] indices)
+        public int GetOffset(params Index[] indices)
         {
-            if(indices.Length != dimensions.Length)
+            if (indices.Length != dimensions.Length)
                 throw new ArgumentException($"The number of indices must be {dimensions.Length}. Got {indices.Length}.");
 
             var index = GetOffset(dimensions[0], indices[0]);
@@ -167,8 +162,8 @@ namespace SharpGrad
 
         public DimensionalIndex[] GetIndices(int flattenedIndex)
         {
-            if (flattenedIndex < 0 || flattenedIndex >= Length)
-                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
+            if (flattenedIndex < 0 || flattenedIndex >= Rank)
+                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Rank - 1}. Got {flattenedIndex}.");
 
             DimensionalIndex[] indices = new DimensionalIndex[dimensions.Length];
             for (int i = dimensions.Length - 1; i >= 0; i--)
@@ -181,8 +176,8 @@ namespace SharpGrad
 
         public DimensionalIndex[] GetDimIndices(int flattenedIndex)
         {
-            if (flattenedIndex < 0 || flattenedIndex >= Length)
-                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Length - 1}. Got {flattenedIndex}.");
+            if (flattenedIndex < 0 || flattenedIndex >= Rank)
+                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Rank - 1}. Got {flattenedIndex}.");
 
             var indices = new DimensionalIndex[dimensions.Length];
             for (int i = dimensions.Length - 1; i >= 0; i--)

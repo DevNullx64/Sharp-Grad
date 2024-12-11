@@ -111,7 +111,7 @@ namespace SharpGrad.Formula
                         }
                     }
 
-                    operations.Add(new(element.OpCode, outputIndex, leftIndex, rightIndex, gradientIndex));
+                    operations.Add(new(element.OpCode, 0, outputIndex, leftIndex, rightIndex, gradientIndex));
                 }
             }
         }

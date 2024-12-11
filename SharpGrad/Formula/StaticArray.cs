@@ -7,365 +7,52 @@ using System.Threading.Tasks;
 
 namespace SharpGrad.Formula
 {
-    public abstract class StaticArray<T> : IReadOnlyList<T>
+    public interface IStaticArray<T> : IReadOnlyList<T>
+    { }
+
+    public readonly struct StaticArray<T>() : IStaticArray<T>
+        where T: unmanaged, IEquatable<T>
     {
-        public abstract T this[int index] { get; set; }
-
-        public abstract int Count { get; }
-
-        public abstract IEnumerator<T> GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator()
-            => GetEnumerator();
+        public readonly int Count => 0;
+        public readonly T this[int index] => throw new IndexOutOfRangeException();
+        public readonly IEnumerator<T> GetEnumerator() => Enumerable.Empty<T>().GetEnumerator();
+        readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    internal class StaticArray1<T>(T item = default)
-        : StaticArray<T>
+    public struct StaticArray1<T>(T item0 = default) : IStaticArray<T>
+        where T : unmanaged, IEquatable<T>
     {
-        public T Item1 = item;
-        public override T this[int index]
+        public T Item0 = item0;
+        public readonly int Count => Item0.Equals(default) ? 0 : 1;
+        public T this[int index]
         {
-            get => index switch
-            {
-                1 => Item1,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
+            readonly get => index == 0
+                ? (Item0.Equals(default) ? throw new IndexOutOfRangeException() : Item0)
+                : throw new IndexOutOfRangeException();
+            set => Item0 = index == 0 ? value : throw new IndexOutOfRangeException();
         }
 
-        public override int Count => 1;
-
-        public override IEnumerator<T> GetEnumerator()
+        public readonly IEnumerator<T> GetEnumerator()
         {
-            yield return Item1;
+            if (!Item0.Equals(default))
+                yield return Item0;
         }
+        readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    internal class StaticArray2<T>(T item1 = default, T item2 = default)
-        : StaticArray<T>
+    public readonly struct StaticArray2<T>(T item0, T item1) : IStaticArray<T>
     {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
+        public readonly T Item0 = item0;
+        public readonly T Item1 = item1;
+        public readonly int Count => 2;
+        public readonly T this[int index]
+            => index == 0 ? Item0 : index == 1 ? Item1 : throw new IndexOutOfRangeException();
 
-        public override int Count => 2;
-
-        public override IEnumerator<T> GetEnumerator()
+        public readonly IEnumerator<T> GetEnumerator()
         {
+            yield return Item0;
             yield return Item1;
-            yield return Item2;
         }
-    }
-
-    internal class StaticArray3<T>(T item1 = default, T item2 = default, T item3 = default)
-        : StaticArray<T>
-    {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public T Item3 = item3;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                3 => Item3,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    case 3:
-                        Item3 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public override int Count => 3;
-
-        public override IEnumerator<T> GetEnumerator()
-        {
-            yield return Item1;
-            yield return Item2;
-            yield return Item3;
-        }
-    }
-
-    internal class StaticArray4<T>(T item1 = default, T item2 = default, T item3 = default, T item4 = default)
-        : StaticArray<T>
-    {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public T Item3 = item3;
-        public T Item4 = item4;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                3 => Item3,
-                4 => Item4,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    case 3:
-                        Item3 = value;
-                        break;
-                    case 4:
-                        Item4 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public override int Count => 4;
-
-        public override IEnumerator<T> GetEnumerator()
-        {
-            yield return Item1;
-            yield return Item2;
-            yield return Item3;
-            yield return Item4;
-        }
-    }
-
-    internal class StaticArray5<T>(T item1 = default, T item2 = default, T item3 = default, T item4 = default, T item5 = default)
-        : StaticArray<T>
-    {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public T Item3 = item3;
-        public T Item4 = item4;
-        public T Item5 = item5;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                3 => Item3,
-                4 => Item4,
-                5 => Item5,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    case 3:
-                        Item3 = value;
-                        break;
-                    case 4:
-                        Item4 = value;
-                        break;
-                    case 5:
-                        Item5 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public override int Count => 5;
-
-        public override IEnumerator<T> GetEnumerator()
-        {
-            yield return Item1;
-            yield return Item2;
-            yield return Item3;
-            yield return Item4;
-            yield return Item5;
-        }
-    }
-
-    internal class StaticArray6<T>(T item1 = default, T item2 = default, T item3 = default, T item4 = default, T item5 = default, T item6 = default)
-        : StaticArray<T>
-    {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public T Item3 = item3;
-        public T Item4 = item4;
-        public T Item5 = item5;
-        public T Item6 = item6;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                3 => Item3,
-                4 => Item4,
-                5 => Item5,
-                6 => Item6,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    case 3:
-                        Item3 = value;
-                        break;
-                    case 4:
-                        Item4 = value;
-                        break;
-                    case 5:
-                        Item5 = value;
-                        break;
-                    case 6:
-                        Item6 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public override int Count => 6;
-
-        public override IEnumerator<T> GetEnumerator()
-        {
-            yield return Item1;
-            yield return Item2;
-            yield return Item3;
-            yield return Item4;
-            yield return Item5;
-            yield return Item6;
-        }
-    }
-
-    internal class StaticArray7<T>(T item1 = default, T item2 = default, T item3 = default, T item4 = default, T item5 = default, T item6 = default, T item7 = default)
-        : StaticArray<T>
-    {
-        public T Item1 = item1;
-        public T Item2 = item2;
-        public T Item3 = item3;
-        public T Item4 = item4;
-        public T Item5 = item5;
-        public T Item6 = item6;
-        public T Item7 = item7;
-        public override T this[int index]
-        {
-            get => index switch
-            {
-                1 => Item1,
-                2 => Item2,
-                3 => Item3,
-                4 => Item4,
-                5 => Item5,
-                6 => Item6,
-                7 => Item7,
-                _ => throw new IndexOutOfRangeException()
-            };
-            set
-            {
-                switch (index)
-                {
-                    case 1:
-                        Item1 = value;
-                        break;
-                    case 2:
-                        Item2 = value;
-                        break;
-                    case 3:
-                        Item3 = value;
-                        break;
-                    case 4:
-                        Item4 = value;
-                        break;
-                    case 5:
-                        Item5 = value;
-                        break;
-                    case 6:
-                        Item6 = value;
-                        break;
-                    case 7:
-                        Item7 = value;
-                        break;
-                    default:
-                        throw new IndexOutOfRangeException();
-                }
-            }
-        }
-
-        public override int Count => 7;
-
-        public override IEnumerator<T> GetEnumerator()
-        {
-            yield return Item1;
-            yield return Item2;
-            yield return Item3;
-            yield return Item4;
-            yield return Item5;
-            yield return Item6;
-            yield return Item7;
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

@@ -19,10 +19,10 @@ namespace SharpGrad.Formula
                 OpCode.Neg => NegOp<T>.Invoke(left),
                 OpCode.Log => LogOp<T>.Invoke(left),
                 OpCode.Exp => ExpOp<T>.Invoke(left),
-                //OpCode.Sqrt => SqrtOp<T>.Invoke(left),
-                //OpCode.Sin => SinOp<T>.Invoke(left),
-                //OpCode.Cos => CosOp<T>.Invoke(left),
-                //OpCode.Tan => TanOp<T>.Invoke(left),
+                //OpCode.Sqrt => SqrtOp<TCoordinates>.Invoke(left),
+                //OpCode.Sin => SinOp<TCoordinates>.Invoke(left),
+                //OpCode.Cos => CosOp<TCoordinates>.Invoke(left),
+                //OpCode.Tan => TanOp<TCoordinates>.Invoke(left),
                 _ => default // TODO: This should not happen
             };
 
@@ -81,12 +81,12 @@ namespace SharpGrad.Formula
         }
 
         /*
-        internal static void Forward<T>(
+        internal static void Forward<TCoordinates>(
             SafeAccelerator accelerator,
-            OperationInfo<T>[] ops,
-            AcceleratorBuffer<T>[] datas,
-            out AcceleratorBuffer<T>[] outputs)
-            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
+            OperationInfo<TCoordinates>[] ops,
+            AcceleratorBuffer<TCoordinates>[] datas,
+            out AcceleratorBuffer<TCoordinates>[] outputs)
+            where TCoordinates : unmanaged, INumber<TCoordinates>, IExponentialFunctions<TCoordinates>, ILogarithmicFunctions<TCoordinates>, IPowerFunctions<TCoordinates>
         {
             if(datas.Any(d => d.SafeAccelerator != accelerator))
                 throw new ArgumentException("All data buffers must be on the same accelerator.");

@@ -17,8 +17,8 @@ namespace SharpGrad
 
         public ShapeIndex(Shape shape, params Index[] indices)
         {
-            if (shape.Length != indices.Length)
-                throw new ArgumentException($"The number of indices must match the number of dimensions. Expected {shape.Length}, got {indices.Length}.");
+            if (shape.Rank != indices.Length)
+                throw new ArgumentException($"The number of indices must match the number of dimensions. Expected {shape.Rank}, got {indices.Length}.");
 
             for (int i = 0; i < indices.Length; i++)
             {
@@ -32,8 +32,8 @@ namespace SharpGrad
 
         public static int GetFlattenIndex(Shape shape, params Index[] indices)
         {
-            if (indices.Length != shape.Length)
-                throw new ArgumentException($"The number of indices must match the number of dimensions. Expected {shape.Length}, got {indices.Length}.");
+            if (indices.Length != shape.Rank)
+                throw new ArgumentException($"The number of indices must match the number of dimensions. Expected {shape.Rank}, got {indices.Length}.");
             var index = shape[0].Size * indices[0].Value;
             for (int i = 1; i < indices.Length; i++)
             {
@@ -47,10 +47,10 @@ namespace SharpGrad
 
         public DimensionalIndex[] GetIndices(int flattenedIndex)
         {
-            if (flattenedIndex < 0 || flattenedIndex >= Shape.Length)
-                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Shape.Length - 1}. Got {flattenedIndex}.");
-            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Length];
-            for (int i = (int)Shape.Length - 1; i >= 0; i--)
+            if (flattenedIndex < 0 || flattenedIndex >= Shape.Rank)
+                throw new ArgumentOutOfRangeException(nameof(flattenedIndex), $"The index must be between 0 and {Shape.Rank - 1}. Got {flattenedIndex}.");
+            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Rank];
+            for (int i = (int)Shape.Rank - 1; i >= 0; i--)
             {
                 Dimension dim = Shape[i];
                 dimIndices[i] = new DimensionalIndex(dim, flattenedIndex % dim.Size);
@@ -61,8 +61,8 @@ namespace SharpGrad
 
         public DimensionalIndex[] GetDimIndices()
         {
-            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Length];
-            for (int i = 0; i < Shape.Length; i++)
+            DimensionalIndex[] dimIndices = new DimensionalIndex[Shape.Rank];
+            for (int i = 0; i < Shape.Rank; i++)
             {
                 dimIndices[i] = this[i];
             }

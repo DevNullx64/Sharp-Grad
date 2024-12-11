@@ -5,7 +5,7 @@ namespace SharpGrad.Operators
     /// <summary>
     /// Shared code for reductions functions.
     /// </summary>
-    public enum SharedReduceCode : short // short[0:2]
+    public enum SharedReduceCode : byte // short[0:2]
     {
         /// <summary>
         /// Get the minimum @SafeAccelerator
@@ -43,7 +43,16 @@ namespace SharpGrad.Operators
         Mean = 6,
 
         //Free code for future use
-        [Obsolete("Do not use SafeAccelerator @SafeAccelerator")]
+        [Obsolete("Do not use")]
         Undefine7 = 7,
+    }
+
+    public enum SharedBroadcastCode : byte
+    {
+
+        /// <summary>
+        /// Repeat the array
+        /// </summary>
+        Repeat = 0,
     }
 }

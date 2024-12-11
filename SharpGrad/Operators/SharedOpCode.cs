@@ -6,7 +6,7 @@ namespace SharpGrad.Operators
     /// Shared operators code.
     /// </summary>
     /// <remarks>It is a bit field short[0:2].</remarks>
-    public enum SharedOpCode : short // short[0:2]
+    public enum SharedOpCode : byte // short[0:2]
     {
         /// <summary>
         /// IsCommutative is set for commutative <see cref="SharedOpCode"/>

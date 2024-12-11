@@ -5,6 +5,7 @@ namespace SharpGrad.Formula
 {
     public readonly struct OperationInfo<TResult>(
         OpCode opCode,
+        byte shapeIndex,
         BIndex<ushort> outputIndex,
         MultiIndex<SourceOfOperand> leftIndex,
         MultiIndex<SourceOfOperand> rightIndex,
@@ -15,6 +16,8 @@ namespace SharpGrad.Formula
         /// The operation code.
         /// </summary>
         public readonly OpCode OpCode = opCode;
+
+        public readonly byte ShapeIndex = shapeIndex;
 
         /// <summary>
         /// Index where store the output. -1 if the output is not needed.
