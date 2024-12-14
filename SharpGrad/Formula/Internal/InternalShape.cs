@@ -2,7 +2,7 @@
 using ILGPU.Runtime;
 using System;
 
-namespace SharpGrad.Formula
+namespace SharpGrad.Formula.Internal
 {
     public interface IInternalShape<TXD>
         where TXD : IXD

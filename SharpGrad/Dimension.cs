@@ -1,5 +1,5 @@
 ﻿using ILGPU.IR.Values;
-using SharpGrad.Formula;
+using SharpGrad.Formula.Internal;
 using SharpGrad.Operators;
 using System.Numerics;
 using System.Runtime.CompilerServices;

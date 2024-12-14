@@ -1,7 +1,7 @@
 ﻿using SharpGrad.Operators;
 using System;
 
-namespace SharpGrad.Formula
+namespace SharpGrad.Formula.Internal
 {
     internal readonly struct InternalDimension(int size, SharedReduceCode reduce, SharedBroadcastCode broadcast)
     {

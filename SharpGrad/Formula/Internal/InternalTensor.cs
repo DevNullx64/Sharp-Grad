@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SharpGrad.Formula
+namespace SharpGrad.Formula.Internal
 {
     internal interface IInternalTensor<TShape, TIndices, TXD>
         where TShape : unmanaged, IInternalShape<TXD>
@@ -30,6 +30,11 @@ namespace SharpGrad.Formula
 
         public static long ProjectIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TShape from, TShape to, long indexFrom)
         {
+            if (from.Rank == 0)
+                return indexFrom;
+            if (to.Rank == 0)
+                return 0;
+
             TIndices indicesFrom = default;
             for (int d = from.Rank - 1; d >= 0; d--)
             {
@@ -38,11 +43,12 @@ namespace SharpGrad.Formula
                 indexFrom /= size;
             }
 
-            long indexTo = 0;
-            for (int d = 0; d < to.Rank; d++)
+            byte dimIdx = to[0];
+            long indexTo = indicesFrom[from.IndexOf(dimIdx)];
+            for (int d = 1; d < to.Rank; d++)
             {
-                byte dimIdx = to[d];
                 indexTo *= dimensions[dimIdx].Size;
+                dimIdx = to[d];
                 indexTo += indicesFrom[from.IndexOf(dimIdx)];
             }
 

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SharpGrad.Formula
+namespace SharpGrad.Formula.Internal
 {
     internal interface IInternalIndices<TXD>
         where TXD : IXD
