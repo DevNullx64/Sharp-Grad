@@ -1,4 +1,5 @@
-﻿using SharpGrad.Memory;
+﻿using SharpGrad.Formula.Internal;
+using SharpGrad.Memory;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -28,8 +29,8 @@ namespace SharpGrad.Formula
         public IReadOnlyList<ComputeElement<TResult>> OperationsElements => operationsElements;
 
         // Contains all the operation dataElements.
-        protected readonly List<OperationInfo<TResult>> operations = [];
-        public IReadOnlyList<OperationInfo<TResult>> Operations => operations;
+        protected readonly List<InternalOperation<TResult>> operations = [];
+        public IReadOnlyList<InternalOperation<TResult>> Operations => operations;
 
         // Contains all the output dataElements.
         private readonly List<AcceleratorBuffer<TResult>> outputs = [];

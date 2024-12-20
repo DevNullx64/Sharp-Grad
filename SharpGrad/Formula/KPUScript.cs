@@ -1,4 +1,5 @@
-﻿using SharpGrad.Memory;
+﻿using SharpGrad.Formula.Internal;
+using SharpGrad.Memory;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -15,8 +16,8 @@ namespace SharpGrad.Formula
         internal readonly DataInfo<TResult>[] dataInfos;
         public readonly IReadOnlyList<DataInfo<TResult>> Gradients => dataInfos;
 
-        internal readonly OperationInfo<TResult>[] operations;
-        public readonly IReadOnlyList<OperationInfo<TResult>> Operations => operations;
+        internal readonly InternalOperation<TResult>[] operations;
+        public readonly IReadOnlyList<InternalOperation<TResult>> Operations => operations;
 
 
         internal KPUScript(ScriptBuilder<TResult> script)

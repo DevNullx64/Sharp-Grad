@@ -3,9 +3,11 @@ using System;
 
 namespace SharpGrad.Formula.Internal
 {
-    internal readonly struct InternalDimension(int size, SharedReduceCode reduce, SharedBroadcastCode broadcast)
+    public readonly struct InternalDimension(int size, SharedReduceCode reduce, SharedBroadcastCode broadcast)
     {
-        public static InternalDimension Scalar => new(1, SharedReduceCode.Mean, SharedBroadcastCode.Repeat);
+        public static InternalDimension Batch = default;
+        public static InternalDimension Scalar = new(1, SharedReduceCode.Mean, SharedBroadcastCode.Repeat);
+
         public readonly int Size = size;
         private readonly byte Operations = (byte)reduce < 15 && (byte)broadcast < 15
             ? (byte)((byte)reduce & 0x0F | ((byte)broadcast & 0x0F) << 4)

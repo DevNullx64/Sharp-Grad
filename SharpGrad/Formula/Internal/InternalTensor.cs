@@ -10,21 +10,23 @@ namespace SharpGrad.Formula.Internal
 {
     internal interface IInternalTensor<TShape, TIndices, TXD>
         where TShape : unmanaged, IInternalShape<TXD>
-        where TIndices : unmanaged, IInternalIndices<TXD>
+        where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
+        SourceOfOperand Source { get; }
         TShape Shape(ArrayView1D<TShape, Stride1D.Dense> shapes);
-
         long ProjectIndex(ArrayView1D<TShape, Stride1D.Dense> shapes, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, byte shapeIdx, long index);
     }
 
-    internal readonly struct InternalTensor<TShape, TIndices, TXD>(byte shapeIdx, long offset) : IInternalTensor<TShape, TIndices, TXD>
+    internal readonly struct InternalTensor<TShape, TIndices, TXD>(SourceOfOperand source, byte shapeIdx, long offset) : IInternalTensor<TShape, TIndices, TXD>
         where TShape : unmanaged, IInternalShape<TXD>
-        where TIndices : unmanaged, IInternalIndices<TXD>
+        where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
-        public readonly byte ShapeIdx = shapeIdx;
+        public readonly BIndex<byte> ShapeIdx = shapeIdx;
         public readonly long Offset = offset;
+
+        public readonly SourceOfOperand Source { get; } = source;
         public readonly TShape Shape(ArrayView1D<TShape, Stride1D.Dense> shapes)
             => shapes[ShapeIdx];
 
@@ -54,6 +56,9 @@ namespace SharpGrad.Formula.Internal
 
             return indexTo;
         }
+        public static long ProjectIndex(ArrayView1D<TShape, Stride1D.Dense> shapes, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, byte fromIdx, byte toIdx, long indexFrom)
+            => ProjectIndex(dimensions, shapes[fromIdx], shapes[toIdx], indexFrom);
+
 
         public long ProjectIndex(ArrayView1D<TShape, Stride1D.Dense> shapes, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, byte shapeToIdx, long indexFrom)
             => ProjectIndex(dimensions, shapes[ShapeIdx], shapes[shapeToIdx], indexFrom);

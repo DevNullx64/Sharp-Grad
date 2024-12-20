@@ -2,13 +2,13 @@
 using System;
 using System.Numerics;
 
-namespace SharpGrad
+namespace SharpGrad.Formula.Internal
 {
     /// <summary>
     /// Represents an index that can be empty.
     /// </summary>
     /// <remarks>
-    /// The index is bounded between 0 and 254.
+    /// The index is bounded between 0 and <typeparamref name="T"/>.MaxValue - 1.
     /// </remarks>
     public readonly struct BIndex<T> : IEquatable<BIndex<T>>, IComparable<BIndex<T>>
         where T : IUnsignedNumber<T>, IComparable<T>, IEquatable<T>
@@ -88,10 +88,26 @@ namespace SharpGrad
         /// <summary>
         /// Implicitly converts an integer to a bounded index.
         /// </summary>
-        public static implicit operator BIndex<T>(int index)
+        public static implicit operator BIndex<T>(byte index)
             => new(index < 0 ? EmptyValue : T.CreateChecked(index + 1));
 
         public static implicit operator Index1D(BIndex<T> index)
-            => (int)index;
+            => index;
+    }
+
+
+    public readonly struct OperandIndex<T>(T value)
+        where T : ISignedNumber<T>, IComparable<T>, IEquatable<T>, IBitwiseOperators<T, T, T>
+    {
+        public static readonly T EmptyValue = (T)typeof(T).GetField("MinValue").GetValue(null);
+        public static bool GetIsEmpty(T value) => value.Equals(EmptyValue);
+
+        public readonly T Value = value;
+
+        public readonly bool IsOperation => Value.CompareTo(EmptyValue) < 0;
+        public readonly bool FromMemory => Value.CompareTo(EmptyValue) >= 0;
+        public readonly bool IsEmpty => GetIsEmpty(Value);
+
+        public T Index => FromMemory ? Value : ~Value;
     }
 }

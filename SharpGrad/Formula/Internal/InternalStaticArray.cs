@@ -2,20 +2,19 @@
 
 namespace SharpGrad.Formula.Internal
 {
-    internal interface IInternalIndices<TXD>
+    public interface IInternalStaticArray<T, TXD> : IInternalStaticReadOnlyArray<T, TXD>
+        where T : unmanaged
         where TXD : IXD
     {
-        int Count { get; }
-        int this[int index] { get; set; }
+        new T this[int index] { get; set; }
     }
 
-    internal struct InternalIndices1(int index0) : IInternalIndices<_1D>
+    internal struct InternalStaticArray1<T>(T index0) : IInternalStaticArray<T, _1D>
+        where T : unmanaged
     {
-        public int Index0 = index0;
-
-        public readonly int Count { get; } = index0 < 0 ? 0 : 1;
-
-        public int this[int index]
+        public T Index0 = index0;
+        public readonly int Count { get; } = 1;
+        public T this[int index]
         {
             readonly get
             {
@@ -36,16 +35,22 @@ namespace SharpGrad.Formula.Internal
                 throw new IndexOutOfRangeException();
             }
         }
+
+        public int IndexOf(T value)
+        {
+            if (Index0.Equals(value))
+                return 0;
+            return -1;
+        }
     }
 
-    internal struct InternalIndices2(int index0, int index1) : IInternalIndices<_2D>
+    internal struct InternalStaticArray2<T>(T index0, T index1) : IInternalStaticArray<T, _2D>
+        where T : unmanaged
     {
-        public int Index0 = index0;
-        public int Index1 = index1;
-
-        public readonly int Count { get; } = index0 < 0 ? 0 : index1 < 0 ? 1 : 2;
-
-        public int this[int index]
+        public T Index0 = index0;
+        public T Index1 = index1;
+        public readonly int Count { get; } = 2;
+        public T this[int index]
         {
             readonly get
             {
@@ -72,15 +77,25 @@ namespace SharpGrad.Formula.Internal
                 throw new IndexOutOfRangeException();
             }
         }
+
+        public int IndexOf(T value)
+        {
+            if (Index0.Equals(value))
+                return 0;
+            if (Index1.Equals(value))
+                return 1;
+            return -1;
+        }
     }
 
-    internal struct InternalIndices3(int index0, int index1, int index2) : IInternalIndices<_3D>
+    internal struct InternalStaticArray3<T>(T index0, T index1, T index2) : IInternalStaticArray<T, _3D>
+        where T : unmanaged
     {
-        public int Index0 = index0;
-        public int Index1 = index1;
-        public int Index2 = index2;
-        public readonly int Count { get; } = index0 < 0 ? 0 : index1 < 0 ? 1 : index2 < 0 ? 2 : 3;
-        public int this[int index]
+        public T Index0 = index0;
+        public T Index1 = index1;
+        public T Index2 = index2;
+        public readonly int Count { get; } = 3;
+        public T this[int index]
         {
             readonly get
             {
@@ -108,6 +123,17 @@ namespace SharpGrad.Formula.Internal
                 }
                 throw new IndexOutOfRangeException();
             }
+        }
+
+        public int IndexOf(T value)
+        {
+            if (Index0.Equals(value))
+                return 0;
+            if (Index1.Equals(value))
+                return 1;
+            if (Index2.Equals(value))
+                return 2;
+            return -1;
         }
     }
 }

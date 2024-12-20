@@ -4,7 +4,7 @@ using ILGPU.Runtime;
 namespace SharpGrad.Formula.Internal
 {
     internal readonly struct InternalShapeIndices<TShape, TIndices, TXD>(TShape shape, TIndices indices) where TShape : unmanaged, IInternalShape<TXD>
-        where TIndices : unmanaged, IInternalIndices<TXD>
+        where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
         private readonly TShape shape = shape.Rank <= indices.Count ? shape : throw new System.ArgumentException("Shape rank must be less than or equal to indices count.");

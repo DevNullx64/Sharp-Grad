@@ -1,4 +1,5 @@
 ﻿using ILGPU.Runtime;
+using SharpGrad.Formula.Internal;
 using System;
 
 namespace SharpGrad.Formula

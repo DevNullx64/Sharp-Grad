@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SharpGrad.Formula
+namespace SharpGrad.Formula.Internal
 {
     public readonly struct OperandIndex(int value, OperandIndexSource source)
     {

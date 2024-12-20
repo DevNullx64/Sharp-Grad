@@ -1,4 +1,4 @@
-﻿namespace SharpGrad.Formula
+﻿namespace SharpGrad.Formula.Internal
 {
     public enum OperandIndexSource : short
     {
