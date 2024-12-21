@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SharpGrad.Formula.Internal
 {
     internal struct InternalShape<TDimensions, TLengths, TXD>
-        where TDimensions : unmanaged, IInternalStaticArray<sbyte, TXD>
+        where TDimensions : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
         where TLengths : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
@@ -46,11 +46,19 @@ namespace SharpGrad.Formula.Internal
         public static TLengths GetIndices(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions from, long indexFrom)
         {
             TLengths indices = default;
-            for (int d = from.Rank - 1; d >= 0; d--)
+            for (int d = from.Count - 1; d >= 0; d--)
             {
-                int size = dimensions[from[d]].Size;
-                indices[d] = (int)(indexFrom % size);
-                indexFrom /= size;
+                BIndex<byte> iDim = from[d];
+                if (iDim.IsEmpty)
+                {
+                    indices[d] = 0;
+                }
+                else
+                {
+                    int size = dimensions[iDim].Size;
+                    indices[d] = (int)(indexFrom % size);
+                    indexFrom /= size;
+                }
             }
             return indices;
         }
@@ -61,11 +69,14 @@ namespace SharpGrad.Formula.Internal
         public static long GetIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions shape, TLengths indices)
         {
             long index = 0;
-            for (int d = 0; d < shape.Rank; d++)
+            for (int d = 0; d < shape.Count; d++)
             {
-                int size = dimensions[shape[d]].Size;
-                index *= size;
-                index += indices[d];
+                BIndex<byte> iDim = shape[d];
+                if (!iDim.IsEmpty)
+                {
+                    index *= dimensions[iDim].Size;
+                    index += indices[d];
+                }
             }
             return index;
         }
@@ -76,9 +87,17 @@ namespace SharpGrad.Formula.Internal
         public static TLengths GetIndicesFrom(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions from, TLengths indicesFrom, TDimensions to)
         {
             TLengths indicesTo = default;
-            for (int d = 0; d < to.Rank; d++)
+            for (int d = 0; d < to.Count; d++)
             {
-                indicesTo[d] = indicesFrom[from.IndexOf(to[d])];
+                BIndex<byte> iDim = to[d];
+                if (iDim.IsEmpty)
+                {
+                    indicesTo[d] = 0;
+                }
+                else
+                {
+                    indicesTo[d] = indicesFrom[from.IndexOf(iDim)];
+                }
             }
             return indicesTo;
         }
