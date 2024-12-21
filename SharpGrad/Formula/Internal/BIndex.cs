@@ -1,5 +1,7 @@
 ﻿using ILGPU;
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace SharpGrad.Formula.Internal
@@ -83,31 +85,52 @@ namespace SharpGrad.Formula.Internal
         /// Implicitly converts a bounded index to an integer.
         /// </summary>
         public static implicit operator int(BIndex<T> index)
-            => int.CreateTruncating(index.value - T.One);
+            => index.IsEmpty ? -1 : int.CreateTruncating(index.value - T.One);
 
         /// <summary>
-        /// Implicitly converts an integer to a bounded index.
+        /// Implicitly converts a byte to a bounded index.
         /// </summary>
-        public static implicit operator BIndex<T>(byte index)
-            => new(index < 0 ? EmptyValue : T.CreateChecked(index + 1));
+        public static implicit operator BIndex<T>(T index)
+            => new(index.CompareTo(T.Zero) < 0 ? EmptyValue : T.CreateChecked(index + T.One));
 
         public static implicit operator Index1D(BIndex<T> index)
             => index;
     }
 
 
-    public readonly struct OperandIndex<T>(T value)
+    public readonly struct OperandIndex<T>(T value, bool isResult) : IEquatable<OperandIndex<T>>
         where T : ISignedNumber<T>, IComparable<T>, IEquatable<T>, IBitwiseOperators<T, T, T>
     {
-        public static readonly T EmptyValue = (T)typeof(T).GetField("MinValue").GetValue(null);
-        public static bool GetIsEmpty(T value) => value.Equals(EmptyValue);
+        public static readonly T EmptyValue = (T)typeof(T).GetField("MinValue").GetValue(null) ?? throw new InvalidOperationException($"Type {typeof(T)} does not have a MinValue field.");
+        public static readonly OperandIndex<T> Empty = new(EmptyValue, true);
 
-        public readonly T Value = value;
+        private readonly T Value = value.CompareTo(T.Zero) < 0
+            ? EmptyValue
+            : isResult
+                ? value
+                : ~value;
 
         public readonly bool IsOperation => Value.CompareTo(EmptyValue) < 0;
-        public readonly bool FromMemory => Value.CompareTo(EmptyValue) >= 0;
-        public readonly bool IsEmpty => GetIsEmpty(Value);
+        public readonly bool IsResult => Value.CompareTo(EmptyValue) >= 0;
+        public readonly bool IsEmpty => Value.Equals(EmptyValue);
 
-        public T Index => FromMemory ? Value : ~Value;
+        public T Index => IsResult ? Value : ~Value;
+
+        public bool Equals(OperandIndex<T> other)
+            => Value.Equals(other.Value);
+
+        public override bool Equals([NotNullWhen(true)] object? obj)
+            => obj is OperandIndex<T> other && Equals(other);
+
+        public override int GetHashCode()
+            => Value.GetHashCode();
+
+        public static bool operator ==(OperandIndex<T> left, OperandIndex<T> right)
+            => left.Equals(right);
+        public static bool operator !=(OperandIndex<T> left, OperandIndex<T> right)
+            => !left.Equals(right);
+
+        public static implicit operator T(OperandIndex<T> index)
+            => index.IsEmpty ? T.NegativeOne : index.Index;
     }
 }

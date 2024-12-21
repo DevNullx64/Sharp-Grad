@@ -40,87 +40,118 @@ namespace SharpGrad.Formula
                 _ => default // TODO: This should not happen
             };
 
-        private static T Forward<TShape, TIndices, TXD, T>(
+        private readonly struct TensorCoordinateMapper<TShape, TIndices, TXD, T>(
+            ArrayView1D<T, Stride1D.Dense> inputData,
+            ArrayView1D<T, Stride1D.Dense> outputData,
             ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
             ArrayView1D<TShape, Stride1D.Dense> shapes,
             ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> datas,
-            Index1D idx,
-            InternalOperation<T> op
-            )
-            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
+            ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations)
+            where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
-            InternalTensor<TShape, TIndices, TXD> leftTensor = datas[op.LeftIdx];
-            if(op.ShapeIdx == leftTensor.ShapeIdx)
-            {
+            public readonly ArrayView1D<T, Stride1D.Dense> InputData = inputData;
+            public readonly ArrayView1D<T, Stride1D.Dense> OutputData = outputData;
+            public readonly ArrayView1D<InternalDimension, Stride1D.Dense> Dimensions = dimensions;
+            public readonly ArrayView1D<TShape, Stride1D.Dense> Shapes = shapes;
+            public readonly ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> Datas = datas;
+            public readonly ArrayView1D<InternalOperation<T>, Stride1D.Dense> Operations = operations;
 
+            public static TIndices ComputeIndices(TIndices dimensionSizes, long flatIndex)
+            {
+                TIndices indices = default;
+                for (int d = 0; d < dimensionSizes.Count; d++)
+                {
+                    int size = dimensionSizes[d];
+                    if (size > 1)
+                    {
+                        indices[d] = (int)(flatIndex % size);
+                        flatIndex /= size;
+                    }
+                }
+                return indices;
             }
-            else
-            {
 
+            public readonly long ComputeFlatIndex(BIndex<byte> shapeIdx, TIndices currentIndices)
+            {
+                if (shapeIdx.IsEmpty)
+                    return default;
+                TShape shape = Shapes[shapeIdx];
+                long index = 0;
+                for (int d = 0; d < shape.Count; d++)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (!iDim.IsEmpty)
+                    {
+                        index *= Dimensions[iDim].Size;
+                        index += currentIndices[d];
+                    }
+                }
+                return index;
+            }
+
+            public readonly TIndices GetDimensionsSize(TShape shape)
+            {
+                TIndices dimsSize = default;
+                for (int d = 0; d < shape.Count; d++)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (iDim.IsEmpty)
+                    {
+                        dimsSize[d] = 1;
+                    }
+                    else
+                    {
+                        dimsSize[d] = Dimensions[iDim].Size;
+                    }
+                }
+                return dimsSize;
+            }
+
+            public readonly TIndices ComputeIndicesOnly(TShape shape, long flatIdx)
+            {
+                TIndices indices = default;
+                for (int d = shape.Count - 1; d >= 0; d--)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (iDim.IsEmpty)
+                    {
+                        indices[d] = 0;
+                    }
+                    else
+                    {
+                        InternalDimension dim = Dimensions[iDim];
+                        indices[d] = (int)(flatIdx % dim.Size);
+                        flatIdx /= dim.Size;
+                    }
+                }
+                if (flatIdx > 0)
+                    return default;
+                return indices;
+            }
+
+            public readonly InternalShapeIndices<TShape, TIndices, TXD> ComputeShapeIndices(BIndex<byte> shapeIdx, long flatIndex)
+            {
+                TShape shape = Shapes[shapeIdx];
+                TIndices indices = ComputeIndicesOnly(shape, flatIndex);
+                return new InternalShapeIndices<TShape, TIndices, TXD>(shape, indices);
             }
         }
 
-        private static TIndices GetDimensionsSize<TShape, TIndices, TXD>(
-            TShape shape,
-            ArrayView1D<InternalDimension, Stride1D.Dense> dimensions
-        )
-            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
+        private static void Forward<TShape, TIndices, TXD, T>(
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder,
+            LongIndex1D idx,
+            ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations,
+            SpecializedValue<byte> operationCount
+            )
+            where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
+            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
-            TIndices dimsSize = default;
-            for (int d = 0; d < shape.Rank; d++)
-            {
-                dimsSize[d] = dimensions[shape[d]].Size;
-            }
-            return dimsSize;
-        }
 
-        private static TIndices GetIndicesOnly<TShape, TIndices, TXD>(
-            TShape shape,
-            ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
-            long flatIdx
-        )
-            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
-            where TIndices : unmanaged, IInternalStaticArray<int, TXD>
-            where TXD : struct, IXD
-        {
-            TIndices indices = default;
-            for (int d = shape.Rank - 1; d >= 0; d--)
-            {
-                InternalDimension dim = dimensions[shape[d]];
-                indices[d] = (int)(flatIdx % dim.Size);
-                flatIdx /= dim.Size;
-            }
-            if (flatIdx > 0)
-                return default;
-            return indices;
-        }
-
-        private static (TIndices DimsSize, TIndices Indices) GetIndices<TShape, TIndices, TXD>(
-            TShape shape,
-            ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
-            long flatIdx
-        )
-            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
-            where TIndices : unmanaged, IInternalStaticArray<int, TXD>
-            where TXD : struct, IXD
-        {
-            TIndices dimsSize = default;
-            TIndices indices = default;
-            for (int d = shape.Rank - 1; d >= 0; d--)
-            {
-                InternalDimension dim = dimensions[shape[d]];
-                dimsSize[d] = dim.Size;
-                indices[d] = (int)(flatIdx % dim.Size);
-                flatIdx /= dim.Size;
-            }
-            if(flatIdx > 0)
-                return (default, default);
-            return (dimsSize, indices);
         }
 
         private static void Forward<TShape, TIndices, TXD, T>(
@@ -133,7 +164,7 @@ namespace SharpGrad.Formula
             ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations,
             SpecializedValue<byte> operationCount
         )
-            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
+            where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
@@ -142,11 +173,13 @@ namespace SharpGrad.Formula
             if (operationCount != opCount)
                 return;
 
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder = new(inputData, outputData, dimensions, shapes, datas, operations);
+
             InternalOperation<T> last = operations[opCount - 1];
             TShape beforeShape;
             sbyte dimToReduceIdx;
             TShape outShape = shapes[last.ShapeIdx];
-            TIndices outSizes = GetDimensionsSize<TShape, TIndices, TXD>(outShape, dimensions);
+            TIndices outSizes = decoder.GetDimensionsSize(outShape);
             int dimToReduceSize;
             TIndices currentIndices;
 
@@ -165,14 +198,14 @@ namespace SharpGrad.Formula
 
                 TIndices laneIndices = beforeFullShape.Sizes;
                 laneIndices[iDimToReduce] = dimToReduceSize < Warp.WarpSize ? 1 : Warp.WarpSize;
-                currentIndices = TShape.GetIndices(laneIndices, idx);
+                currentIndices = TensorCoordinateMapper<TShape, TIndices, TXD, T>.ComputeIndices(laneIndices, idx);
             }
             else
             {
                 beforeShape = outShape;
                 dimToReduceIdx = -1;
                 dimToReduceSize = 1;
-                currentIndices = TShape.GetIndices(outSizes, idx);
+                currentIndices = TensorCoordinateMapper<TShape, TIndices, TXD, T>.ComputeIndices(outSizes, idx);
             }
 
             T[] valCache = new T[opCount];
@@ -196,7 +229,7 @@ namespace SharpGrad.Formula
                         InternalTensor<TShape, TIndices, TXD> leftTensor = datas[op.LeftIdx.Index];
                         if(leftTensor.ShapeIdx == op.ShapeIdx)
                         {
-                            left = inputData[TShape.ProjectIndex(dimensions, shapes, leftTensor.ShapeIdx, currentIndices)];
+                            left = inputData[decoder.ComputeFlatIndex(leftTensor.ShapeIdx, currentIndices)];
                         }
                         else
                         {
@@ -212,63 +245,6 @@ namespace SharpGrad.Formula
                 // Compute inter lane reduction
             }
         }
-
-        private static T Forward<T>(
-            Index1D idx,
-            InternalOperation<T> op,
-            ArrayView2D<T, Stride2D.DenseY> datas,
-            T[] cache)
-            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
-        {
-            T left = op.LeftIdx.Category == SourceOfOperand.Data
-                ? datas[op.LeftIdx.Index, idx]
-                : cache[op.LeftIdx.Index];
-
-            if (op.RightIdx.IsEmpty)
-            {
-                return OperationInvoke(op.OpCode, left);
-            }
-            else
-            {
-                T right = op.RightIdx.Category == SourceOfOperand.Data
-                    ? datas[op.RightIdx.Index, idx]
-                    : cache[op.RightIdx.Index];
-                return OperationInvoke(op.OpCode, left, right);
-            }
-        }
-
-        private static void ForwardKernel<T>(
-            Index1D idx,
-            ArrayView<InternalOperation<T>> ops,
-            ArrayView2D<T, Stride2D.DenseY> datas,
-            ArrayView2D<T, Stride2D.DenseY> outputs,
-            SpecializedValue<ushort> cacheSize)
-            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
-        {
-            T[] cache = new T[cacheSize];
-            for (int i = 0; i < cacheSize; i++)
-            {
-                var op = ops[i];
-                cache[op.OutputIdx] = Forward(idx, op, datas, cache);
-                if (!op.OutputIdx.IsEmpty)
-                    outputs[(int)op.OutputIdx, idx] = cache[op.OutputIdx];
-            }
-        }
-
-        /*
-        internal static void Forward<TCoordinates>(
-            SafeAccelerator accelerator,
-            OperationInfo<TCoordinates>[] ops,
-            AcceleratorBuffer<TCoordinates>[] datas,
-            out AcceleratorBuffer<TCoordinates>[] outputs)
-            where TCoordinates : unmanaged, INumber<TCoordinates>, IExponentialFunctions<TCoordinates>, ILogarithmicFunctions<TCoordinates>, IPowerFunctions<TCoordinates>
-        {
-            if(datas.Any(d => d.SafeAccelerator != accelerator))
-                throw new ArgumentException("All data buffers must be on the same accelerator.");
-
-
-        }
-        */
 
         private static T Backward<T>(OpCode opCode, T left, T currentGrad)
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
@@ -291,67 +267,6 @@ namespace SharpGrad.Formula
                 OpCode.Pow => PowOp<T>.Backward(left, right, currentGrad),
                 _ => default // TODO: This should not happen
             };
-
-        private static void BackwardKernel<T>(
-            Index1D idx,
-            ArrayView<InternalOperation<T>> ops,
-            ArrayView2D<T, Stride2D.DenseY> datas,
-            ArrayView1D<BIndex<ushort>, Stride1D.Dense> dataGradIndices,
-            ArrayView1D<T, Stride1D.Dense> outputs,
-            ArrayView1D<T, Stride1D.Dense> grads,
-            SpecializedValue<ushort> cacheSize)
-            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
-        {
-            T[] cache = new T[cacheSize];
-            T[] gradCache = new T[cacheSize];
-
-            // Forward pass
-            for (int i = 0; i < ops.Length; i++)
-            {
-                var op = ops[i];
-                cache[op.OutputIdx] = Forward(idx, op, datas, cache);
-                if (!op.OutputIdx.IsEmpty)
-                    outputs[op.OutputIdx] = cache[op.OutputIdx];
-                gradCache[i] = !op.GradientIndex.IsEmpty
-                    ? grads[op.GradientIndex]
-                    : T.Zero;
-            }
-
-            // Backward pass
-            for (int i = cacheSize - 1; i >= 0; i--)
-            {
-                var op = ops[i];
-                T currentGrad = gradCache[i];
-
-                T left = op.LeftIdx.Category == SourceOfOperand.Data
-                    ? datas[idx, op.LeftIdx.Index]
-                    : cache[op.LeftIdx.Index];
-
-                T leftGrad;
-                if (op.RightIdx.IsEmpty)
-                {
-                    leftGrad = Backward(op.OpCode, left, currentGrad);
-                }
-                else
-                {
-                    T right = op.RightIdx.Category == SourceOfOperand.Data
-                        ? datas[idx, op.RightIdx.Index]
-                        : cache[op.RightIdx.Index];
-
-                    (leftGrad, T rightGrad) = Backward(op.OpCode, left, right, currentGrad);
-
-                    if (op.RightIdx.Category == SourceOfOperand.Data)
-                        grads[op.RightIdx.Index] += rightGrad;
-                    else
-                        gradCache[op.RightIdx.Index] += rightGrad;
-                }
-
-                if (op.LeftIdx.Category == SourceOfOperand.Data)
-                    grads[op.LeftIdx.Index] += leftGrad;
-                else
-                    gradCache[op.LeftIdx.Index] += leftGrad;
-            }
-        }
 
         public static async Task ForwardAsync<T>(AcceleratorExtender accelerator, KPUScript<T> script)
         where T : unmanaged, INumber<T>

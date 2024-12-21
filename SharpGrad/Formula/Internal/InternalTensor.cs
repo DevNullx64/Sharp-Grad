@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SharpGrad.Formula.Internal
 {
     internal interface IInternalTensor<TShape, TIndices, TXD>
-        where TShape : unmanaged, IInternalDimensionIndexList<TXD>
+        where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
         where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
@@ -19,7 +19,7 @@ namespace SharpGrad.Formula.Internal
     }
 
     internal readonly struct InternalTensor<TShape, TIndices, TXD>(SourceOfOperand source, byte shapeIdx, long offset) : IInternalTensor<TShape, TIndices, TXD>
-        where TShape : unmanaged, IInternalDimensionIndexList<TXD>
+        where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
         where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
@@ -32,26 +32,33 @@ namespace SharpGrad.Formula.Internal
 
         public static long ProjectIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TShape from, TShape to, long indexFrom)
         {
-            if (from.Rank == 0)
-                return indexFrom;
-            if (to.Rank == 0)
-                return 0;
-
             TIndices indicesFrom = default;
-            for (int d = from.Rank - 1; d >= 0; d--)
+            for (int d = from.Count - 1; d >= 0; d--)
             {
-                int size = dimensions[from[d]].Size;
-                indicesFrom[d] = (int)(indexFrom % size);
-                indexFrom /= size;
+                BIndex<byte> iDim = from[d];
+                if (iDim.IsEmpty)
+                {
+                    indicesFrom[d] = 0;
+                }
+                else
+                {
+                    int size = dimensions[iDim].Size;
+                    indicesFrom[d] = (int)(indexFrom % size);
+                    indexFrom /= size;
+                }
             }
 
-            byte dimIdx = to[0];
-            long indexTo = indicesFrom[from.IndexOf(dimIdx)];
-            for (int d = 1; d < to.Rank; d++)
+            BIndex<byte> dimIdx = to[0];
+            long indexTo = dimIdx.IsEmpty ? 0 : indicesFrom[from.IndexOf(dimIdx)];
+            for (int d = 1; d < to.Count; d++)
             {
-                indexTo *= dimensions[dimIdx].Size;
+                if (!dimIdx.IsEmpty)
+                    indexTo *= dimensions[dimIdx].Size;
+
                 dimIdx = to[d];
-                indexTo += indicesFrom[from.IndexOf(dimIdx)];
+
+                if (!dimIdx.IsEmpty)
+                    indexTo += indicesFrom[from.IndexOf(dimIdx)];
             }
 
             return indexTo;

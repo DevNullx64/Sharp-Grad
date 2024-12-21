@@ -49,6 +49,24 @@ namespace SharpGrad.Formula
             DFS(outputElement);
         }
 
+        private OperandIndex<sbyte> GetOperandIndex(ComputeElement<TResult> computeElement)
+        {
+            if (computeElement.IsData)
+            {
+                int index = dataElements.IndexOf(computeElement);
+                if (index < 0)
+                    throw new ArgumentException($"Element '{computeElement}' not found in datas.");
+                return new OperandIndex<sbyte>((sbyte)index, false);
+            }
+            else
+            {
+                int index = operationsElements.IndexOf(computeElement);
+                if (index < 0)
+                    throw new ArgumentException($"Element '{computeElement}' not found in operations.");
+                return new OperandIndex<sbyte>((sbyte)index, true);
+            }
+        }
+
         protected MultiIndex<SourceOfOperand> GetMultiIndex(ComputeElement<TResult> element)
         {
             int index;
@@ -94,20 +112,21 @@ namespace SharpGrad.Formula
                 {
                     operationsElements.Add(element);
 
-                    MultiIndex<SourceOfOperand> leftIndex = GetMultiIndex(element.GetOperand(0));
-                    MultiIndex<SourceOfOperand> rightIndex = MultiIndex<SourceOfOperand>.Empty;
-                    if (element.OperandsLength > 1)
-                        rightIndex = GetMultiIndex(element.GetOperand(1));
+                    OperandIndex<sbyte> leftIndex = GetOperandIndex(element.GetOperand(0));
+                    OperandIndex<sbyte> rightIndex = OperandIndex<sbyte>.Empty;
 
-                    int outputIndex = -1;
-                    int gradientIndex = -1;
+                    if (element.OperandsLength > 1)
+                        rightIndex = GetOperandIndex(element.GetOperand(1));
+
+                    BIndex<byte> outputIndex = BIndex<byte>.Empty;
+                    BIndex<byte> gradientIndex = BIndex<byte>.Empty;
                     if (element.IsOuput)
                     {
-                        outputIndex = outputs.Count;
+                        outputIndex = (byte)outputs.Count;
                         outputs.Add(element.Result.Content!);
                         if (element.IsGradiable)
                         {
-                            gradientIndex = gradients!.Count;
+                            gradientIndex = (byte)gradients!.Count;
                             gradients.Add(element.Result.Gradient!);
                         }
                     }
