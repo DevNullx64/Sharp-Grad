@@ -10,6 +10,138 @@ namespace SharpGrad.Formula
 {
     public static class AcceleratorExecutor
     {
+        private readonly struct TensorCoordinateMapper<TShape, TIndices, TXD, T>(
+            ArrayView1D<T, Stride1D.Dense> inputData,
+            ArrayView1D<T, Stride1D.Dense> outputData,
+            ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
+            ArrayView1D<TShape, Stride1D.Dense> shapes,
+            ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> datas,
+            ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations)
+            where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
+            where TIndices : unmanaged, IInternalStaticArray<int, TXD>
+            where TXD : struct, IXD
+            where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
+        {
+            public readonly ArrayView1D<T, Stride1D.Dense> InputData = inputData;
+            public readonly ArrayView1D<T, Stride1D.Dense> OutputData = outputData;
+            public readonly ArrayView1D<InternalDimension, Stride1D.Dense> Dimensions = dimensions;
+            public readonly ArrayView1D<TShape, Stride1D.Dense> Shapes = shapes;
+            public readonly ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> Datas = datas;
+            public readonly ArrayView1D<InternalOperation<T>, Stride1D.Dense> Operations = operations;
+
+            public readonly TIndices GetDimensionsSize(TShape shape)
+            {
+                TIndices dimsSize = default;
+                for (int d = 0; d < shape.Count; d++)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (iDim.IsEmpty)
+                    {
+                        dimsSize[d] = 1;
+                    }
+                    else
+                    {
+                        dimsSize[d] = Dimensions[iDim].Size;
+                    }
+                }
+                return dimsSize;
+            }
+
+            public static TIndices ComputeIndices(TIndices dimensionSizes, long flatIndex)
+            {
+                TIndices indices = default;
+                for (int d = 0; d < dimensionSizes.Count; d++)
+                {
+                    int size = dimensionSizes[d];
+                    if (size > 1)
+                    {
+                        indices[d] = (int)(flatIndex % size);
+                        flatIndex /= size;
+                    }
+                }
+                return indices;
+            }
+
+            public static TIndices ProjectIndices(TShape fromShape, TIndices indicesFrom, TShape toShape)
+            {
+                TIndices indicesTo = default;
+                for (int d = 0; d < toShape.Count; d++)
+                {
+                    BIndex<byte> iDim = toShape[d];
+                    if (!iDim.IsEmpty)
+                    {
+                        indicesTo[d] = indicesFrom[fromShape.IndexOf(iDim)];
+                    }
+                }
+                return indicesTo;
+            }
+
+            public readonly long ComputeFlatIndex(TShape shape, TIndices indices)
+            {
+                long index = 0;
+                for (int d = 0; d < shape.Count; d++)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (!iDim.IsEmpty)
+                    {
+                        index *= Dimensions[iDim].Size;
+                        index += indices[d];
+                    }
+                }
+                return index;
+            }
+            public readonly long ComputeFlatIndex(BIndex<byte> shapeFromIdx, TIndices fromIndices, BIndex<byte> shapeToIdx)
+            {
+                if (shapeFromIdx.IsEmpty || shapeToIdx.IsEmpty)
+                    return default;
+                TShape fromShape = Shapes[shapeFromIdx];
+                TShape toShape = Shapes[shapeToIdx];
+                long indexFrom = ComputeFlatIndex(fromShape, fromIndices);
+                return ProjectIndex(fromShape, indexFrom, toShape);
+            }
+            public readonly long ComputeFlatIndex(BIndex<byte> shapeIdx, TIndices currentIndices)
+            {
+                if (shapeIdx.IsEmpty)
+                    return default;
+                return ComputeFlatIndex(Shapes[shapeIdx], currentIndices);
+            }
+
+            public long ProjectIndex(TShape fromShape, TIndices indicesFrom, TShape toShape)
+                => ComputeFlatIndex(toShape, ProjectIndices(fromShape, indicesFrom, toShape));
+
+            public long ProjectIndex(TShape fromShape, long fromFlatIndex, TShape toShape)
+                => ProjectIndex(fromShape, ComputeIndices(GetDimensionsSize(fromShape), fromFlatIndex), toShape);
+
+            public long ProjectIndex(BIndex<byte> fromShapeIdx, long fromFlatIndex, BIndex<byte> toShapeIdx)
+            {
+                if (fromShapeIdx.IsEmpty || toShapeIdx.IsEmpty)
+                    return default;
+                return ProjectIndex(Shapes[fromShapeIdx], fromFlatIndex, Shapes[toShapeIdx]);
+            }
+
+            public readonly TIndices ComputeIndicesOnly(TShape shape, long flatIdx)
+            {
+                TIndices indices = default;
+                for (int d = shape.Count - 1; d >= 0; d--)
+                {
+                    BIndex<byte> iDim = shape[d];
+                    if (iDim.IsEmpty)
+                    {
+                        indices[d] = 0;
+                    }
+                    else
+                    {
+                        InternalDimension dim = Dimensions[iDim];
+                        indices[d] = (int)(flatIdx % dim.Size);
+                        flatIdx /= dim.Size;
+                    }
+                }
+                if (flatIdx > 0)
+                    return default;
+                return indices;
+            }
+        }
+
         public static readonly Context context = Context.Create(builder => builder.AllAccelerators());
         public static readonly Device device = context.GetPreferredDevice(preferCPU: false);
         public static readonly Accelerator Accelerator = device.CreateAccelerator(context);
@@ -40,118 +172,102 @@ namespace SharpGrad.Formula
                 _ => default // TODO: This should not happen
             };
 
-        private readonly struct TensorCoordinateMapper<TShape, TIndices, TXD, T>(
-            ArrayView1D<T, Stride1D.Dense> inputData,
-            ArrayView1D<T, Stride1D.Dense> outputData,
-            ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
-            ArrayView1D<TShape, Stride1D.Dense> shapes,
-            ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> datas,
-            ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations)
+
+        private static void Forward<TShape, TIndices, TXD, T>(
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder,
+            T[] results,
+            TIndices currentIndices,
+            InternalOperation<T> operation
+        )
             where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
-            public readonly ArrayView1D<T, Stride1D.Dense> InputData = inputData;
-            public readonly ArrayView1D<T, Stride1D.Dense> OutputData = outputData;
-            public readonly ArrayView1D<InternalDimension, Stride1D.Dense> Dimensions = dimensions;
-            public readonly ArrayView1D<TShape, Stride1D.Dense> Shapes = shapes;
-            public readonly ArrayView1D<InternalTensor<TShape, TIndices, TXD>, Stride1D.Dense> Datas = datas;
-            public readonly ArrayView1D<InternalOperation<T>, Stride1D.Dense> Operations = operations;
-
-            public static TIndices ComputeIndices(TIndices dimensionSizes, long flatIndex)
+            T val = default;
+            T left;
+            if (operation.LeftIdx.IsOperation)
             {
-                TIndices indices = default;
-                for (int d = 0; d < dimensionSizes.Count; d++)
+                left = results[operation.LeftIdx.Index];
+            }
+            else
+            {
+                InternalTensor<TShape, TIndices, TXD> leftTensor = decoder.Datas[operation.LeftIdx.Index];
+                if (leftTensor.ShapeIdx == operation.ShapeIdx)
                 {
-                    int size = dimensionSizes[d];
-                    if (size > 1)
-                    {
-                        indices[d] = (int)(flatIndex % size);
-                        flatIndex /= size;
-                    }
+                    left = decoder.InputData[leftTensor.Offset + decoder.ComputeFlatIndex(leftTensor.ShapeIdx, currentIndices)];
                 }
-                return indices;
+                else
+                {
+                    left = results[operation.LeftIdx.Index];
+                }
             }
 
-            public readonly long ComputeFlatIndex(BIndex<byte> shapeIdx, TIndices currentIndices)
+            T right;
+            if (operation.HasRight)
             {
-                if (shapeIdx.IsEmpty)
-                    return default;
-                TShape shape = Shapes[shapeIdx];
-                long index = 0;
-                for (int d = 0; d < shape.Count; d++)
+                if (operation.RightIdx.IsOperation)
                 {
-                    BIndex<byte> iDim = shape[d];
-                    if (!iDim.IsEmpty)
-                    {
-                        index *= Dimensions[iDim].Size;
-                        index += currentIndices[d];
-                    }
+                    right = results[operation.RightIdx.Index];
                 }
-                return index;
-            }
-
-            public readonly TIndices GetDimensionsSize(TShape shape)
-            {
-                TIndices dimsSize = default;
-                for (int d = 0; d < shape.Count; d++)
+                else
                 {
-                    BIndex<byte> iDim = shape[d];
-                    if (iDim.IsEmpty)
+                    InternalTensor<TShape, TIndices, TXD> rightTensor = decoder.Datas[operation.RightIdx.Index];
+                    if (rightTensor.ShapeIdx == operation.ShapeIdx)
                     {
-                        dimsSize[d] = 1;
+                        right = decoder.InputData[rightTensor.Offset + decoder.ComputeFlatIndex(rightTensor.ShapeIdx, currentIndices)];
                     }
                     else
                     {
-                        dimsSize[d] = Dimensions[iDim].Size;
+                        right = results[operation.RightIdx.Index];
                     }
                 }
-                return dimsSize;
             }
-
-            public readonly TIndices ComputeIndicesOnly(TShape shape, long flatIdx)
+            else
             {
-                TIndices indices = default;
-                for (int d = shape.Count - 1; d >= 0; d--)
-                {
-                    BIndex<byte> iDim = shape[d];
-                    if (iDim.IsEmpty)
-                    {
-                        indices[d] = 0;
-                    }
-                    else
-                    {
-                        InternalDimension dim = Dimensions[iDim];
-                        indices[d] = (int)(flatIdx % dim.Size);
-                        flatIdx /= dim.Size;
-                    }
-                }
-                if (flatIdx > 0)
-                    return default;
-                return indices;
-            }
-
-            public readonly InternalShapeIndices<TShape, TIndices, TXD> ComputeShapeIndices(BIndex<byte> shapeIdx, long flatIndex)
-            {
-                TShape shape = Shapes[shapeIdx];
-                TIndices indices = ComputeIndicesOnly(shape, flatIndex);
-                return new InternalShapeIndices<TShape, TIndices, TXD>(shape, indices);
+                right = default;
             }
         }
 
         private static void Forward<TShape, TIndices, TXD, T>(
             TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder,
-            LongIndex1D idx,
+            TIndices currentIndices,
             ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations,
-            SpecializedValue<byte> operationCount
-            )
+            SpecializedValue<byte> operationCount,
+            sbyte dimToReduceIdx
+        )
             where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
+            if (operationCount != operations.IntExtent.X)
+                return;
 
+            T[] valCache = new T[operationCount];
+            T[] gradCache = new T[operationCount];
+            int dimToReduceSize = decoder.Dimensions[dimToReduceIdx].Size;
+            currentIndices[dimToReduceIdx] = dimToReduceSize < Warp.WarpSize ? 1 : Warp.LaneIdx;
+            while (currentIndices[dimToReduceIdx] < dimToReduceSize)
+            {
+                for (int i = 0; i < operationCount; i++)
+                {
+                    InternalOperation<T> op = operations[i];
+                    T val = default;
+                    T grad = default;
+                    T left;
+                    if (op.LeftIdx.IsOperation)
+                    {
+                        left = valCache[op.LeftIdx.Index];
+                    }
+                }
+                currentIndices[dimToReduceIdx] += Warp.WarpSize;
+            }
+
+            if (dimToReduceSize >= Warp.WarpSize)
+            {
+                // Compute inter lane reduction
+            }
         }
 
         private static void Forward<TShape, TIndices, TXD, T>(
@@ -208,8 +324,8 @@ namespace SharpGrad.Formula
                 currentIndices = TensorCoordinateMapper<TShape, TIndices, TXD, T>.ComputeIndices(outSizes, idx);
             }
 
-            T[] valCache = new T[opCount];
-            T[] gradCache = new T[opCount];
+            T[] valCache = new T[operationCount];
+            T[] gradCache = new T[operationCount];
 
             currentIndices[dimToReduceIdx] = dimToReduceSize < Warp.WarpSize ? 1 : Warp.LaneIdx;
             while (currentIndices[dimToReduceIdx] < dimToReduceSize)

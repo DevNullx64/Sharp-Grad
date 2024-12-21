@@ -111,10 +111,10 @@ namespace SharpGrad.Formula.Internal
                 : ~value;
 
         public readonly bool IsOperation => Value.CompareTo(EmptyValue) < 0;
-        public readonly bool IsResult => Value.CompareTo(EmptyValue) >= 0;
+        public readonly bool IsInput => Value.CompareTo(EmptyValue) >= 0;
         public readonly bool IsEmpty => Value.Equals(EmptyValue);
 
-        public T Index => IsResult ? Value : ~Value;
+        public T Index => IsInput ? Value : ~Value;
 
         public bool Equals(OperandIndex<T> other)
             => Value.Equals(other.Value);
