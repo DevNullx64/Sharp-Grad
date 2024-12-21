@@ -47,7 +47,7 @@ namespace SharpGrad.Formula
             Index1D idx,
             InternalOperation<T> op
             )
-            where TShape : unmanaged, IInternalShape<TXD>
+            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
@@ -67,7 +67,7 @@ namespace SharpGrad.Formula
             TShape shape,
             ArrayView1D<InternalDimension, Stride1D.Dense> dimensions
         )
-            where TShape : unmanaged, IInternalShape<TXD>
+            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
         {
@@ -84,7 +84,7 @@ namespace SharpGrad.Formula
             ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
             long flatIdx
         )
-            where TShape : unmanaged, IInternalShape<TXD>
+            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
         {
@@ -105,7 +105,7 @@ namespace SharpGrad.Formula
             ArrayView1D<InternalDimension, Stride1D.Dense> dimensions,
             long flatIdx
         )
-            where TShape : unmanaged, IInternalShape<TXD>
+            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
         {
@@ -133,7 +133,7 @@ namespace SharpGrad.Formula
             ArrayView1D<InternalOperation<T>, Stride1D.Dense> operations,
             SpecializedValue<byte> operationCount
         )
-            where TShape : unmanaged, IInternalShape<TXD>
+            where TShape : unmanaged, IInternalDimensionIndexList<TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
@@ -156,7 +156,7 @@ namespace SharpGrad.Formula
                 BIndex<byte> beforeShapeIdx = last.LeftIdx.IsOperation
                     ? operations[last.LeftIdx.Index].ShapeIdx
                     : datas[last.LeftIdx.Index].ShapeIdx;
-                InternalFullShape<TShape, TIndices, TXD> beforeFullShape = new(shapes, dimensions, beforeShapeIdx);
+                InternalShape<TShape, TIndices, TXD> beforeFullShape = new(shapes, dimensions, beforeShapeIdx);
                 beforeShape = beforeFullShape.Shape;
 
                 dimToReduceIdx = last.RightIdx.Index;
@@ -194,7 +194,14 @@ namespace SharpGrad.Formula
                     else
                     {
                         InternalTensor<TShape, TIndices, TXD> leftTensor = datas[op.LeftIdx.Index];
-
+                        if(leftTensor.ShapeIdx == op.ShapeIdx)
+                        {
+                            left = inputData[TShape.ProjectIndex(dimensions, shapes, leftTensor.ShapeIdx, currentIndices)];
+                        }
+                        else
+                        {
+                            left = valCache[op.LeftIdx.Index];
+                        }
                     }
                 }
                 currentIndices[dimToReduceIdx] += Warp.WarpSize;

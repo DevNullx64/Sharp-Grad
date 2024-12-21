@@ -1,138 +1,99 @@
-﻿using ILGPU;
-using ILGPU.Runtime;
+﻿using ILGPU.Runtime;
+using ILGPU;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SharpGrad.Formula.Internal
 {
-    public interface IInternalShape<TXD> : IInternalStaticReadOnlyArray<byte, TXD>
+    internal struct InternalShape<TDimensions, TLengths, TXD>
+        where TDimensions : unmanaged, IInternalStaticArray<sbyte, TXD>
+        where TLengths : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
-        byte Rank { get; }
-
-        abstract static TIndices GetIndices<TIndices>(TIndices from, long indexFrom)
-            where TIndices : unmanaged, IInternalStaticArray<int, TXD>;
-    }
-
-    internal readonly struct InternalShape1(byte dimensionIdx) : IInternalShape<_1D>
-    {
-        public readonly byte DimensionIdx0 = dimensionIdx;
-
-        public readonly int Count { get; } = 1;
-        public readonly byte Rank { get; } = (byte)(dimensionIdx == default ? 0 : 1);
-
-        public byte this[int index]
+        public static TLengths GetSizes(TDimensions shape, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions)
         {
-            get
+            TLengths sizes = default;
+            for (int d = 0; d < shape.Count && shape[d] != -1; d++)
             {
-                if (index == 0)
-                    return DimensionIdx0;
-                throw new IndexOutOfRangeException();
+                sizes[d] = dimensions[shape[d]].Size;
+            }
+            return sizes;
+        }
+
+        public readonly BIndex<byte> Idx;
+        public readonly TDimensions Shape;
+        public TLengths Sizes;
+
+        public InternalShape(ArrayView1D<TDimensions, Stride1D.Dense> shapes, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, BIndex<byte> shapeIdx)
+        {
+            Idx = shapeIdx;
+            if (shapeIdx.IsEmpty)
+            {
+                Shape = default;
+                Sizes = default;
+                Sizes[0] = 1;
+            }
+            else
+            {
+                Shape = shapes[shapeIdx];
+                Sizes = GetSizes(Shape, dimensions);
             }
         }
 
-        public int IndexOf(byte dimIdx)
+        public static TLengths GetIndices(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions from, long indexFrom)
         {
-            if (dimIdx == DimensionIdx0)
-                return 0;
-            return -1;
-        }
-
-        public static TIndices GetIndices<TIndices>(TIndices from, long indexFrom) where TIndices : unmanaged, IInternalStaticArray<int, _1D>
-        {
-            TIndices indices = default;
-            indices[0] = (int)indexFrom % from[0];
-            return indices;
-        }
-    }
-
-    internal readonly struct InternalShape2(byte dimensionIdx0, byte dimensionIdx1) : IInternalShape<_2D>
-    {
-        public readonly byte DimensionIdx0 = dimensionIdx0;
-        public readonly byte DimensionIdx1 = dimensionIdx1;
-
-        public readonly int Count { get; } = 2;
-        public readonly byte Rank { get; } = (byte)(dimensionIdx0 == default ? 0 : dimensionIdx1 == default ? 1 : 2);
-
-        public byte this[int index]
-        {
-            get
+            TLengths indices = default;
+            for (int d = from.Rank - 1; d >= 0; d--)
             {
-                if (index < Rank)
-                {
-                    switch (index)
-                    {
-                        case 0: return DimensionIdx0;
-                        case 1: return DimensionIdx1;
-                    }
-                }
-                throw new IndexOutOfRangeException();
+                int size = dimensions[from[d]].Size;
+                indices[d] = (int)(indexFrom % size);
+                indexFrom /= size;
             }
-        }
-
-        public int IndexOf(byte dimIdx)
-        {
-            if (dimIdx == DimensionIdx0)
-                return 0;
-            if (dimIdx == DimensionIdx1)
-                return 1;
-            return -1;
-        }
-
-        public static TIndices GetIndices<TIndices>(TIndices from, long indexFrom) where TIndices : unmanaged, IInternalStaticArray<int, _2D>
-        {
-            TIndices indices = default;
-            indices[0] = (int)indexFrom % from[0];
-            indices[1] = (int)(indexFrom / from[0]);
             return indices;
         }
-    }
 
-    internal readonly struct InternalShape3(byte dimensionIdx0, byte dimensionIdx1, byte dimensionIdx2) : IInternalShape<_3D>
-    {
-        public readonly byte DimensionIdx0 = dimensionIdx0;
-        public readonly byte DimensionIdx1 = dimensionIdx1;
-        public readonly byte DimensionIdx2 = dimensionIdx2;
+        public readonly TLengths GetIndices(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, long indexFrom)
+            => GetIndices(dimensions, Shape, indexFrom);
 
-        public readonly int Count { get; } = 3;
-        public readonly byte Rank { get; } = (byte)(dimensionIdx0 == default ? 0 : dimensionIdx1 == default ? 1 : dimensionIdx2 == default ? 2 : 3);
-
-        public byte this[int index]
+        public static long GetIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions shape, TLengths indices)
         {
-            get
+            long index = 0;
+            for (int d = 0; d < shape.Rank; d++)
             {
-                if (index < Rank)
-                {
-                    switch (index)
-                    {
-                        case 0: return DimensionIdx0;
-                        case 1: return DimensionIdx1;
-                        case 2: return DimensionIdx2;
-                    }
-                }
-                throw new IndexOutOfRangeException();
+                int size = dimensions[shape[d]].Size;
+                index *= size;
+                index += indices[d];
             }
+            return index;
         }
 
-        public int IndexOf(byte dimIdx)
+        public readonly long GetIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions)
+            => GetIndex(dimensions, Shape, Sizes);
+
+        public static TLengths GetIndicesFrom(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions from, TLengths indicesFrom, TDimensions to)
         {
-            if (dimIdx == DimensionIdx0)
-                return 0;
-            if (dimIdx == DimensionIdx1)
-                return 1;
-            if (dimIdx == DimensionIdx2)
-                return 2;
-            return -1;
+            TLengths indicesTo = default;
+            for (int d = 0; d < to.Rank; d++)
+            {
+                indicesTo[d] = indicesFrom[from.IndexOf(to[d])];
+            }
+            return indicesTo;
         }
 
-        public static TIndices GetIndices<TIndices>(TIndices from, long indexFrom)
-            where TIndices : unmanaged, IInternalStaticArray<int, _3D>
+        public readonly TLengths GetIndicesFrom(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TLengths indicesFrom, TDimensions to)
+            => GetIndicesFrom(dimensions, Shape, indicesFrom, to);
+
+        public static long ProjectIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TDimensions from, long indexFrom, TDimensions to)
         {
-            TIndices indices = default;
-            indices[0] = (int)indexFrom % from[0];
-            indexFrom /= from[0];
-            indices[1] = (int)indexFrom % from[1];
-            indices[2] = (int)(indexFrom / from[1]);
-            return indices;
+            TLengths indicesFrom = GetIndices(dimensions, from, indexFrom);
+            TLengths indicesTo = GetIndicesFrom(dimensions, from, indicesFrom, to);
+            return GetIndex(dimensions, to, indicesTo);
         }
+
+        public readonly long ProjectIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, long indexFrom, TDimensions to)
+            => ProjectIndex(dimensions, Shape, indexFrom, to);
     }
 }

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SharpGrad.Formula.Internal
 {
     internal interface IInternalTensor<TShape, TIndices, TXD>
-        where TShape : unmanaged, IInternalShape<TXD>
+        where TShape : unmanaged, IInternalDimensionIndexList<TXD>
         where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
@@ -19,7 +19,7 @@ namespace SharpGrad.Formula.Internal
     }
 
     internal readonly struct InternalTensor<TShape, TIndices, TXD>(SourceOfOperand source, byte shapeIdx, long offset) : IInternalTensor<TShape, TIndices, TXD>
-        where TShape : unmanaged, IInternalShape<TXD>
+        where TShape : unmanaged, IInternalDimensionIndexList<TXD>
         where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {

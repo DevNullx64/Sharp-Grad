@@ -3,7 +3,7 @@ using ILGPU.Runtime;
 
 namespace SharpGrad.Formula.Internal
 {
-    internal readonly struct InternalShapeIndices<TShape, TIndices, TXD>(TShape shape, TIndices indices) where TShape : unmanaged, IInternalShape<TXD>
+    internal readonly struct InternalShapeIndices<TShape, TIndices, TXD>(TShape shape, TIndices indices) where TShape : unmanaged, IInternalDimensionIndexList<TXD>
         where TIndices : unmanaged, IInternalStaticArray<int, TXD>
         where TXD : IXD
     {
