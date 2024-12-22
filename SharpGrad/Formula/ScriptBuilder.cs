@@ -75,7 +75,7 @@ namespace SharpGrad.Formula
             if (element.IsData)
             {
                 index = dataElements.IndexOf(element);
-                sourceOfOperand = SourceOfOperand.Data;
+                sourceOfOperand = SourceOfOperand.Input;
             }
             else
             {

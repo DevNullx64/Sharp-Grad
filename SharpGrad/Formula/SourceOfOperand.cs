@@ -1,4 +1,4 @@
 ﻿namespace SharpGrad.Formula
 {
-    public enum SourceOfOperand : byte { Data, BCData, Operation }
+    public enum SourceOfOperand : byte { Input, Output }
 }

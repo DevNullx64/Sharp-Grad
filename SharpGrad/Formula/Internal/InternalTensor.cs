@@ -14,7 +14,6 @@ namespace SharpGrad.Formula.Internal
         where TXD : IXD
     {
         SourceOfOperand Source { get; }
-        TShape Shape(ArrayView1D<TShape, Stride1D.Dense> shapes);
         long ProjectIndex(ArrayView1D<TShape, Stride1D.Dense> shapes, ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, byte shapeIdx, long index);
     }
 
@@ -27,8 +26,6 @@ namespace SharpGrad.Formula.Internal
         public readonly long Offset = offset;
 
         public readonly SourceOfOperand Source { get; } = source;
-        public readonly TShape Shape(ArrayView1D<TShape, Stride1D.Dense> shapes)
-            => shapes[ShapeIdx];
 
         public static long ProjectIndex(ArrayView1D<InternalDimension, Stride1D.Dense> dimensions, TShape from, TShape to, long indexFrom)
         {

@@ -7,13 +7,15 @@ namespace SharpGrad.Formula.Internal
         where TXD : IXD
     {
         new T this[int index] { get; set; }
+
+        void SetAll(T value);
     }
 
     internal struct InternalStaticArray1<T>(T index0) : IInternalStaticArray<T, _1D>
         where T : unmanaged
     {
         public T Index0 = index0;
-        public readonly int Count { get; } = 1;
+        public readonly int Count => 1;
         public T this[int index]
         {
             readonly get
@@ -42,6 +44,11 @@ namespace SharpGrad.Formula.Internal
                 return 0;
             return -1;
         }
+
+        public void SetAll(T value)
+        {
+            Index0 = value;
+        }
     }
 
     internal struct InternalStaticArray2<T>(T index0, T index1) : IInternalStaticArray<T, _2D>
@@ -49,7 +56,7 @@ namespace SharpGrad.Formula.Internal
     {
         public T Index0 = index0;
         public T Index1 = index1;
-        public readonly int Count { get; } = 2;
+        public readonly int Count => 2;
         public T this[int index]
         {
             readonly get
@@ -78,13 +85,19 @@ namespace SharpGrad.Formula.Internal
             }
         }
 
-        public int IndexOf(T value)
+        public readonly int IndexOf(T value)
         {
             if (Index0.Equals(value))
                 return 0;
             if (Index1.Equals(value))
                 return 1;
             return -1;
+        }
+
+        public void SetAll(T value)
+        {
+            Index0 = value;
+            Index1 = value;
         }
     }
 
@@ -94,7 +107,7 @@ namespace SharpGrad.Formula.Internal
         public T Index0 = index0;
         public T Index1 = index1;
         public T Index2 = index2;
-        public readonly int Count { get; } = 3;
+        public readonly int Count => 3;
         public T this[int index]
         {
             readonly get
@@ -125,7 +138,7 @@ namespace SharpGrad.Formula.Internal
             }
         }
 
-        public int IndexOf(T value)
+        public readonly int IndexOf(T value)
         {
             if (Index0.Equals(value))
                 return 0;
@@ -134,6 +147,13 @@ namespace SharpGrad.Formula.Internal
             if (Index2.Equals(value))
                 return 2;
             return -1;
+        }
+
+        public void SetAll(T value)
+        {
+            Index0 = value;
+            Index1 = value;
+            Index2 = value;
         }
     }
 }
