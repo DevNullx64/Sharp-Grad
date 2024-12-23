@@ -80,7 +80,7 @@ namespace SharpGrad.Formula
             else
             {
                 index = operationsElements.IndexOf(element);
-                sourceOfOperand = SourceOfOperand.Operation;
+                sourceOfOperand = SourceOfOperand.Output;
             }
 
             if (index < 0)
