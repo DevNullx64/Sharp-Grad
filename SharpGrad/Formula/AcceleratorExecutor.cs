@@ -508,6 +508,9 @@ namespace SharpGrad.Formula
                         kernelContext.Results[^1] = value;
                     }
                 }
+
+                // Set the result of the reduction to the output tensor
+                kernelContext.SetValue(lastOperation.OutputIdx, kernelContext.Results[^1], indices);
             }
             else
             {
