@@ -17,6 +17,11 @@ namespace SharpGrad.Formula.Internal
         /// </summary>
         public readonly OpCode OpCode = opCode;
 
+        public readonly bool IsFunction => OpCode.HasFlag(OpCode.IsUnary);
+        public readonly bool IsOperator => OpCode.HasFlag(OpCode.IsBinary);
+        public readonly bool IsReduction => OpCode.HasFlag(OpCode.IsReduction);
+
+
         public readonly BIndex<byte> ShapeIdx = shapeIndex;
         public readonly bool IsScalar => ShapeIdx.IsEmpty;
 

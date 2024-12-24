@@ -14,30 +14,30 @@
         /// <summary>
         /// IsFunction is set for <see cref="OpCode"/> that are functions.
         /// </summary>
-        IsFunction = 0x10,
+        IsUnary = 0x10,
         #region Functions
-        Neg = SharedFuncCode.Neg | IsFunction,
-        Log = SharedFuncCode.Log | IsFunction,
-        Exp = SharedFuncCode.Exp | IsFunction,
-        Sqrt = SharedFuncCode.Sqrt | IsFunction,
-        Abs = SharedFuncCode.Abs | IsFunction,
-        Sin = SharedFuncCode.Sin | IsFunction,
-        Cos = SharedFuncCode.Cos | IsFunction,
-        Tan = SharedFuncCode.Tan | IsFunction,
-        Tanh = SharedFuncCode.Tanh | IsFunction,
+        Neg = SharedFuncCode.Neg | IsUnary,
+        Log = SharedFuncCode.Log | IsUnary,
+        Exp = SharedFuncCode.Exp | IsUnary,
+        Sqrt = SharedFuncCode.Sqrt | IsUnary,
+        Abs = SharedFuncCode.Abs | IsUnary,
+        Sin = SharedFuncCode.Sin | IsUnary,
+        Cos = SharedFuncCode.Cos | IsUnary,
+        Tan = SharedFuncCode.Tan | IsUnary,
+        Tanh = SharedFuncCode.Tanh | IsUnary,
         #endregion
 
         /// <summary>
         /// IsOperator is set for <see cref="OpCode"/> that are operators.
         /// </summary>
-        IsOperator = 0x20,
+        IsBinary = 0x20,
         #region Operators
-        IsCommutative = SharedOpCode.IsCommutative | IsOperator,
-        Add = SharedOpCode.Add | IsOperator,
-        Sub = SharedOpCode.Sub | IsOperator,
-        Mul = SharedOpCode.Mul | IsOperator,
-        Div = SharedOpCode.Div | IsOperator,
-        Pow = SharedOpCode.Pow | IsOperator,
+        IsCommutative = SharedOpCode.IsCommutative | IsBinary,
+        Add = SharedOpCode.Add | IsBinary,
+        Sub = SharedOpCode.Sub | IsBinary,
+        Mul = SharedOpCode.Mul | IsBinary,
+        Div = SharedOpCode.Div | IsBinary,
+        Pow = SharedOpCode.Pow | IsBinary,
         #endregion
 
         /// <summary>

@@ -6,7 +6,7 @@ namespace SharpGrad.Operators
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsOperator(this OpCode opCode)
-            => (opCode & OpCode.IsOperator) != 0;
+            => (opCode & OpCode.IsBinary) != 0;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFunction(this OpCode opCode)
@@ -14,7 +14,7 @@ namespace SharpGrad.Operators
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static OpCode GetCodeOnly(this OpCode opCode)
-            => (OpCode)((short)opCode & (short)~OpCode.IsOperator);
+            => (OpCode)((short)opCode & (short)~OpCode.IsBinary);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool Is(this OpCode opCode, SharedOpCode sharedOpCode)

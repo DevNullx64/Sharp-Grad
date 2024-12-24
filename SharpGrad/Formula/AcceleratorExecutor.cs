@@ -50,15 +50,6 @@ namespace SharpGrad.Formula
                 }
                 return dimsSize;
             }
-            public TIndices GetDimensionsSize(BIndex<byte> shapeIdx)
-            {
-                if (shapeIdx.IsEmpty)
-                {
-                    TIndices indices = default;
-                    indices.SetAll(1);
-                }
-                return GetDimensionsSize(Shapes[shapeIdx]);
-            }
 
             public bool GetShape(BIndex<byte> shapeIdx, out AcceleratorShape<TShape, TIndices, TXD> acceleratorShape)
             {
@@ -90,26 +81,7 @@ namespace SharpGrad.Formula
             }
             private TIndices ComputeIndices(TShape shape, long flatIndex)
                 => ComputeIndices(GetDimensionsSize(shape), flatIndex);
-            public TIndices ComputeIndices(BIndex<byte> shapeIdx, long flatIndex)
-            {
-                if (shapeIdx.IsEmpty)
-                    return default;
-                return ComputeIndices(Shapes[shapeIdx], flatIndex);
-            }
 
-            private static TIndices ProjectIndices_(TShape fromShape, TIndices indicesFrom, TShape toShape)
-            {
-                TIndices indicesTo = default;
-                for (int d = 0; d < toShape.Count; d++)
-                {
-                    BIndex<byte> iDim = toShape[d];
-                    if (!iDim.IsEmpty)
-                    {
-                        indicesTo[d] = indicesFrom[fromShape.IndexOf(iDim)];
-                    }
-                }
-                return indicesTo;
-            }
             private bool ProjectIndices_(AcceleratorShapeIndices<TShape, TIndices, TXD> from, AcceleratorShape<TShape, TIndices, TXD> to, out AcceleratorShapeIndices<TShape, TIndices, TXD> projectedIndices)
             {
                 TIndices indicesTo = default;
@@ -174,16 +146,6 @@ namespace SharpGrad.Formula
                     return false;
                 }
             }
-            public bool ProjectIndices(BIndex<byte> fromShape, TIndices indicesFrom, BIndex<byte> toShape, out TIndices indicesTo)
-            {
-                if (fromShape.IsEmpty || toShape.IsEmpty)
-                {
-                    indicesTo = default;
-                    return toShape.IsEmpty;
-                }
-                indicesTo = ProjectIndices_(Shapes[fromShape], indicesFrom, Shapes[toShape]);
-                return true;
-            }
 
             private long ComputeFlatIndex(AcceleratorShapeIndices<TShape, TIndices, TXD> acceleratorShapeIndices)
             {
@@ -218,32 +180,6 @@ namespace SharpGrad.Formula
                 return index;
             }
 
-            public long ComputeFlatIndex(BIndex<byte> shape, TIndices indices)
-            {
-                if (shape.IsEmpty)
-                    return default;
-                return ComputeFlatIndex(Shapes[shape], indices);
-            }
-
-            public bool ComputeFlatIndex(BIndex<byte> shapeFromIdx, TIndices fromIndices, BIndex<byte> shapeToIdx, out long indexTo)
-            {
-                if (shapeFromIdx.IsEmpty || shapeToIdx.IsEmpty)
-                {
-                    indexTo = default;
-                    return shapeToIdx.IsEmpty;
-                }
-                if(ProjectIndices(shapeFromIdx, fromIndices, shapeToIdx, out TIndices indicesTo))
-                {
-                    indexTo = ComputeFlatIndex(Shapes[shapeToIdx], indicesTo);
-                    return true;
-                }
-                else
-                {
-                    indexTo = default;
-                    return false;
-                }
-            }
-
             private TIndices ComputeIndicesOnly(TShape shape, long flatIdx)
             {
                 TIndices indices = default;
@@ -264,12 +200,6 @@ namespace SharpGrad.Formula
                 if (flatIdx > 0)
                     return default;
                 return indices;
-            }
-            public TIndices ComputeIndicesOnly(BIndex<byte> shapeIdx, long flatIdx)
-            {
-                if (shapeIdx.IsEmpty)
-                    return default;
-                return ComputeIndicesOnly(Shapes[shapeIdx], flatIdx);
             }
 
             private T GetValue(InternalTensor<TShape, TIndices, TXD> tensor, long flatIndex = 0)
@@ -331,48 +261,73 @@ namespace SharpGrad.Formula
                     return false;
                 }
             }
-            private bool SetValue(InternalTensor<TShape, TIndices, TXD> tensor, T value)
-                => SetValue(tensor, value, 0);
 
             public bool SetValue(BIndex<byte> outputTensorIdx, T value, AcceleratorShapeIndices<TShape, TIndices, TXD> indices)
                 => !outputTensorIdx.IsEmpty && SetValue(Tensors[outputTensorIdx], value, indices);
 
-            public bool SetValue(OperandIndex<sbyte> operandIdx, T value, AcceleratorShapeIndices<TShape, TIndices, TXD> indices)
-            {
-                if (operandIdx.IsEmpty)
-                    return false;
-
-                if (operandIdx.IsOperation)
-                {
-                    Results[operandIdx.Index] = value;
-                    return true;
-                }
-                else
-                {
-                    return SetValue(Tensors[operandIdx.Index], value, indices);
-                }
-            }
-
-            public BIndex<byte> GetOperandShapeIdx(OperandIndex<sbyte> leftIdx)
-                => leftIdx.IsOperation
-                ? Operations[leftIdx.Index].ShapeIdx
-                : Tensors[leftIdx.Index].ShapeIdx;
-
-            public BIndex<byte> GetFinalShapeIdx()
-                => Operations[Operations.IntExtent.X - 1].ShapeIdx;
+            public InternalOperation<T> FinalOperation => Operations[Operations.IntExtent.X - 1];
 
             public bool GetBeforeReductionShapeIdx(out BIndex<byte> beforeResductionShapeIdx)
             {
-                InternalOperation<T> last = Operations[Operations.IntExtent.X - 1];
-                if (last.OpCode.HasFlag(OpCode.IsReduction))
+                InternalOperation<T> final = FinalOperation;
+                if (final.IsReduction)
                 {
-                    beforeResductionShapeIdx = last.LeftIdx.IsOperation
-                        ? Operations[last.LeftIdx.Index].ShapeIdx
-                        : Tensors[last.LeftIdx.Index].ShapeIdx;
+                    beforeResductionShapeIdx = final.RightIdx.IsOperation
+                        ? Operations[final.RightIdx.Index].ShapeIdx
+                        : Tensors[final.RightIdx.Index].ShapeIdx;
                     return true;
                 }
                 beforeResductionShapeIdx = default;
                 return false;
+            }
+
+            internal bool SetResult(byte operationIdx, T result, AcceleratorShapeIndices<TShape, TIndices, TXD> indices)
+            {
+                Results[operationIdx] = result;
+                InternalOperation<T> operation = Operations[operationIdx];
+                return !operation.IsOutput || SetValue(operation.OutputIdx, result, indices);
+            }
+
+            internal bool GetReductionDimIdx(out BIndex<byte> dimToReduceIdx)
+            {
+                InternalOperation<T> finalOperation = FinalOperation;
+                if (finalOperation.OpCode.HasFlag(OpCode.IsReduction)
+                    && !finalOperation.LeftIdx.IsEmpty)
+                {
+                    dimToReduceIdx = (byte)finalOperation.LeftIdx.Index;
+                    return true;
+                }
+
+                dimToReduceIdx = BIndex<byte>.Empty;
+                return false;
+            }
+
+            internal bool GetBaseIndices(LongIndex1D idx, out AcceleratorShapeIndices<TShape, TIndices, TXD> baseIndices)
+            {
+                InternalOperation<T> finalOperation = FinalOperation;
+
+                BIndex<byte> shapeIdx;
+                if (finalOperation.IsReduction)
+                {
+                    shapeIdx = finalOperation.RightIdx.IsOperation
+                        ? Operations[finalOperation.RightIdx.Index].ShapeIdx
+                        : Tensors[finalOperation.RightIdx.Index].ShapeIdx;
+                }
+                else
+                {
+                    shapeIdx = finalOperation.ShapeIdx;
+                }
+                if (GetShape(shapeIdx, out AcceleratorShape<TShape, TIndices, TXD> acceleratorShape))
+                {
+                    TIndices indices = ComputeIndices(acceleratorShape.DimsSize, idx);
+                    baseIndices = new AcceleratorShapeIndices<TShape, TIndices, TXD>(acceleratorShape, indices);
+                    return true;
+                }
+                else
+                {
+                    baseIndices = default;
+                    return false;
+                }
             }
         }
 
@@ -439,120 +394,63 @@ namespace SharpGrad.Formula
         }
 
 
-        private static bool Forward<TShape, TIndices, TXD, T>(
-            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder,
-            byte resultIdx,
+        private static bool ForwardAtOperationIdx<TShape, TIndices, TXD, T>(
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> kernelContext,
             AcceleratorShapeIndices<TShape, TIndices, TXD> indices,
-            InternalOperation<T> operation
+            byte operationIdx
         )
             where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
-            if (decoder.GetValue(operation.LeftIdx, indices, out T left))
+            InternalOperation<T> operation = kernelContext.Operations[operationIdx];
+            if (kernelContext.GetValue(operation.LeftIdx, indices, out T left))
             {
                 if (operation.RightIdx.IsEmpty)
                 {
                     if (OperationInvoke(operation.OpCode, left, out T value))
                     {
-                        decoder.Results[resultIdx] = value;
-                        if (operation.IsOutput)
-                        {
-                            decoder.SetValue(operation.OutputIdx, value, indices);
-                        }
-                        return true;
+                        return kernelContext.SetResult(operationIdx, value, indices);
                     }
                 }
                 else
                 {
                     if (operation.OpCode.HasFlag(OpCode.IsReduction))
                     {
-                        if (operation.RightIdx.IsEmpty)
+                        if (kernelContext.GetValue(operation.RightIdx, indices, out T right)
+                            && ReduceInvoke(operation.OpCode, kernelContext.Results[operationIdx], right, out T result))
                         {
-                            return false;
+                            kernelContext.Results[operationIdx] = result;
+                            return true;
                         }
                     }
-
-                    if (decoder.GetValue(operation.RightIdx, indices, out T right))
+                    else if (kernelContext.GetValue(operation.RightIdx, indices, out T right)
+                        && OperationInvoke(operation.OpCode, left, right, out T result)
+                        && operation.IsOutput)
                     {
-                        if (OperationInvoke(operation.OpCode, left, right, out T result))
-                        {
-
-                            if (operation.IsOutput)
-                            {
-                                decoder.SetValue(operation.OutputIdx, result, indices);
-                                return true;
-                            }
-                        }
+                        return kernelContext.SetResult(operationIdx, result, indices);
                     }
                 }
             }
             return false;
         }
 
-        private static void Forward<TShape, TIndices, TXD, T>(
-            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder,
-            LongIndex1D idx
-        )
+        private static bool ForwardOperations<TShape, TIndices, TXD, T>(
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> kernelContext,
+            AcceleratorShapeIndices<TShape, TIndices, TXD> indices)
             where TShape : unmanaged, IInternalStaticArray<BIndex<byte>, TXD>
             where TIndices : unmanaged, IInternalStaticArray<int, TXD>
             where TXD : struct, IXD
             where T : unmanaged, INumber<T>, IExponentialFunctions<T>, ILogarithmicFunctions<T>, IPowerFunctions<T>
         {
-            BIndex<byte> currentShapeIdx = decoder.GetFinalShapeIdx();
-
-            BIndex<byte> dimToReduceIdx = BIndex<byte>.Empty;
-            BIndex<byte> beforeReductionShapeIdx;
-            if (decoder.GetBeforeReductionShapeIdx(out beforeReductionShapeIdx))
+            byte count = (byte)kernelContext.Operations.IntExtent.X;
+            for (byte i = 0; i < count; i++)
             {
-                TShape beforeShape = decoder.Shapes[beforeReductionShapeIdx];
-                TShape finalShape = decoder.Shapes[currentShapeIdx];
-
-                // Search for missing dimension in final shape
-                int iDim = int.MaxValue;
-                for (int d = 0; d < beforeShape.Count; d++)
-                {
-                    iDim = finalShape.IndexOf(beforeShape[d]);
-                    if (iDim < 0)
-                    {
-                        dimToReduceIdx = beforeShape[d];
-                        break;
-                    }
-                }
-
-                if (iDim >= 0)
-                    return;
+                if (!ForwardAtOperationIdx(kernelContext, indices, i))
+                    return false;
             }
-            else
-            {
-                beforeReductionShapeIdx = currentShapeIdx;
-            }
-
-            int dimToReduceSize;
-            if (dimToReduceIdx.IsEmpty)
-            {
-                dimToReduceSize = 1;
-            }
-            else
-            {
-                dimToReduceSize = decoder.Dimensions[dimToReduceIdx].Size;
-                if (dimToReduceSize < Warp.WarpSize)
-                {
-                    dimToReduceSize = 1;
-                }
-            }
-
-
-            for (int i = dimToReduceSize < Warp.WarpSize ? 1 : Warp.LaneIdx;  i < dimToReduceSize; i += Warp.WarpSize)
-            {
-            
-            }
-
-            if (dimToReduceSize >= Warp.WarpSize)
-            {
-                // Compute inter lane reduction
-            }
+            return true;
         }
 
         private static void Forward<TShape, TIndices, TXD, T>(
@@ -574,8 +472,47 @@ namespace SharpGrad.Formula
             if (operationCount != opCount)
                 return;
 
-            TensorCoordinateMapper<TShape, TIndices, TXD, T> decoder = new(inputData, outputData, dimensions, shapes, datas, operations, new T[operationCount], new T[operationCount]);
-            Forward(decoder, idx);
+            TensorCoordinateMapper<TShape, TIndices, TXD, T> kernelContext = new(inputData, outputData, dimensions, shapes, datas, operations, new T[operationCount], new T[operationCount]);
+
+            InternalOperation<T> lastOperation = kernelContext.FinalOperation;
+            kernelContext.GetBaseIndices(idx, out AcceleratorShapeIndices<TShape, TIndices, TXD> indices);
+            int dimToReduceSize;
+            if (kernelContext.GetReductionDimIdx(out BIndex<byte> dimToReduceIdx))
+            {
+                int iDim = indices.Shape.DimsIndex.IndexOf(dimToReduceIdx);
+                if (indices.Indices[iDim] != 0)
+                    // TODO: Compute starting indice of the dimension to reduce should be 0. Some error should be thrown
+                    return;
+
+                dimToReduceSize = kernelContext.Dimensions[dimToReduceIdx].Size;
+
+                // Use a warp to reduce the dimension if it is as large as the warp size.
+                // Use a single thread to reduce the dimension if it is smaller than the warp size.
+                int step = dimToReduceSize < Warp.WarpSize ? 1 : Warp.WarpSize;
+                for (int i = dimToReduceSize < Warp.WarpSize ? 1 : Warp.LaneIdx; i < dimToReduceSize; i += step)
+                {
+                    indices.Indices[iDim] = i;
+                    ForwardOperations(kernelContext, indices);
+                }
+
+                // If a warp was used to reduce the dimension, reduce the results of the warp.
+                if (step == Warp.WarpSize)
+                {
+                    T value = kernelContext.Results[^1];
+                    for (int offset = Warp.WarpSize / 2; offset > 0; offset /= 2)
+                    {
+                        value += Warp.ShuffleDown(value, offset);
+                    }
+                    if (Warp.IsFirstLane)
+                    {
+                        kernelContext.Results[^1] = value;
+                    }
+                }
+            }
+            else
+            {
+                ForwardOperations(kernelContext, indices);
+            }
         }
 
         private static T Backward<T>(OpCode opCode, T left, T currentGrad)
