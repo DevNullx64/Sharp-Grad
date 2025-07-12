@@ -5,7 +5,7 @@ namespace SharpGrad
 {
     public readonly struct Dimension : IEquatable<Dimension>
     {
-        private static readonly List<int> sizes = [0];
+        private static readonly List<int> sizes = [1];
         private static readonly List<string> names = ["Scalar"];
 
         private readonly byte _index;
