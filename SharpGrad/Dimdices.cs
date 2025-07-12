@@ -15,7 +15,7 @@ namespace SharpGrad.DifEngine
         /// <summary>
         /// The shape of the <see cref="Dimdices"/>.
         /// </summary>
-        public readonly Dimension[] Shape;
+        public readonly Shape Shape;
         /// <summary>
         /// The indices of the <see cref="Dimdices"/>.
         /// </summary>
@@ -24,7 +24,7 @@ namespace SharpGrad.DifEngine
         /// <summary>
         /// Get if the <see cref="Dimdices"/> is a scalar.
         /// </summary>
-        public bool IsScalar => Shape.Length == 0;
+        public bool IsScalar => Shape.Rank == 0;
 
         /// <summary>
         /// Get the index of the specified <see cref="Dimension"/>.
@@ -38,7 +38,7 @@ namespace SharpGrad.DifEngine
         {
             get
             {
-                for (int i = 0; i < Shape.Length; i++)
+                for (int i = 0; i < Shape.Rank; i++)
                 {
                     if (Shape[i] == dim)
                     {
@@ -81,11 +81,11 @@ namespace SharpGrad.DifEngine
         /// <exception cref="ArgumentException">
         /// Thrown when the shape have no dimensions or its dimensions count is not equal to the indices length.
         /// </exception>
-        public Dimdices(Dimension[] shape, int[] indices)
+        public Dimdices(Shape shape, int[] indices)
         {
-            if (shape.Length != indices.Length)
+            if (shape.Rank != indices.Length)
             {
-                throw new ArgumentException($"The shape size {shape.Size()} is not equal to the indices length {indices.Length}");
+                throw new ArgumentException($"The shape size {shape.Size} is not equal to the indices length {indices.Length}");
             }
             Shape = shape;
             Indices = indices;
@@ -112,7 +112,7 @@ namespace SharpGrad.DifEngine
         {
             long index = 0;
             long stride = 1;
-            for (int i = 0; i < Shape.Length; i++)
+            for (int i = 0; i < Shape.Rank; i++)
             {
                 index += Indices[i] * stride;
                 stride *= Shape[i].Size;
@@ -127,10 +127,10 @@ namespace SharpGrad.DifEngine
     /// Represents an indexer for <see cref="Dimdices"/>.
     /// Starts from the first index in each dimension and ends at the last index in each dimension.
     /// </summary>
-    public class Dimdexer(Dimension[] shape) : IEnumerable<Dimdices>, IEnumerator<Dimdices>
+    public class Dimdexer(Shape shape) : IEnumerable<Dimdices>, IEnumerator<Dimdices>
     {
-        public readonly Dimension[] Shape = shape;
-        public int[] Indices = new int[shape.Length];
+        public readonly Shape Shape = shape;
+        public int[] Indices = new int[shape.Rank];
 
         public Dimdices Current => new(Shape, Indices);
 
@@ -160,7 +160,7 @@ namespace SharpGrad.DifEngine
                 return true;
             }
 
-            for (int i = Shape.Length - 1; i >= 0; i--)
+            for (int i = Shape.Rank - 1; i >= 0; i--)
             {
                 Indices[i]++;
                 if (Indices[i] < Shape[i].Size)

@@ -23,7 +23,7 @@ internal class Program
 
         float lr = 1e-4f;
         // List of input data
-        Variable<float> X = new([batch, input], "X");
+        Variable<float> X = new((batch, input), "X");
         foreach (Dimdices dimdices in new Dimdexer(X.Shape))
         {
             X[dimdices] = v[dimdices[batch]].X[dimdices[input]];
@@ -31,7 +31,7 @@ internal class Program
 
         // List of ground truth data
         var ygt = v.Select(d => (float)d.Y[0]).ToArray();
-        Variable<float> Ygt = new(ygt, [output, batch], "Ygt");
+        Variable<float> Ygt = new(ygt, (output, batch), "Ygt");
 
         // Build execution expression graph (no computation done here)
         Value<float> Y = cerebrin.Forward(X);

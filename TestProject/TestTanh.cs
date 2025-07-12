@@ -55,7 +55,7 @@ namespace TestProject
                 T.CreateTruncating(1.0),
                 T.CreateTruncating(2.0),
                 T.CreateTruncating(3.0)],
-                [dim1], "a");
+                dim1, "a");
 
             SumValue<T> sum = VMath.Sum(a, dim1);
             sum.Forward();
@@ -71,7 +71,7 @@ namespace TestProject
                 T.CreateTruncating(4.0),
                 T.CreateTruncating(5.0),
                 T.CreateTruncating(6.0)],
-                [dim1, dim2], "b");
+                (dim1, dim2), "b");
             SumValue<T> sum2 = VMath.Sum(b, dim1, dim2);
             sum2.Forward();
             sum2.Backward();

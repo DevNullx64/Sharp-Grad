@@ -20,7 +20,7 @@ namespace TestProject
             Assert.AreEqual(3, var.Data[2]);
             Assert.AreEqual(4, var.Data[3]);
             Assert.AreEqual(5, var.Data[4]);
-            Console.WriteLine($"{nameof(TestVariable)}({data.GetString()}) passed: {var.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestVariable)}({data}) passed: {var.Data}");
         }
         [TestMethod]
         public void TestConstant()
@@ -34,7 +34,7 @@ namespace TestProject
             Assert.AreEqual(3, con.Data[2]);
             Assert.AreEqual(4, con.Data[3]);
             Assert.AreEqual(5, con.Data[4]);
-            Console.WriteLine($"{nameof(TestConstant)}({data.GetString()}) passed: {con.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestConstant)}({data}) passed: {con.Data}");
         }
         [TestMethod]
         public void TestMSE()
@@ -46,22 +46,22 @@ namespace TestProject
             var loss = Loss.MSE(Y, Y_hat, batch);
             loss.Forward();
             Assert.AreEqual(0, loss.Data[0]);
-            Console.WriteLine($"{nameof(TestMSE)}({Y.Data.GetString()}, {Y_hat.Data.GetString()}) passed: {loss.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestMSE)}({Y.Data}, {Y_hat.Data}) passed: {loss.Data}");
 
             Y_hat = new Variable<float>([5, 4, 3, 2, 1], shape, "Y_hat");
             loss = Loss.MSE(Y, Y_hat, batch);
             loss.Forward();
             Assert.AreEqual(8, loss.Data[0]);
-            Console.WriteLine($"{nameof(TestMSE)}({Y.Data.GetString()}, {Y_hat.Data.GetString()}) passed: {loss.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestMSE)}({Y.Data}, {Y_hat.Data}) passed: {loss.Data}");
         }
         [TestMethod]
         public void TestDimensionExtender()
         {
-            Dimension[] dim = [new("X", 2), new("Y", 3), new("Z", 4)];
-            Assert.AreEqual(24, dim.Size());
-            Assert.IsFalse(dim.IsScalar());
-            Assert.IsFalse(dim.IsVector());
-            Console.WriteLine($"{nameof(TestDimensionExtender)}({dim.GetString()}) passed.");
+            Shape dim = (new("X", 2), new("Y", 3), new("Z", 4));
+            Assert.AreEqual(24, dim.Size);
+            Assert.IsFalse(dim.IsScalar);
+            Assert.IsFalse(dim.IsVector);
+            Console.WriteLine($"{nameof(TestDimensionExtender)}({dim}) passed.");
         }
     }
 }

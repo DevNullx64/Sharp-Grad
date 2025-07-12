@@ -13,12 +13,12 @@ namespace SharpGrad
 
         private readonly Expression thisExpression;
 
-        public Constant(TType[] data, Dimension[] shape, string name)
+        public Constant(TType[] data, Shape shape, string name)
             : base(shape, name)
         {
-            if (shape.Size() != data.Length)
+            if (shape.Size != data.Length)
             {
-                throw new ArgumentException($"The shape size {shape.Size()} is not equal to the data length {data.Length}");
+                throw new ArgumentException($"The shape size {shape.Size} is not equal to the data length {data.Length}");
             }
             base.data = data;
             thisExpression = Expression.Constant(this);
@@ -43,7 +43,7 @@ namespace SharpGrad
 
         public override string ToString()
         {
-            if (Shape.IsScalar())
+            if (Shape.IsScalar)
             {
                 return data[0].ToString()!;
             }

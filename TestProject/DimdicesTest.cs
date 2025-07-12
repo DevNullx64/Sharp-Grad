@@ -13,9 +13,9 @@ namespace TestProject
             Dimension X = new(nameof(X), 3);
             Dimension Y = new(nameof(Y), 2);
 
-            Variable<float> a = new([1, 2, 3, 4, 5, 6], [X, Y], "a");
-            Variable<float> b = new([7, 8, 9], [X], "b");
-            Variable<float> c = new([10, 11], [Y], "c");
+            Variable<float> a = new([1, 2, 3, 4, 5, 6], (X, Y), "a");
+            Variable<float> b = new([7, 8, 9], X, "b");
+            Variable<float> c = new([10, 11], Y, "c");
 
             var d = a + b;
             d.Forward();

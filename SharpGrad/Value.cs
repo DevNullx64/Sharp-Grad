@@ -13,9 +13,9 @@ namespace SharpGrad.DifEngine
     {
         protected static PropertyInfo thisIndexerProperty = typeof(Value<TType>).GetProperty("Item", typeof(TType))!;
 
-        public Dimension[] Shape { get; private set; }
-        public int Size => Shape.Size();
-        public bool IsScalar => Shape.IsScalar();
+        public Shape Shape { get; private set; }
+        public int Size => Shape.Size;
+        public bool IsScalar => Shape.IsScalar;
 
         /// <summary>
         /// If true, this value is an output of the computation graph and should be saved back to its data field.
@@ -32,7 +32,7 @@ namespace SharpGrad.DifEngine
         public Value(IReadOnlyList<Dimension> shape, string name, params Value<TType>[] childs)
         {
             Name = name;
-            Shape = [.. shape.Except([Dimension.Scalar]).Distinct()];
+            Shape = new Shape([.. shape.Where(e => e.Size > 1).Distinct()]);
             Operands = childs;
             int length = Size;
             data = new TType[length];
@@ -45,13 +45,13 @@ namespace SharpGrad.DifEngine
         protected TType[] data;
         public virtual TType[] Data => data;
 
-        private bool IsShapeEqual(Dimension[] shape)
+        private bool IsShapeEqual(Shape shape)
         {
-            if (shape.Length != Shape.Length)
+            if (shape.Rank != Shape.Rank)
             {
                 return false;
             }
-            for (int i = 0; i < shape.Length; i++)
+            for (int i = 0; i < shape.Rank; i++)
             {
                 if (shape[i] != Shape[i])
                 {
@@ -73,7 +73,7 @@ namespace SharpGrad.DifEngine
             }
             else
             {
-                int[] localIndice = new int[Shape.Length];
+                int[] localIndice = new int[Shape.Rank];
                 for (int i = localIndice.Length - 1; i >= 0; i--)
                 {
                     Dimension dim = Shape[i];

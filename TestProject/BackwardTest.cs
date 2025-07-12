@@ -131,7 +131,7 @@ namespace TestProject
             dimdexer.MoveNext(); Assert.AreEqual(1, B.GetGradient(dimdexer.Current));
             dimdexer.MoveNext(); Assert.AreEqual(1, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestAdd)}({A.Data.GetString()}, {B.Data.GetString()}) passed: {C.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestAdd)}({A.Data}, {B.Data}) passed: {C.Data}");
         }
 
         [TestMethod]
@@ -155,7 +155,7 @@ namespace TestProject
             Assert.AreEqual(-1, B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(-1, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestSub)}({A.Data.GetString()}, {B.Data.GetString()}) passed: {C.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestSub)}({A.Data}, {B.Data}) passed: {C.Data}");
         }
 
         [TestMethod]
@@ -182,7 +182,7 @@ namespace TestProject
             Assert.AreEqual(2, B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(3, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestMul)}({A.Data.GetString()}, {B.Data.GetString()}) passed: {C.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestMul)}({A.Data}, {B.Data}) passed: {C.Data}");
         }
 
         [TestMethod]
@@ -209,7 +209,7 @@ namespace TestProject
             Assert.AreEqual(B.GetGradient(dimdexer.Current), -A.Data[1] / (B.Data[1] * B.Data[1])); dimdexer.MoveNext();
             Assert.AreEqual(B.GetGradient(dimdexer.Current), -A.Data[2] / (B.Data[2] * B.Data[2]));
 
-            Console.WriteLine($"{nameof(TestDiv)}({A.Data.GetString()}, {B.Data.GetString()}) passed: {C.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestDiv)}({A.Data}, {B.Data}) passed: {C.Data}");
         }
 
         [TestMethod]
@@ -236,7 +236,7 @@ namespace TestProject
             Assert.AreEqual(MathF.Pow(2, 5) * MathF.Log(2), B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(MathF.Pow(3, 6) * MathF.Log(3), B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestPow)}({A.Data.GetString()}, {B.Data.GetString()}) passed: {C.Data.GetString()}");
+            Console.WriteLine($"{nameof(TestPow)}({A.Data}, {B.Data}) passed: {C.Data}");
         }
     }
 }

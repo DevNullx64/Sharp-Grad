@@ -178,7 +178,7 @@ namespace SharpGrad.Operators
                 {
                     getShape = Expression.PropertyOrField(Expression.Constant(this), nameof(Shape));
                 }
-                Expression newDimdexer = Expression.New(typeof(Dimdexer).GetConstructor([typeof(Dimension[])])!, getShape);
+                Expression newDimdexer = Expression.New(typeof(Dimdexer).GetConstructor([typeof(Shape)])!, getShape);
                 Expression assignDimdexer = Expression.Assign(dimdexer, newDimdexer);
 
                 // Current index and assign it
@@ -299,7 +299,7 @@ namespace SharpGrad.Operators
                 {
                     getShape = Expression.PropertyOrField(Expression.Constant(this), nameof(Shape));
                 }
-                Expression newDimdexer = Expression.New(typeof(Dimdexer).GetConstructor([typeof(Dimension[])])!, getShape);
+                Expression newDimdexer = Expression.New(typeof(Dimdexer).GetConstructor([typeof(Shape)])!, getShape);
                 Expression assignDimdexer = Expression.Assign(dimdexer, newDimdexer);
 
                 // Current index and assign it

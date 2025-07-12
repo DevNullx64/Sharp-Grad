@@ -29,7 +29,7 @@ namespace SharpGrad.NN
                 Weights[dimdices] = TType.CreateSaturating(Rand.NextDouble());
             }
 
-            Biai = new Variable<TType>([output], "B");
+            Biai = new Variable<TType>(output, "B");
             dimdexer = new(Biai.Shape);
             foreach (Dimdices dimdices in dimdexer)
             {
