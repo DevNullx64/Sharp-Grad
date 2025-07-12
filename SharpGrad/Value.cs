@@ -105,13 +105,13 @@ namespace SharpGrad.DifEngine
             get
             {
                 int[] localIndices = GetLocalIndices(indices);
-                long i = Shape.GetLinearIndex(localIndices);
+                int i = Shape.GetLinearIndex(localIndices);
                 return data[i];
             }
             internal set
             {
                 int[] localIndices = GetLocalIndices(indices);
-                long i = Shape.GetLinearIndex(localIndices);
+                int i = Shape.GetLinearIndex(localIndices);
                 data[i] = value;
             }
         }
@@ -123,14 +123,14 @@ namespace SharpGrad.DifEngine
         public TType GetGradient(Dimdices indices)
         {
             int[] localIndices = GetLocalIndices(indices);
-            long i = Shape.GetLinearIndex(localIndices);
+            int i = Shape.GetLinearIndex(localIndices);
             return gradient[i];
         }
 
         public void SetGradient(Dimdices indices, TType value)
         {
             int[] localIndices = GetLocalIndices(indices);
-            long i = Shape.GetLinearIndex(localIndices);
+            int i = Shape.GetLinearIndex(localIndices);
             gradient[i] = value;
         }
 
