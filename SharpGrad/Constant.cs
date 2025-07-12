@@ -18,7 +18,7 @@ namespace SharpGrad
         {
             if (shape.Size() != data.Length)
             {
-                throw new System.ArgumentException($"The shape size {shape.Size()} is not equal to the data length {data.Length}");
+                throw new ArgumentException($"The shape size {shape.Size()} is not equal to the data length {data.Length}");
             }
             base.data = data;
             thisExpression = Expression.Constant(this);
@@ -49,7 +49,7 @@ namespace SharpGrad
             }
             else
             {
-                return '[' + String.Join(", ", data) + ']';
+                return '[' + string.Join(", ", data) + ']';
             }
         }
 
