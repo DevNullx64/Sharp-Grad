@@ -217,6 +217,8 @@ namespace SharpGrad.DifEngine
         public static MulValue<TType> operator *(Value<TType> left, Value<TType> right) => Mul(left, right);
 
         public static DivValue<TType> Div(Value<TType> left, Value<TType> right) => new(left, right);
+        public static DivValue<TType> operator /(Value<TType> left, Value<TType> right) => Div(left, right);
+        #endregion
 
         protected void InitGradientForBackward()
         {
@@ -234,9 +236,6 @@ namespace SharpGrad.DifEngine
                 }
             }
         }
-
-        public static DivValue<TType> operator /(Value<TType> left, Value<TType> right) => Div(left, right);
-        #endregion
 
         public static implicit operator Value<TType>(TType d)
             => new Constant<TType>(d, $"v{InstanceCount++}");
