@@ -9,14 +9,24 @@ namespace SharpGrad.DifEngine
         public static string GetString<T>(this IEnumerable<T> arr) => '[' + string.Join(", ", arr) + ']';
         public static string GetString(this Dimension[] dim) => GetString(dim.Select(d => d.Size));
 
-        public static int Size(this IEnumerable<Dimension> @this)
-            => @this.Aggregate(1, (acc, d) => acc * d.Size);
+        public static int Size(this Dimension[] @this)
+        {
+            int size = 1;
+            for (int i = 0; i < @this.Length; i++)
+            {
+                checked
+                {
+                    size *= @this[i].Size;
+                }
+            }
+            return size;
+        }
 
-        public static bool IsScalar(this IEnumerable<Dimension> @this)
-            => !@this.Any();
+        public static bool IsScalar(this Dimension[] @this)
+            => @this.Length == 0;
 
-        public static bool IsVector(this IEnumerable<Dimension> @this)
-            => @this.Count() == 1;
+        public static bool IsVector(this Dimension[] @this)
+            => @this.Length == 1;
 
         public static int GetLinearIndex(this Dimension[] shape, int[] indices)
         {
