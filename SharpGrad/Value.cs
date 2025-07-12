@@ -26,7 +26,7 @@ namespace SharpGrad.DifEngine
         public static readonly Expression ExpressionOne = Expression.Constant(TType.One);
 
         private static int InstanceCount = 0;
-        public static readonly Constant<TType> e = new(TType.CreateSaturating(Math.E), "e");
+        public static readonly Constant<TType> E = new(TType.CreateSaturating(Math.E), "e");
         public static readonly Constant<TType> Zero = new(TType.Zero, "0");
         public virtual void InitValueForForward() { }
         public Value(IReadOnlyList<Dimension> shape, string name, params Value<TType>[] childs)
