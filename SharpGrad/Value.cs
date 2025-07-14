@@ -11,7 +11,7 @@ namespace SharpGrad.DifEngine
     public abstract class Value<TType>
         where TType : INumber<TType>
     {
-        protected static PropertyInfo thisIndexerProperty = typeof(Value<TType>).GetProperty("Item", typeof(TType))!;
+        protected static readonly PropertyInfo thisIndexerProperty = typeof(Value<TType>).GetProperty("Item", typeof(TType))!;
 
         public Shape Shape { get; private set; }
         public int Size => Shape.Size;
