@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SharpGrad.DifEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,14 +46,16 @@ namespace SharpGrad
             }
         }
 
-        public int GetLinearIndex(params int[] indices)
+        public int GetLinearIndex(IReadOnlyList<int> indices)
         {
-            if (Rank == 0 && indices.Length == 1)
+            if (Rank == 0 && indices.Count == 1)
                 return 0;
-            if (Rank != indices.Length)
+
+            if (Rank != indices.Count)
             {
-                throw new ArgumentException($"The shape size {Size} is not equal to the indices length {indices.Length}");
+                throw new ArgumentException($"The shape size {Size} is not equal to the indices length {indices.Count}");
             }
+
             int index = 0;
             int stride = 1;
             for (int i = Rank - 1; i >= 0; i--)
@@ -66,6 +69,50 @@ namespace SharpGrad
             return index;
         }
 
+        private int[] GetLocalIndices(Dimdices indices)
+        {
+            if (indices.IsScalar)
+            {
+                return [0];
+            }
+            if (this == indices.Shape)
+            {
+                return [.. indices.Indices];
+            }
+            else
+            {
+                int[] localIndice = new int[Rank];
+                for (int i = localIndice.Length - 1; i >= 0; i--)
+                {
+                    Dimension dim = this[i];
+                    Index index = indices[dim];
+                    int idx = index.Value;
+                    if (index.IsFromEnd)
+                    {
+                        if (idx > dim.Size)
+                        {
+                            throw new IndexOutOfRangeException($"Index {idx} is out of range for dimension {dim.Size}");
+                        }
+                        localIndice[i] = dim.Size - idx;
+                    }
+                    else
+                    {
+                        if (idx >= dim.Size)
+                        {
+                            throw new IndexOutOfRangeException($"Index {idx} is out of range for dimension {dim.Size}");
+                        }
+                        localIndice[i] = idx;
+                    }
+                }
+                return localIndice;
+            }
+        }
+
+        public int GetLinearIndex(Dimdices dimdices)
+        {
+            int[] loaclIndices = GetLocalIndices(dimdices);
+            return GetLinearIndex(loaclIndices);
+        }
         #region Equality
         public bool Equals(Shape other)
         {
