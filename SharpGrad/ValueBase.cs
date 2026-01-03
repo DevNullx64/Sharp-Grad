@@ -8,66 +8,54 @@ using System.Reflection;
 
 namespace SharpGrad.DifEngine
 {
-    public abstract class Value<TType>
-        where TType : INumber<TType>
+    /// <summary>
+    /// Base class for all values in the computation graph.
+    /// </summary>
+    public abstract class ValueBase
     {
-        protected static readonly PropertyInfo thisIndexerProperty = typeof(Value<TType>).GetProperty("Item", typeof(TType))!;
+        public readonly string Name;
+        /// <summary>
+        /// The numeric type of the value.
+        /// </summary>
+        public readonly Type Type;
 
+        /// <summary>
+        /// The shape of the value.
+        /// </summary>
         public Shape Shape { get; private set; }
+
+        /// <summary>
+        /// The size of the value.
+        /// </summary>
         public int Size => Shape.Size;
+
+        /// <summary>
+        /// Whether the value is a scalar.
+        /// </summary>
         public bool IsScalar => Shape.IsScalar;
 
         /// <summary>
         /// If true, this value is an output of the computation graph and should be saved back to its data field.
         /// </summary>
-        public virtual bool IsOutput { get; set; } = false;
+        public bool IsOutput { get; set; } = false;
 
-        public static readonly Expression ExpressionZero = Expression.Constant(TType.Zero);
-        public static readonly Expression ExpressionOne = Expression.Constant(TType.One);
+        public ValueBase[] Operands;
 
-        private static int InstanceCount = 0;
-        public static readonly Constant<TType> E = new(TType.CreateSaturating(Math.E), "e");
-        public static readonly Constant<TType> Zero = new(TType.Zero, "0");
-        public virtual void InitValueForForward() { }
-        public Value(IReadOnlyList<Dimension> shape, string name, params Value<TType>[] childs)
+        public ValueBase(string name, Type type, Shape shape, params ValueBase[] childs)
         {
             Name = name;
-            Shape = new Shape([.. shape.Where(e => e.Size > 1).Distinct()]);
+            Type = type;
+            Shape = shape;
             Operands = childs;
-            int length = Size;
-            data = new TType[length];
-            gradient = new TType[length];
-            InitValueForForward();
         }
 
-        public readonly Value<TType>[] Operands;
-        public readonly string Name;
-        protected TType[] data;
-        public virtual TType[] Data => data;
-
-        private bool IsShapeEqual(Shape shape)
-        {
-            if (shape.Rank != Shape.Rank)
-            {
-                return false;
-            }
-            for (int i = 0; i < shape.Rank; i++)
-            {
-                if (shape[i] != Shape[i])
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private int[] GetLocalIndices(Dimdices indices)
+        protected int[] GetLocalIndices(Dimdices indices)
         {
             if (indices.IsScalar)
             {
                 return [0];
             }
-            if (IsShapeEqual(indices.Shape))
+            if (Shape == indices.Shape)
             {
                 return [.. indices.Indices];
             }
@@ -99,6 +87,36 @@ namespace SharpGrad.DifEngine
                 return localIndice;
             }
         }
+    }
+
+    /// <summary>
+    /// Base class for all typed values in the computation graph.
+    /// </summary>
+    /// <typeparam name="TType">The numeric type of the value.</typeparam>
+    public abstract class Value<TType>: ValueBase
+        where TType : INumber<TType>
+    {
+        protected static readonly PropertyInfo thisIndexerProperty = typeof(Value<TType>).GetProperty("Item", typeof(TType))!;
+
+        public static readonly Expression ExpressionZero = Expression.Constant(TType.Zero);
+        public static readonly Expression ExpressionOne = Expression.Constant(TType.One);
+
+        private static int InstanceCount = 0;
+        public static readonly Constant<TType> E = new(TType.CreateSaturating(Math.E), "e");
+        public static readonly Constant<TType> Zero = new(TType.Zero, "0");
+        public virtual void InitValueForForward() { }
+        public Value(IReadOnlyList<Dimension> shape, string name, params Value<TType>[] childs):
+            base(name, typeof(TType), new Shape([.. shape.Where(e => e.Size > 1).Distinct()]), childs)
+        {
+            int length = Size;
+            data = new TType[length];
+            gradient = new TType[length];
+            InitValueForForward();
+        }
+
+        public new Value<TType>[] Operands => (Value<TType>[])base.Operands;
+        protected TType[] data;
+        public virtual TType[] Data => data;
 
         public TType this[Dimdices indices]
         {

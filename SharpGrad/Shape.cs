@@ -69,8 +69,15 @@ namespace SharpGrad
         #region Equality
         public bool Equals(Shape other)
         {
-            if (Rank != other.Rank)
+            if (dimensions is null)
+                return other.Rank == 0;
+
+            if(other.dimensions is null)
+                return dimensions.Length == 0;
+
+            if (dimensions.Length != other.dimensions.Length)
                 return false;
+
             for (int i = 0; i < Rank; i++)
             {
                 if (dimensions[i] != other.dimensions[i])
