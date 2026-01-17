@@ -1,7 +1,7 @@
 ﻿using SharpGrad.DifEngine;
 using System.Numerics;
 
-namespace TestProject
+namespace TestProject.Operators
 {
     [TestClass]
     public sealed class TestSub

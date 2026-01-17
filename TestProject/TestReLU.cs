@@ -3,7 +3,7 @@ using SharpGrad.DifEngine;
 using System.Diagnostics;
 using System.Numerics;
 
-namespace TestProject
+namespace TestProject.Activations
 {
     [TestClass]
     public class TestReLU

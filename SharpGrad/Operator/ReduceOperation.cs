@@ -24,7 +24,7 @@ namespace SharpGrad.Operators
             List<Expression> expressionList);
 
         protected ReduceOperation(Dimension[] shape, string name, Value<TType> child)
-            : base(shape, name, [child])
+            : base(shape, name, true, [child])
         {
             if (!shape.All(e => child.Shape.Contains(e)))
             {

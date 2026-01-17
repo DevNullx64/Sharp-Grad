@@ -14,7 +14,7 @@ namespace SharpGrad
         private readonly Expression thisExpression;
 
         public Constant(TType[] data, Shape shape, string name)
-            : base(shape, name)
+            : base(shape, name, false)
         {
             if (shape.Size != data.Length)
             {

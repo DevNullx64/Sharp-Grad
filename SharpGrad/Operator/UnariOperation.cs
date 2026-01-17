@@ -19,7 +19,7 @@ namespace SharpGrad.Operators
             List<Expression> expressionList);
 
         public UnariOperation(string name, Value<TType> child)
-            : base(name, child)
+            : base(name, false, child)
         {
             ChildrensCompute = [ComputeGradient];
         }

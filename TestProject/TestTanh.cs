@@ -5,7 +5,7 @@ using SharpGrad.Operators;
 using System.Diagnostics;
 using System.Numerics;
 
-namespace TestProject
+namespace TestProject.Activations
 {
     [TestClass]
     public class TestTanh

@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Numerics;
 
-namespace TestProject
+namespace TestProject.Operators
 {
     [TestClass]
     public sealed class TestPow

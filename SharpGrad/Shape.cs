@@ -6,9 +6,31 @@ using System.Linq;
 
 namespace SharpGrad
 {
-    public readonly struct Shape(params Dimension[] dimensions) : IReadOnlyList<Dimension>, IEquatable<Shape>
+    public readonly struct Shape : IReadOnlyList<Dimension>, IEquatable<Shape>
     {
-        private readonly Dimension[]? dimensions = dimensions;
+        private readonly Dimension[]? dimensions;
+        private readonly int[]? Strides;
+
+        public Shape(params Dimension[] dims)
+        {
+            List<Dimension> dimensionsList = [.. dims.Where(d => !d.IsScalar)];
+            if (dimensionsList.Count > 0)
+            {
+                dimensions = [.. dimensionsList];
+                Strides = new int[dimensions.Length];
+
+                int stride = 1;
+                for (int i = dimensions.Length - 1; i >= 0; i--)
+                {
+                    Strides[i] = stride;
+                    stride *= dimensions[i].Size;
+                }
+            } else
+            {
+                dimensions = null;
+                Strides = null;
+            }
+        }
 
         public int Rank => dimensions?.Length ?? 0;
         int IReadOnlyCollection<Dimension>.Count => Rank;
@@ -16,8 +38,18 @@ namespace SharpGrad
         public bool IsScalar => Rank == 0;
         public bool IsVector => Rank == 1;
 
-        public Dimension this[int index] => dimensions?[index] ?? throw new IndexOutOfRangeException($"Index {index} is out of range for shape with rank {Rank}.");
+        public Dimension this[int index] => dimensions?[index] ?? throw new IndexOutOfRangeException($"Index {index} is out of range for scalar shape.");
         public Dimension this[Index index] => this[index.GetOffset(Rank)];
+
+        public int GetStride(int i) => Strides?[i] ?? throw new IndexOutOfRangeException($"Index {i} is out of range for scalar shape.");
+
+        public int IndexOf(Dimension dimension)
+        {
+            if (dimensions is null)
+                return -1;
+            return Array.IndexOf(dimensions, dimension);
+        }
+
         public IEnumerator<Dimension> GetEnumerator()
         {
             if (dimensions is not null)
@@ -30,21 +62,7 @@ namespace SharpGrad
         }
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public int Size
-        {
-            get
-            {
-                int size = 1;
-                if(dimensions is not null)
-                {
-                    for(int i = 0; i < dimensions.Length; i++)
-                    {
-                        size *= dimensions[i].Size;
-                    }
-                }
-                return size;
-            }
-        }
+        public int Size => (Strides?[0] ?? 1) * (dimensions?[0].Size ?? 1);
 
         public int GetLinearIndex(IReadOnlyList<int> indices)
         {
@@ -113,6 +131,62 @@ namespace SharpGrad
             int[] loaclIndices = GetLocalIndices(dimdices);
             return GetLinearIndex(loaclIndices);
         }
+
+        /// <summary>
+        /// Get the index in this shape from the index in another shape.
+        /// </summary>
+        /// <param name="index">The index in the other shape.</param>
+        /// <param name="shape">The other shape. Must be broadcastable to this shape.</param>
+        /// <returns>The index in this shape.</returns>
+        /// <remarks>
+        /// This method doesn't use intermediate array allocations. It uses only integer arithmetic to compute the index based on precomputed strides.
+        /// </remarks>
+        public int GetLinearIndex(int index, Shape shape)
+        {
+            if (this == shape)
+            {
+                return index;
+            }
+
+            if (dimensions is null || Strides is null)
+            {
+                if (shape.dimensions is null)
+                    return 0;
+                else
+                    throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+            }
+            if(shape.dimensions is null || shape.Strides is null)
+            {
+                throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+            }
+
+            int treated = 0;
+            int resultIndex = 0;
+            int thisLastDimIndex = dimensions.Length - 1;
+            for (int odi = shape.dimensions.Length - 1; odi >= 0; odi--)
+            {
+                Dimension dim = shape.dimensions[odi];
+
+                for (int tdi = thisLastDimIndex; tdi >= 0; tdi--)
+                {
+                    if (dimensions[tdi] == dim)
+                    {
+                        int dimSize = dim.Size;
+                        int coord = (index / shape.Strides[odi]) % dimSize;
+                        resultIndex += coord * Strides[tdi];
+                        treated++;
+                        break;
+                    }
+                }
+            }
+
+            if (treated == dimensions.Length)
+            {
+                return resultIndex;
+            }
+            throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+        }
+
         #region Equality
         public bool Equals(Shape other)
         {

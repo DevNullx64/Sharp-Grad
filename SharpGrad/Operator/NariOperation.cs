@@ -30,11 +30,11 @@ namespace SharpGrad.Operators
             return [.. shape];
         }
 
-        protected NariOperation(Dimension[] shape, string name, params Value<TType>[] childs)
-            : base(shape, name, childs)
+        protected NariOperation(Dimension[] shape, string name, bool isParallelBarrier, params Value<TType>[] childs)
+            : base(shape, name, isParallelBarrier, childs)
         { }
-        public NariOperation(string name, params Value<TType>[] childs)
-            : this(GetShape(childs), name, childs)
+        public NariOperation(string name, bool isParallelBarrier, params Value<TType>[] childs)
+            : this(GetShape(childs), name, isParallelBarrier, childs)
         {
             if (childs.Length < 1)
                 throw new ArgumentException($"Operator {name} must have at least one child.");
