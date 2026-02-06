@@ -82,17 +82,16 @@ namespace SharpGrad
         }
 
         /// <summary>
-        /// Gets the underlying array of the data buffer, initializing it if it hasn't been initialized yet.
+        /// Gets the initialized data as an array.
         /// </summary>
-        /// <returns>The initialized data array.</returns>
+        /// <returns>The initialized data as an array.</returns>
         /// <remarks>
-        /// This method is used internally to ensure that the data buffer is initialized before accessing the underlying array.
+        /// This method is used internally to get the initialized data as an array.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TType[] GetInitializedData()
-            {
-            return data.GetInitializedDataArray();
-        }
+        internal TType[] GetInitializedData() => data.GetInitializedData();
+
+        internal TType[] GetOrInitializeData() => data.GetOrInitializeData();
 
 
         #region BASIC ARITHMETIC OPERATIONS

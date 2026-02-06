@@ -1,4 +1,5 @@
-﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using SharpGrad.DifEngine.SyntaxBuilder.Operations;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -28,6 +29,26 @@ namespace SharpGrad
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => untypedData;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal TType[] GetInitializedData<TType>() where TType : struct, INumber<TType>
+        {
+            if (untypedData is DataBuffer<TType> dataBuffer)
+            {
+                return dataBuffer.GetInitializedData();
+            }
+            throw new InvalidOperationException($"Trying to get data type {typeof(TType)}, but it is set to {untypedData.ElementType}.");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal TType[] GetOrInitializeData<TType>() where TType : struct, INumber<TType>
+        {
+            if (untypedData is DataBuffer<TType> dataBuffer)
+            {
+                return dataBuffer.GetOrInitializeData();
+            }
+            throw new InvalidOperationException($"Trying to get data type {typeof(TType)}, but it is set to {untypedData.ElementType}.");
         }
 
         internal DataBuffer? untypedGrad = grad;
@@ -77,7 +98,7 @@ namespace SharpGrad
             }
             if (untypedGrad is DataBuffer<TGrad> dataBuffer)
             {
-                return dataBuffer.GetInitializedDataArray();
+                return dataBuffer.GetInitializedData();
             }
             throw new InvalidOperationException($"Trying to get gradient type {typeof(TGrad)}, but it is set to {untypedGrad.ElementType}.");
         }
@@ -93,7 +114,7 @@ namespace SharpGrad
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal TGrad[] GetOrInitializeGrad<TGrad>()
             where TGrad : struct, IFloatingPointIeee754<TGrad>
-            => GetOrInitializeGradBuffer<TGrad>().GetInitializedDataArray();
+            => GetOrInitializeGradBuffer<TGrad>().GetInitializedData();
 
 
         /// <summary>

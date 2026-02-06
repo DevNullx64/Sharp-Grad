@@ -297,7 +297,7 @@ namespace SharpGrad
         /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal T[] GetInitializedDataArray()
+        internal T[] GetInitializedData()
             => ThrowIfNotInitialized().flatData!;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -305,6 +305,15 @@ namespace SharpGrad
         {
             base.NoLock_Free();
             flatData = null;
+        }
+
+        internal T[] GetOrInitializeData()
+        {
+            lock (this)
+            {
+                NoLock_Initialize();
+                return flatData!;
+            }
         }
 
         #region Casting Operators

@@ -66,21 +66,19 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
         {
             // Throw an exception if the inputs and output are not of the expected type
-            Value<TType> leftValue = untypedLeft.As<TType>();
-            TType[] left = leftValue.GetInitializedData();
-
-            Value<TType> rightValue = untypedRight.As<TType>();
-            TType[] right = rightValue.GetInitializedData();
-
-            Value<TType> outputValue = untypedOutput.As<TType>();
-            TType[] output = outputValue.GetInitializedData();
+            TType[] left = untypedLeft.GetInitializedData<TType>();
+            TType[] right = untypedRight.GetInitializedData<TType>();
+            TType[] output = untypedOutput.GetOrInitializeData<TType>();
 
             // Get the appropriate method for the binary operation
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(kind);
 
             // Perform the binary operation
+            Shape leftShape = untypedLeft.Shape;
+            Shape rightShape = untypedRight.Shape;
+            Shape outputShape = untypedOutput.Shape;
             int length = output.Length;
-            if (leftValue.Shape == rightValue.Shape)
+            if (leftShape == rightShape)
             {
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
@@ -103,8 +101,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
                         output[iOutput] = operation(left[iLeft], right[iRight]);
                     }
                 }
@@ -112,8 +110,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 {
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
                         output[iOutput] = operation(left[iLeft], right[iRight]);
                     });
                 }
@@ -188,25 +186,25 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             action(kind, left, right, output);
         }
 
-        private void ExecuteBinaryBackwardLeftOnly<T, G>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
-            where T : struct, INumber<T>
-            where G : struct, IFloatingPointIeee754<G>
+        private void ExecuteBinaryBackwardLeftOnly<TType, TGrad>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
+            where TType : struct, INumber<TType>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedData();
-            G[] leftGrad = leftValue.GetOrInitializeGrad<G>();
+            TType[] left = untypedLeft.GetInitializedData<TType>();
+            TGrad[] leftGrad = untypedLeft.GetOrInitializeGrad<TGrad>();
+            TType[] right = untypedRight.GetInitializedData<TType>();
+            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
-            Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedData();
-
-            Value<T> outputValue = untypedOutput.As<T>();
-            G[] outputGrad = outputValue.GetInitializedGrad<G>();
-
-            Func<T, T, G, G> func = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
+            Func<TType, TType, TGrad, TGrad> func = BinaryOperations.GetKindBackwardLeftDelegate<TType, TGrad>(kind);
 
             int length = outputGrad.Length;
-            if (leftValue.Shape == rightValue.Shape)
+            Shape leftShape = untypedLeft.Shape;
+            Shape rightShape = untypedRight.Shape;
+            Shape outputShape = untypedOutput.Shape;
+            
+            if (leftShape == rightShape)
             {
+                // No broadcasting: direct accumulation
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
@@ -224,29 +222,123 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             }
             else
             {
+                // Broadcasting required: dimension-by-dimension reduction
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                        TGrad grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         leftGrad[iLeft] += grad;
                     }
                 }
                 else
                 {
+                    // Calculate gradients into temporary buffer
+                    TGrad[] tempGrad = new TGrad[length];
+                    
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        lock (leftGrad)
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                        tempGrad[iOutput] = func(left[iLeft], right[iRight], outputGrad[iOutput]);
+                    });
+                    
+                    // Reduce dimension by dimension
+                    ReduceBroadcastedGradient(tempGrad, outputShape, leftGrad, leftShape);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reduces broadcasted gradient by accumulating over dimensions present in source but not in dest.
+        /// Uses dimension-by-dimension reduction with temporary buffers for optimal performance.
+        /// </summary>
+        private void ReduceBroadcastedGradient<TGrad>(TGrad[] sourceGrad, Shape sourceShape, TGrad[] destGrad, Shape destShape)
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+        {
+            List<Dimension> dimsToReduce = [];
+
+            for (int iSource = 0; iSource < sourceShape.Rank; iSource++)
+            {
+                Dimension sourceDim = sourceShape[iSource];
+                if (destShape.IndexOf(sourceDim) < 0)
+                {
+                    dimsToReduce.Add(sourceDim);
+                }
+            }
+
+            if (dimsToReduce.Count == 0)
+            {
+                Parallel.For(0, Math.Min(sourceGrad.Length, destGrad.Length), _parallelOptions, i =>
+                {
+                    destGrad[i] += sourceGrad[i];
+                });
+                return;
+            }
+
+            TGrad[] currentSource = sourceGrad;
+            Shape currentShape = sourceShape;
+
+            for (int dimIdx = dimsToReduce.Count - 1; dimIdx >= 0; dimIdx--)
+            {
+                Dimension dim = dimsToReduce[dimIdx];
+                int dimIndexInShape = currentShape.IndexOf(dim);
+                int dimSize = dim.Size;
+                int dimStride = currentShape.GetStride(dimIndexInShape);
+                Shape reducedShape = currentShape.Remove(dim);
+                int reducedLength = currentSource.Length / dimSize;
+                bool isFinal = dimIdx == 0;
+                TGrad[] currentDest = isFinal ? destGrad : new TGrad[reducedLength];
+
+                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                {
+                    for (int iDest = reducedLength - 1; iDest >= 0; iDest--)
+                    {
+                        int iSourceBase = currentShape.GetLinearIndex(iDest, reducedShape);
+                        TGrad accumulator = TGrad.Zero;
+                        int iSourceEnd = iSourceBase + dimSize * dimStride;
+                        for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
                         {
-                            leftGrad[iLeft] += grad;
+                            accumulator += currentSource[iSource];
+                        }
+
+                        if (isFinal)
+                        {
+                            currentDest[iDest] += accumulator;
+                        }
+                        else
+                        {
+                            currentDest[iDest] = accumulator;
+                        }
+                    }
+                }
+                else
+                {
+                    Parallel.For(0, reducedLength, _parallelOptions, iDest =>
+                    {
+                        int iSourceBase = currentShape.GetLinearIndex(iDest, reducedShape);
+                        TGrad accumulator = TGrad.Zero;
+                        int iSourceEnd = iSourceBase + dimSize * dimStride;
+                        for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
+                        {
+                            accumulator += currentSource[iSource];
+                        }
+
+                        if (isFinal)
+                        {
+                            currentDest[iDest] += accumulator;
+                        }
+                        else
+                        {
+                            currentDest[iDest] = accumulator;
                         }
                     });
                 }
+
+                currentSource = currentDest;
+                currentShape = reducedShape;
             }
         }
 
@@ -278,25 +370,25 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             action(kind, left, right, output);
         }
 
-        private void ExecuteBinaryBackwardRightOnly<T, G>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
-            where T : struct, INumber<T>
-            where G : struct, IFloatingPointIeee754<G>
+        private void ExecuteBinaryBackwardRightOnly<TType, TGrad>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
+            where TType : struct, INumber<TType>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedData();
+            TType[] left = untypedLeft.GetInitializedData<TType>();
+            TType[] right = untypedRight.GetInitializedData<TType>();
+            TGrad[] rightGrad = untypedRight.GetOrInitializeGrad<TGrad>();
+            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
-            Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedData();
-            G[] rightGrad = rightValue.GetOrInitializeGrad<G>();
-
-            Value<T> outputValue = untypedOutput.As<T>();
-            G[] outputGrad = outputValue.GetInitializedGrad<G>();
-
-            Func<T, T, G, G> func = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
+            Func<TType, TType, TGrad, TGrad> func = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(kind);
 
             int length = outputGrad.Length;
-            if (leftValue.Shape == rightValue.Shape)
+            Shape leftShape = untypedLeft.Shape;
+            Shape rightShape = untypedRight.Shape;
+            Shape outputShape = untypedOutput.Shape;
+            
+            if (leftShape == rightShape)
             {
+                // No broadcasting: direct accumulation
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
@@ -314,28 +406,30 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             }
             else
             {
+                // Broadcasting required
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                        TGrad grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         rightGrad[iRight] += grad;
                     }
                 }
                 else
                 {
+                    TGrad[] rightGradTemp = new TGrad[length];
+
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        lock (rightGrad)
-                        {
-                            rightGrad[iRight] += grad;
-                        }
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                        rightGradTemp[iOutput] = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                     });
+
+                    // Use shared reduction method
+                    ReduceBroadcastedGradient(rightGradTemp, outputShape, rightGrad, rightShape);
                 }
             }
         }
@@ -368,33 +462,33 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             action(kind, left, right, output);
         }
 
-        private void ExecuteBinaryBackwardLeftAndRight<T, G>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
-            where T : struct, INumber<T>
-            where G : struct, IFloatingPointIeee754<G>
+        private void ExecuteBinaryBackwardLeftAndRight<TType, TGrad>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
+            where TType : struct, INumber<TType>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedData();
-            G[] leftGrad = leftValue.GetOrInitializeGrad<G>();
+            TType[] left = untypedLeft.GetInitializedData<TType>();
+            TGrad[] leftGrad = untypedLeft.GetOrInitializeGrad<TGrad>();
+            TType[] right = untypedRight.GetInitializedData<TType>();
+            TGrad[] rightGrad = untypedRight.GetOrInitializeGrad<TGrad>();
+            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
-            Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedData();
-            G[] rightGrad = rightValue.GetOrInitializeGrad<G>();
-
-            Value<T> outputValue = untypedOutput.As<T>();
-            G[] outputGrad = outputValue.GetInitializedGrad<G>();
-
-            Func<T, T, G, G> funcLeft = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
-            Func<T, T, G, G> funcRight = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
+            Func<TType, TType, TGrad, TGrad> funcLeft = BinaryOperations.GetKindBackwardLeftDelegate<TType, TGrad>(kind);
+            Func<TType, TType, TGrad, TGrad> funcRight = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(kind);
 
             int length = outputGrad.Length;
-            if (leftValue.Shape == rightValue.Shape)
+            Shape leftShape = untypedLeft.Shape;
+            Shape rightShape = untypedRight.Shape;
+            Shape outputShape = untypedOutput.Shape;
+            
+            if (leftShape == rightShape)
             {
+                // No broadcasting: direct accumulation
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        G gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        G gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        TGrad gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        TGrad gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
                         leftGrad[iOutput] += gradLeft;
                         rightGrad[iOutput] += gradRight;
                     }
@@ -403,46 +497,73 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 {
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        G gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        G gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        lock (outputGrad)
-                        {
-                            leftGrad[iOutput] += gradLeft;
-                            rightGrad[iOutput] += gradRight;
-                        }
+                        TGrad gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        TGrad gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        leftGrad[iOutput] += gradLeft;
+                        rightGrad[iOutput] += gradRight;
                     });
                 }
             }
             else
             {
+                bool leftNeedsBroadcast = leftShape != outputShape;
+                bool rightNeedsBroadcast = rightShape != outputShape;
+                
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
 
-                        G gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        G gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        TGrad gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        TGrad gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
                         leftGrad[iLeft] += gradLeft;
                         rightGrad[iRight] += gradRight;
                     }
                 }
                 else
                 {
+                    TGrad[] leftGradTemp = new TGrad[length];
+                    TGrad[] rightGradTemp = new TGrad[length];
+                    
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
 
-                        G gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        G gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        lock (leftGrad)
-                        {
-                            leftGrad[iLeft] += gradLeft;
-                            rightGrad[iRight] += gradRight;
-                        }
+                        TGrad gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        TGrad gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
+                        leftGradTemp[iOutput] = gradLeft;
+                        rightGradTemp[iOutput] = gradRight;
                     });
+                    
+                    // Use shared reduction method for both gradients
+                    if (leftNeedsBroadcast)
+                    {
+                        ReduceBroadcastedGradient(leftGradTemp, outputShape, leftGrad, leftShape);
+                    }
+                    else
+                    {
+                        // Direct 1-to-1 mapping
+                        Parallel.For(0, leftGrad.Length, _parallelOptions, iLeft =>
+                        {
+                            leftGrad[iLeft] += leftGradTemp[iLeft];
+                        });
+                    }
+                    
+                    if (rightNeedsBroadcast)
+                    {
+                        ReduceBroadcastedGradient(rightGradTemp, outputShape, rightGrad, rightShape);
+                    }
+                    else
+                    {
+                        // Direct 1-to-1 mapping
+                        Parallel.For(0, rightGrad.Length, _parallelOptions, iRight =>
+                        {
+                            rightGrad[iRight] += rightGradTemp[iRight];
+                        });
+                    }
                 }
             }
         }

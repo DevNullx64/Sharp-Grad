@@ -68,13 +68,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteReductionForward<TType>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension reduceDim)
             where TType : struct, INumber<TType>
         {
-            Value<TType> inputValue = untypedInput.As<TType>();
-            DataBuffer<TType> inputData = inputValue.GetInitializedDataBuffer();
-            Value<TType> outputValue = untypedOutput.As<TType>();
-            DataBuffer<TType> outputData = outputValue.GetOrInitializeDataBuffer();
-
-            TType[] input = inputData.flatData!;
-            TType[] output = outputData.flatData!;
+            TType[] input = untypedInput.GetInitializedData<TType>();
+            TType[] output = untypedOutput.GetOrInitializeData<TType>();
 
             // Extract the base binary operation from the reduction kind
             KindBinary baseOp = kind.GetBaseOperation();
@@ -83,10 +78,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(baseOp);
 
             //// Initialize output with neutral element
-            FillArray(output, outputValue.Kind.GetNeutralElement<TType>());
+            FillArray(output, untypedInput.Kind.GetNeutralElement<TType>());
 
             // Reduce the single dimension
-            Reduce(input, inputValue.Shape, output, reduceDim, operation);
+            Reduce(input, untypedInput.Shape, output, reduceDim, operation);
         }
 
         public static void FillArray<TType>(TType[] output, TType neutralElement)
@@ -214,17 +209,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            Value<T> inputValue = untypedInput.As<T>();
-            DataBuffer<T> inputData = inputValue.GetInitializedDataBuffer();
-            DataBuffer<G> inputGrad = inputValue.GetOrInitializeGradBuffer<G>();
-            Value<T> outputValue = untypedOutput.As<T>();
-            DataBuffer<T> outputData = outputValue.GetInitializedDataBuffer();
-            DataBuffer<G> outputGrad = outputValue.GetInitializedGradBuffer<G>();
-
-            T[] input = inputData.flatData!;
-            G[] gradInput = inputGrad.flatData!;
-            T[] output = outputData.flatData!;
-            G[] gradOutput = outputGrad.flatData!;
+            T[] input = untypedInput.GetInitializedData<T>();
+            G[] gradInput = untypedInput.GetOrInitializeGrad<G>();
+            T[] output = untypedOutput.GetInitializedData<T>();
+            G[] gradOutput = untypedOutput.GetInitializedGrad<G>();
 
             // Extract the base binary operation from the reduction kind
             KindBinary baseOp = (KindBinary)((int)kind & ~(int)KindCategory.Reduction);
@@ -240,16 +228,16 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
             // Propagate gradients
             int inputLength = input.Length;
-            Shape inputShape = inputValue.Shape;
-            Shape outputShape = outputValue.Shape;
+            Shape inputShape = untypedInput.Shape;
+            Shape outputShape = untypedOutput.Shape;
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
-                for (int iInput = 0; iInput < inputLength; iInput++)
+                for (int iInput = inputLength - 1; iInput >= 0; iInput--)
                 {
-                    // Find the corresponding output index
+                    // Map input index to output index
                     int iOutput = outputShape.GetLinearIndex(iInput, inputShape);
-                    
+
                     // Calculate the complement: the reduced value without the current input element
                     // complement = inverseOperation(output, input[i])
                     T complement = inverseOperation(output[iOutput], input[iInput]);
@@ -266,9 +254,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 Parallel.For(0, inputLength, _parallelOptions, iInput =>
                 {
-                    // Find the corresponding output index
+                    // Map input index to output index
                     int iOutput = outputShape.GetLinearIndex(iInput, inputShape);
-                    
+
                     // Calculate the complement: the reduced value without the current input element
                     // complement = inverseOperation(output, input[i])
                     T complement = inverseOperation(output[iOutput], input[iInput]);

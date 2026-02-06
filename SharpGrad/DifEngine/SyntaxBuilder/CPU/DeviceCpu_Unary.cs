@@ -63,11 +63,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteUnaryForward<TType>(Value untypedInput, Value untypedOutput)
             where TType : struct, INumber<TType>
         {
-            Value<TType> inputValue = untypedInput.As<TType>();
-            TType[] input = inputValue.GetInitializedData();
-
-            Value<TType> outputValue = untypedOutput.As<TType>();
-            TType[] output = outputValue.GetInitializedData();
+            TType[] input = untypedInput.GetInitializedData<TType>();
+            TType[] output = untypedOutput.GetOrInitializeData<TType>();
 
             // Get the appropriate method for the unary operation
             Func<TType, TType> operation = UnaryOperations.GetKindForwardDelegate<TType>(untypedOutput.Kind);
@@ -143,11 +140,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TFrom : struct, INumber<TFrom>
             where TTo : struct, INumber<TTo>
         {
-            Value<TFrom> inputValue = untypedInput.As<TFrom>();
-            TFrom[] input = inputValue.GetInitializedData();
-
-            Value<TTo> outputValue = untypedOutput.As<TTo>();
-            TTo[] output = outputValue.GetInitializedData();
+            TFrom[] input = untypedInput.GetInitializedData<TFrom>();
+            TTo[] output = untypedOutput.GetOrInitializeData<TTo>();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
@@ -206,8 +200,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         /// <summary>
         /// Executes the backward pass of a unary operation on the given input and output Values.
         /// </summary>
-        /// <typeparam name="T">The type of the elements in the input and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
-        /// <typeparam name="G">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
+        /// <typeparam name="TType">The type of the elements in the input and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
+        /// <typeparam name="TGrad">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
         /// <param name="input">The input <see cref="Value"/>.</param>
         /// <param name="output">The output <see cref="Value"/>.</param>
         /// <remarks>
@@ -215,20 +209,17 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         /// </remarks>
         /// <exception cref="InvalidCastException">Thrown if the input or output are not of type <see cref="Value{T}"/>.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the <see cref="UnaryOperations"/>."[<see cref="Value.Kind"/>]Backward" method is not found.</exception>
-        private void ExecuteUnaryBackward<T, G>(Value untypedInput, Value untypedOutput)
-            where T : struct, INumber<T>
-            where G : struct, IFloatingPointIeee754<G>
+        private void ExecuteUnaryBackward<TType, TGrad>(Value untypedInput, Value untypedOutput)
+            where TType : struct, INumber<TType>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            Value<T> inputValue = untypedInput.As<T>();
-            T[] input = inputValue.GetInitializedData();
-            G[] gradInput = inputValue.GetOrInitializeGrad<G>();
-
-            Value<T> outputValue = untypedOutput.As<T>();
-            T[] output = outputValue.GetInitializedData();
-            G[] gradOutput = outputValue.GetInitializedGrad<G>();
+            TType[] input = untypedInput.GetInitializedData<TType>();
+            TGrad[] gradInput = untypedInput.GetOrInitializeGrad<TGrad>();
+            TType[] output = untypedOutput.GetInitializedData<TType>();
+            TGrad[] gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
 
             // Create a delegate for the method
-            Func<T, T, G, G> func = UnaryOperations.GetKindBackwardDelegate<T, G>(untypedOutput.Kind);
+            Func<TType, TType, TGrad, TGrad> func = UnaryOperations.GetKindBackwardDelegate<TType, TGrad>(untypedOutput.Kind);
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
@@ -288,28 +279,25 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         /// </summary>
         /// <typeparam name="TFrom">The source type of the cast operation. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
         /// <typeparam name="TTo">The target type of the cast operation. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
-        /// <typeparam name="G">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
+        /// <typeparam name="TGrad">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
         /// <param name="untypedInput">The input <see cref="Value"/>.</param>
         /// <param name="untypedOutput">The output <see cref="Value"/>.</param>
         /// <remarks>
         /// <paramref name="untypedInput"/> must be of type <see cref="Value{TFrom}"/> and <paramref name="untypedOutput"/> must be of type <see cref="Value{TTo}"/>.
         /// </remarks>
         /// <exception cref="InvalidCastException">Thrown if the input and output are not of the expected types.</exception>
-        private void ExecuteCastBackward<TFrom, TTo, G>(Value untypedInput, Value untypedOutput)
+        private void ExecuteCastBackward<TFrom, TTo, TGrad>(Value untypedInput, Value untypedOutput)
             where TFrom : struct, INumber<TFrom>
             where TTo : struct, INumber<TTo>
-            where G : struct, IFloatingPointIeee754<G>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
             if (!untypedInput.IsGradiable)
                 return;
 
-            Value<TFrom> inputValue = untypedInput.As<TFrom>();
-            TFrom[] input = inputValue.GetInitializedData();
-            G[] inputGrad = inputValue.GetOrInitializeGrad<G>();
-
-            Value<TTo> outputValue = untypedOutput.As<TTo>();
-            TTo[] output = outputValue.GetInitializedData();
-            G[] outputGrad = outputValue.GetInitializedGrad<G>();
+            TFrom[] input = untypedInput.GetInitializedData<TFrom>();
+            TGrad[] inputGrad = untypedInput.GetOrInitializeGrad<TGrad>();
+            TTo[] output = untypedOutput.GetInitializedData<TTo>();
+            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
