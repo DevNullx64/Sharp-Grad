@@ -67,16 +67,13 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         {
             // Throw an exception if the inputs and output are not of the expected type
             Value<TType> leftValue = untypedLeft.As<TType>();
-            DataBuffer<TType> leftData = leftValue.GetOrInitializeDataBuffer();
-            TType[] left = leftData.GetInitializedDataArray();
+            TType[] left = leftValue.GetInitializedDataArray();
 
             Value<TType> rightValue = untypedRight.As<TType>();
-            DataBuffer<TType> rightData = rightValue.GetOrInitializeDataBuffer();
-            TType[] right = rightData.GetInitializedDataArray();
+            TType[] right = rightValue.GetInitializedDataArray();
 
             Value<TType> outputValue = untypedOutput.As<TType>();
-            DataBuffer<TType> outputData = outputValue.GetOrInitializeDataBuffer();
-            TType[] output = outputData.GetInitializedDataArray();
+            TType[] output = outputValue.GetInitializedDataArray();
 
             // Get the appropriate method for the binary operation
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(kind);
@@ -196,13 +193,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.data.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedDataArray();
             DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
             G[] leftGrad = typedGradLeft.GetInitializedDataArray();
 
             Value<T> rightValue = untypedRight.As<T>();
-            DataBuffer<T> rightData = rightValue.GetOrInitializeDataBuffer();
-            T[] right = rightData.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedDataArray();
 
             Value<T> outputValue = untypedOutput.As<T>();
             DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
@@ -289,12 +285,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            DataBuffer<T> typedLeftData = leftValue.GetOrInitializeDataBuffer();
-            T[] left = typedLeftData.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedDataArray();
 
             Value<T> rightValue = untypedRight.As<T>();
-            DataBuffer<T> typedRightData = rightValue.GetOrInitializeDataBuffer();
-            T[] right = typedRightData.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedDataArray();
 
             DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
             G[] rightGrad = typedGradRight.GetInitializedDataArray();
@@ -384,14 +378,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            DataBuffer< T> typedLeftData = leftValue.GetOrInitializeDataBuffer();
-            T[] left = typedLeftData.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedDataArray();
             DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
             G[] leftGrad = typedGradLeft.GetInitializedDataArray();
 
             Value<T> rightValue = untypedRight.As<T>();
-            DataBuffer< T> typedRightData = rightValue.GetOrInitializeDataBuffer();
-            T[] right = typedRightData.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedDataArray();
             DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
             G[] rightGrad = typedGradRight.GetInitializedDataArray();
 
