@@ -44,5 +44,50 @@ namespace SharpGrad
 
         public static implicit operator Dimension(string name) => new(name);
         public static implicit operator Dimension((string name, int size) tuple) => new(tuple.name, tuple.size);
+
+        public static Dimension operator +(Dimension left, Dimension right)
+        {
+            if (left.IsScalar) return right;
+            if (right.IsScalar) return left;
+            return new($"{left.Name}+{right.Name}", left.Size + right.Size);
+        }
+        public static Dimension operator +(Dimension left, int right)
+        {
+            if (left.IsScalar) return left;
+            return new($"{left.Name}+{right}", left.Size + right);
+        }
+        public static Dimension operator -(Dimension left, Dimension right)
+        {
+            if (left.IsScalar) return right;
+            if (right.IsScalar) return left;
+            return new($"{left.Name}-{right.Name}", left.Size - right.Size);
+        }
+        public static Dimension operator -(Dimension left, int right)
+        {
+            if (left.IsScalar) return left;
+            return new($"{left.Name}-{right}", left.Size - right);
+        }
+        public static Dimension operator *(Dimension left, Dimension right)
+        {
+            if (left.IsScalar) return right;
+            if (right.IsScalar) return left;
+            return new($"{left.Name}*{right.Name}", left.Size * right.Size);
+        }
+        public static Dimension operator *(Dimension left, int right)
+        {
+            if (left.IsScalar) return left;
+            return new($"{left.Name}*{right}", left.Size * right);
+        }
+        public static Dimension operator /(Dimension left, Dimension right)
+        {
+            if (left.IsScalar) return right;
+            if (right.IsScalar) return left;
+            return new($"{left.Name}/{right.Name}", left.Size / right.Size);
+        }
+        public static Dimension operator /(Dimension left, int right)
+        {
+            if (left.IsScalar) return left;
+            return new($"{left.Name}/{right}", left.Size / right);
+        }
     }
 }

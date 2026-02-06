@@ -1,5 +1,5 @@
-﻿using SharpGrad.Activation;
-using SharpGrad.DifEngine;
+﻿using SharpGrad;
+using SharpGrad.Activation;
 using SharpGrad.Operators;
 using System.Numerics;
 
@@ -52,7 +52,7 @@ namespace SharpGrad.NN
             Dimdexer dimdexer = new(Weights.Shape);
             foreach (Dimdices dimdices in dimdexer)
             {
-                Weights[dimdices] -= lr * Weights.GetGradient(dimdices);
+                Weights[dimdices] -= lr * Weights.Grad[dimdices];
             }
         }
     }

@@ -14,9 +14,9 @@ namespace TestProject
         [TestMethod]
         public void TestCompisit3()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            var A = new Variable<float>([1, 2, 3], dim, "A");
+            var B = new Variable<float>([4, 5, 6], dim, "B");
             var C = (A + B);
             var C2 = C * 2;
             var C3 = C2 / 3;
@@ -24,7 +24,7 @@ namespace TestProject
             C3.Forward();
             C3.Backward();
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of C3 in ((A + B) * 2) / 3 is 1
 
             // Gradient of C2 in ((A + B) * 2) / 3 is 2
@@ -58,14 +58,14 @@ namespace TestProject
         [TestMethod]
         public void TestCompisit2()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            var A = new Variable<float>([1, 2, 3], dim, "A");
+            var B = new Variable<float>([4, 5, 6], dim, "B");
             var C = (A + B);
             var C2 = C * 2;
             C2.Forward();
             C2.Backward();
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of C2 in (A + B) * 2 is 1
 
             // Gradient of C in (A + B) * 2 is 2
@@ -91,12 +91,12 @@ namespace TestProject
         [TestMethod]
         public void TestCompisit1()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
+            Dimension dim = new(nameof(dim), 3);
+            var A = new Variable<float>([1, 2, 3], dim, "A");
             var C = A * 2;
             C.Forward();
             C.Backward();
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of C in A * 2 is 1
 
             // Gradient of A in A * 2 is 2
@@ -112,14 +112,17 @@ namespace TestProject
         [TestMethod]
         public void TestAdd()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            float[] aData = [1, 2, 3];
+            float[] bData = [4, 5, 6];
+            var A = new Variable<float>(aData, dim, "A");
+            var B = new Variable<float>(bData, dim, "B");
             var C = A + B;
             C.Forward();
             C.Backward();
+            C.GetData(out float[] cData);
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of A in A + B is 1
             dimdexer.MoveNext(); Assert.AreEqual(1, A.GetGradient(dimdexer.Current));
             dimdexer.MoveNext(); Assert.AreEqual(1, A.GetGradient(dimdexer.Current));
@@ -131,20 +134,23 @@ namespace TestProject
             dimdexer.MoveNext(); Assert.AreEqual(1, B.GetGradient(dimdexer.Current));
             dimdexer.MoveNext(); Assert.AreEqual(1, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestAdd)}({A.Data}, {B.Data}) passed: {C.Data}");
+            Console.WriteLine($"{nameof(TestAdd)}({aData}, {bData}) passed: {cData}");
         }
 
         [TestMethod]
         public void TestSub()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            float[] aData = [1, 2, 3];
+            float[] bData = [4, 5, 6];
+            var A = new Variable<float>(aData, dim, "A");
+            var B = new Variable<float>(bData, dim, "B");
             var C = A - B;
             C.Forward();
             C.Backward();
+            C.GetData(out float[] cData);
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of A in A - B is 1
             Assert.AreEqual(1, A.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(1, A.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
@@ -155,20 +161,23 @@ namespace TestProject
             Assert.AreEqual(-1, B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(-1, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestSub)}({A.Data}, {B.Data}) passed: {C.Data}");
+            Console.WriteLine($"{nameof(TestSub)}({aData}, {bData}) passed: {cData}");
         }
 
         [TestMethod]
         public void TestMul()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            float[] aData = [1, 2, 3];
+            float[] bData = [4, 5, 6];
+            var A = new Variable<float>(aData, dim, "A");
+            var B = new Variable<float>(bData, dim, "B");
             var C = A * B;
             C.Forward();
             C.Backward();
+            C.GetData(out float[] cData);
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of A in A * B is B
             dimdexer.MoveNext();
             Assert.AreEqual(4, A.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
@@ -182,47 +191,53 @@ namespace TestProject
             Assert.AreEqual(2, B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(3, B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestMul)}({A.Data}, {B.Data}) passed: {C.Data}");
+            Console.WriteLine($"{nameof(TestMul)}({aData}, {bData}) passed: {cData}");
         }
 
         [TestMethod]
         public void TestDiv()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            float[] aData = [1, 2, 3];
+            float[] bData = [4, 5, 6];
+            var A = new Variable<float>(aData, dim, "A");
+            var B = new Variable<float>(bData, dim, "B");
             var C = A / B;
             C.Forward();
             C.Backward();
+            C.GetData(out float[] cData);
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of A in A / B is 1 / B
             dimdexer.MoveNext();
-            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / B.Data[0]); dimdexer.MoveNext();
-            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / B.Data[1]); dimdexer.MoveNext();
-            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / B.Data[2]);
+            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / bData[0]); dimdexer.MoveNext();
+            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / bData[1]); dimdexer.MoveNext();
+            Assert.AreEqual(A.GetGradient(dimdexer.Current), 1.0f / bData[2]);
 
             // Gradient of B in A / B is -A / B^2
             dimdexer.Reset();
             dimdexer.MoveNext();
-            Assert.AreEqual(B.GetGradient(dimdexer.Current), -A.Data[0] / (B.Data[0] * B.Data[0])); dimdexer.MoveNext();
-            Assert.AreEqual(B.GetGradient(dimdexer.Current), -A.Data[1] / (B.Data[1] * B.Data[1])); dimdexer.MoveNext();
-            Assert.AreEqual(B.GetGradient(dimdexer.Current), -A.Data[2] / (B.Data[2] * B.Data[2]));
+            Assert.AreEqual(B.GetGradient(dimdexer.Current), -aData[0] / (bData[0] * bData[0])); dimdexer.MoveNext();
+            Assert.AreEqual(B.GetGradient(dimdexer.Current), -aData[1] / (bData[1] * bData[1])); dimdexer.MoveNext();
+            Assert.AreEqual(B.GetGradient(dimdexer.Current), -aData[2] / (bData[2] * bData[2]));
 
-            Console.WriteLine($"{nameof(TestDiv)}({A.Data}, {B.Data}) passed: {C.Data}");
+            Console.WriteLine($"{nameof(TestDiv)}({aData}, {bData}) passed: {cData}");
         }
 
         [TestMethod]
         public void TestPow()
         {
-            Dimension[] shape = [new(nameof(shape), 3)];
-            var A = new Variable<float>([1, 2, 3], shape, "A");
-            var B = new Variable<float>([4, 5, 6], shape, "B");
+            Dimension dim = new(nameof(dim), 3);
+            float[] aData = [1, 2, 3];
+            float[] bData = [4, 5, 6];
+            var A = new Variable<float>(aData, dim, "A");
+            var B = new Variable<float>(bData, dim, "B");
             var C = A.Pow(B);
             C.Forward();
             C.Backward();
+            C.GetData(out float[] cData);
 
-            Dimdexer dimdexer = new(shape);
+            Dimdexer dimdexer = new(dim);
             // Gradient of A in A ^ B is B * A ^ (B - 1)
             dimdexer.MoveNext();
             Assert.AreEqual(4 * MathF.Pow(1, 3), A.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
@@ -236,7 +251,7 @@ namespace TestProject
             Assert.AreEqual(MathF.Pow(2, 5) * MathF.Log(2), B.GetGradient(dimdexer.Current)); dimdexer.MoveNext();
             Assert.AreEqual(MathF.Pow(3, 6) * MathF.Log(3), B.GetGradient(dimdexer.Current));
 
-            Console.WriteLine($"{nameof(TestPow)}({A.Data}, {B.Data}) passed: {C.Data}");
+            Console.WriteLine($"{nameof(TestPow)}({aData}, {bData}) passed: {cData}");
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using SharpGrad;
-using SharpGrad.DifEngine;
+using SharpGrad.DifEngine.Loss;
 using SharpGrad.NN;
 using SharpGrad.Operators;
 
@@ -31,7 +31,7 @@ internal class Program
 
         // List of ground truth data
         var ygt = v.Select(d => (float)d.Y[0]).ToArray();
-        Variable<float> Ygt = new(ygt, (output, batch), "Ygt");
+        Variable<float> Ygt = new(nameof(Ygt), ygt, (output, batch));
 
         // Build execution expression graph (no computation done here)
         Value<float> Y = cerebrin.Forward(X);
@@ -54,7 +54,7 @@ internal class Program
             foreach (Dimdices dimdices in new Dimdexer(Y.Shape))
             {
                 int j = dimdices[batch];
-                float d = Y.Data[j];
+                float d = Y[dimdices];
                 int val = Math.Abs(d - 1) < Math.Abs(d - 2) ? 1 : 2;
                 preds[j] = new(v[j].X, [val]);
             }
@@ -65,15 +65,16 @@ internal class Program
             loss.ResetGradient();
 
             // Print loss and scatter plot
-            Console.WriteLine($"Loss: {loss.Data[0]:E3} / {minLoss:E3}");
+            Dimdices lossDim = new(loss.Shape, new int[loss.Shape.Rank]);
+            Console.WriteLine($"Loss: {loss[lossDim]:E3} / {minLoss:E3}");
             if ((DateTime.Now - lastShow).TotalMilliseconds > 125)
             {
                 lastShow = DateTime.Now;
                 DataSet.Scatter(v, preds);
             }
-            if (minLoss > loss.Data[0])
+            if (minLoss > loss[lossDim])
             {
-                minLoss = loss.Data[0];
+                minLoss = loss[lossDim];
             }
         }
     }

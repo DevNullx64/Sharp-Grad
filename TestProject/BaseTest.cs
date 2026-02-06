@@ -11,48 +11,52 @@ namespace TestProject
         [TestMethod]
         public void TestVariable()
         {
+            Dimension dim = new(nameof(dim), 5);
             var data = new float[] { 1, 2, 3, 4, 5 };
-            Dimension[] shape = [new(nameof(shape), 5)];
-            var var = new Variable<float>(data, shape, "var");
-            Assert.AreEqual(5, var.Data.Length);
-            Assert.AreEqual(1, var.Data[0]);
-            Assert.AreEqual(2, var.Data[1]);
-            Assert.AreEqual(3, var.Data[2]);
-            Assert.AreEqual(4, var.Data[3]);
-            Assert.AreEqual(5, var.Data[4]);
-            Console.WriteLine($"{nameof(TestVariable)}({data}) passed: {var.Data}");
+            var var = new Variable<float>(data, dim, "var");
+            var.GetData(out float[] vData);
+            Assert.AreEqual(5, vData.Length);
+            Assert.AreEqual(1, vData[0]);
+            Assert.AreEqual(2, vData[1]);
+            Assert.AreEqual(3, vData[2]);
+            Assert.AreEqual(4, vData[3]);
+            Assert.AreEqual(5, vData[4]);
+            Console.WriteLine($"{nameof(TestVariable)}({data}) passed: {vData}");
         }
         [TestMethod]
         public void TestConstant()
         {
             var data = new float[] { 1, 2, 3, 4, 5 };
-            Dimension[] shape = [new(nameof(shape), 5)];
-            var con = new Constant<float>(data, shape, "con");
-            Assert.AreEqual(5, con.Data.Length);
-            Assert.AreEqual(1, con.Data[0]);
-            Assert.AreEqual(2, con.Data[1]);
-            Assert.AreEqual(3, con.Data[2]);
-            Assert.AreEqual(4, con.Data[3]);
-            Assert.AreEqual(5, con.Data[4]);
-            Console.WriteLine($"{nameof(TestConstant)}({data}) passed: {con.Data}");
+            Dimension dim = new(nameof(dim), 5);
+            var con = new Constant<float>(data, dim, "con");
+            con.GetData(out float[] cData);
+            Assert.AreEqual(5, cData.Length);
+            Assert.AreEqual(1, cData[0]);
+            Assert.AreEqual(2, cData[1]);
+            Assert.AreEqual(3, cData[2]);
+            Assert.AreEqual(4, cData[3]);
+            Assert.AreEqual(5, cData[4]);
+            Console.WriteLine($"{nameof(TestConstant)}({data}) passed: {cData}");
         }
         [TestMethod]
         public void TestMSE()
         {
             Dimension batch = new(nameof(batch), 5);
-            Dimension[] shape = [batch];
-            Value<float> Y = new Variable<float>([1, 2, 3, 4, 5], shape, "Y");
-            Value<float> Y_hat = new Variable<float>([1, 2, 3, 4, 5], shape, "Y_hat");
+            float[] yData = { 1, 2, 3, 4, 5 };
+            float[] yHatData = { 1, 2, 3, 4, 5 };
+            Value<float> Y = new Variable<float>(yData, batch, "Y");
+            Value<float> Y_hat = new Variable<float>(yHatData, batch, "Y_hat");
             var loss = Loss.MSE(Y, Y_hat, batch);
             loss.Forward();
-            Assert.AreEqual(0, loss.Data[0]);
-            Console.WriteLine($"{nameof(TestMSE)}({Y.Data}, {Y_hat.Data}) passed: {loss.Data}");
+            loss.GetData(out float[] lossData);
+            Assert.AreEqual(0, lossData[0]);
+            Console.WriteLine($"{nameof(TestMSE)}({yData}, {yHatData}) passed: {lossData}");
 
-            Y_hat = new Variable<float>([5, 4, 3, 2, 1], shape, "Y_hat");
             loss = Loss.MSE(Y, Y_hat, batch);
             loss.Forward();
-            Assert.AreEqual(8, loss.Data[0]);
-            Console.WriteLine($"{nameof(TestMSE)}({Y.Data}, {Y_hat.Data}) passed: {loss.Data}");
+            loss.GetData(out lossData);
+            Assert.AreEqual(8, lossData[0]);
+            Console.WriteLine($"{nameof(TestMSE)}({yData}, {yHatData}) passed: {lossData}");
         }
         [TestMethod]
         public void TestDimensionExtender()

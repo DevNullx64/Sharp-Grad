@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace SharpGrad.DifEngine
+namespace SharpGrad
 {
     /// <summary>
     /// Represents a collection of <see cref="Dimension"/> and index pairs.

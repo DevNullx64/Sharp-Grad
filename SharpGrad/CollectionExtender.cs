@@ -19,9 +19,9 @@ namespace SharpGrad
             return (sum, count);
         }
         public static T Sum<T>(this IEnumerable<T> @this)
-            where T : INumber<T> => GetSumCount(@this).Sum;
+            where T : INumber<T> => @this.GetSumCount().Sum;
         public static T Sum<T>(this T[] @this)
-            where T : INumber<T> => Sum(@this.AsEnumerable());
+            where T : INumber<T> => @this.AsEnumerable().Sum();
 
         public static (T Mean, T Sum, T Count) GetMeanSumCount<T>(this IEnumerable<T> @this)
             where T : INumber<T>
@@ -30,9 +30,9 @@ namespace SharpGrad
             return (sum / count, sum, count);
         }
         public static T Mean<T>(this IEnumerable<T> @this)
-            where T : INumber<T> => GetMeanSumCount(@this).Mean;
+            where T : INumber<T> => @this.GetMeanSumCount().Mean;
         public static T Mean<T>(this T[] @this)
-            where T : INumber<T> => Mean(@this.AsEnumerable());
+            where T : INumber<T> => @this.AsEnumerable().Mean();
 
 
         public static (T Var, T mean, T Sum, T Count) GetVarMeanSumCount<T>(this IEnumerable<T> @this)
@@ -49,9 +49,9 @@ namespace SharpGrad
         }
 
         public static T Var<T>(this IEnumerable<T> @this)
-            where T : INumber<T>, IRootFunctions<T> => GetVarMeanSumCount(@this).Var;
+            where T : INumber<T>, IRootFunctions<T> => @this.GetVarMeanSumCount().Var;
         public static T Var<T>(this T[] @this)
-            where T : INumber<T>, IRootFunctions<T> => Var(@this.AsEnumerable());
+            where T : INumber<T>, IRootFunctions<T> => @this.AsEnumerable().Var();
 
         public static (T Std, T Var, T mean, T Sum, T Count) GetStdVarMeanSumCount<T>(this IEnumerable<T> @this)
             where T : INumber<T>, IRootFunctions<T>

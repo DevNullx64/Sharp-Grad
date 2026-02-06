@@ -11,8 +11,8 @@ namespace TestProject.Operators
         public static void Add<T>()
             where T : INumber<T>
         {
-            Variable<T> a = new(T.CreateTruncating(1.5), "a");
-            Variable<T> b = new(T.CreateTruncating(2.0), "b");
+            Variable<T> a = new(T.CreateTruncating(1.5), nameof(a));
+            Variable<T> b = new(T.CreateTruncating(2.0), nameof(b));
             var c = a + b;
             var cFunc = c.Forward;
             cFunc();

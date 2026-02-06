@@ -1,4 +1,3 @@
-using SharpGrad.DifEngine;
 using System.Numerics;
 
 namespace SharpGrad.NN

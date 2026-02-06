@@ -1,32 +1,23 @@
-﻿using SharpGrad.Operators;
+﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+using SharpGrad.DifEngine.SyntaxBuilder.Operations.Arithmetic;
+using SharpGrad.DifEngine.SyntaxBuilder.Operations.Mathematical;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
-namespace SharpGrad.DifEngine
+namespace SharpGrad
 {
     public static class VMath
     {
-        public static PowValue<TType> Pow<TType>(this Value<TType> @this, Value<TType> operand)
-            where TType : IBinaryFloatingPointIeee754<TType>, IPowerFunctions<TType>
-            => new(@this, operand);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static BinaryComputedValue<TType> Pow<TType>(this Value<TType> @this, Value<TType> exponent)
+            where TType : struct, IBinaryFloatingPointIeee754<TType>, IPowerFunctions<TType>
+            => new(KindBinary.Power, @this, exponent);
 
-        public static SumValue<TType> Sum<TType>(this Value<TType> @this, params Dimension[] toReduce)
-            where TType : INumber<TType>
-        {
-            if (toReduce.Length == 0)
-            {
-                throw new ArgumentException("The dimensions to reduce must be specified");
-            }
-            else
-            {
-                return new SumValue<TType>([.. @this.Shape.Except(toReduce)], "∑", @this);
-            }
-        }
-        public static SumValue<TType> Sum<TType>(this Value<TType> @this, Dimension toReduce)
-            where TType : IBinaryFloatingPointIeee754<TType>
-            => Sum(@this, [toReduce]);
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ReducedValue<TType> Sum<TType>(this Value<TType> @this, params Dimension[] toReduce)
+            where TType : struct, INumber<TType>
+            => new(KindReduction.Sum, @this, toReduce);
     }
 }
