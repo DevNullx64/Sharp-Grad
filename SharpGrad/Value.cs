@@ -2,6 +2,7 @@
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace SharpGrad
 {
@@ -67,6 +68,34 @@ namespace SharpGrad
             throw new InvalidOperationException($"Trying to get gradient type {typeof(TGrad)}, but it is set to {untypedGrad.ElementType}.");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal TGrad[] GetInitializedGrad<TGrad>()
+        {
+            if(untypedGrad is null)
+            {
+                throw new InvalidOperationException("Gradient is not initialized.");
+            }
+            if (untypedGrad is DataBuffer<TGrad> dataBuffer)
+            {
+                return dataBuffer.GetInitializedDataArray();
+            }
+            throw new InvalidOperationException($"Trying to get gradient type {typeof(TGrad)}, but it is set to {untypedGrad.ElementType}.");
+        }
+
+        /// <summary>
+        /// Gets the initialized flat data array of type T from a untyped DataBuffer.
+        /// </summary>
+        /// <param name="buffer">The untyped DataBuffer.</param>
+        /// <returns>The already initialized flat data array of type T.</returns>
+        /// <remarks>
+        /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal TGrad[] GetOrInitializeGrad<TGrad>()
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => GetOrInitializeGradBuffer<TGrad>().GetInitializedDataArray();
+
+
         /// <summary>
         /// Gets or initializes the gradient buffer with the specified type.
         /// </summary>
@@ -79,18 +108,25 @@ namespace SharpGrad
         public DataBuffer<TGrad> GetOrInitializeGradBuffer<TGrad>()
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            if (untypedGrad is not null)
+            if (untypedGrad is null)
+            {
+                DataBuffer<TGrad> newGrad = DataBuffer.Create<TGrad>(Shape);
+                newGrad.Initialize();
+                untypedGrad = newGrad;
+                return newGrad;
+            }
+            else
             {
                 if (untypedGrad is DataBuffer<TGrad> dataBuffer)
                 {
+                    if (!dataBuffer.IsInitialized)
+                    {
+                        dataBuffer.Initialize();
+                    }
                     return dataBuffer;
                 }
                 throw new InvalidOperationException($"Trying to set gradient type to {typeof(TGrad)}, but it is already set to {untypedGrad.ElementType}.");
             }
-            DataBuffer<TGrad> newGrad = DataBuffer.Create<TGrad>(Shape);
-            newGrad.Initialize();
-            untypedGrad = newGrad;
-            return newGrad;
         }
         public bool IsGradiable { get; set; } = !kind.IsValue();
 

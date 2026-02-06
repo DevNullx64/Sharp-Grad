@@ -89,7 +89,7 @@ namespace SharpGrad
         /// This method is used internally to ensure that the data buffer is initialized before accessing the underlying array.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TType[] GetInitializedDataArray()
+        internal TType[] GetInitializedData()
             {
             return data.GetInitializedDataArray();
         }

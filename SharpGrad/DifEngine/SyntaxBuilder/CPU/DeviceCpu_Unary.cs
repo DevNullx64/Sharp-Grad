@@ -64,10 +64,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
         {
             Value<TType> inputValue = untypedInput.As<TType>();
-            TType[] input = inputValue.GetInitializedDataArray();
+            TType[] input = inputValue.GetInitializedData();
 
             Value<TType> outputValue = untypedOutput.As<TType>();
-            TType[] output = outputValue.GetInitializedDataArray();
+            TType[] output = outputValue.GetInitializedData();
 
             // Get the appropriate method for the unary operation
             Func<TType, TType> operation = UnaryOperations.GetKindForwardDelegate<TType>(untypedOutput.Kind);
@@ -144,10 +144,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TTo : struct, INumber<TTo>
         {
             Value<TFrom> inputValue = untypedInput.As<TFrom>();
-            TFrom[] input = inputValue.GetInitializedDataArray();
+            TFrom[] input = inputValue.GetInitializedData();
 
             Value<TTo> outputValue = untypedOutput.As<TTo>();
-            TTo[] output = outputValue.GetInitializedDataArray();
+            TTo[] output = outputValue.GetInitializedData();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
@@ -220,14 +220,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> inputValue = untypedInput.As<T>();
-            T[] input = inputValue.GetInitializedDataArray();
-            DataBuffer<G> inputGrad = inputValue.GetOrInitializeGradBuffer<G>();
-            G[] gradInput = inputGrad.GetInitializedDataArray();
+            T[] input = inputValue.GetInitializedData();
+            G[] gradInput = inputValue.GetOrInitializeGrad<G>();
 
             Value<T> outputValue = untypedOutput.As<T>();
-            T[] output = outputValue.GetInitializedDataArray();
-            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
-            G[] gradOutput = outputGrad.GetInitializedDataArray();
+            T[] output = outputValue.GetInitializedData();
+            G[] gradOutput = outputValue.GetInitializedGrad<G>();
 
             // Create a delegate for the method
             Func<T, T, G, G> func = UnaryOperations.GetKindBackwardDelegate<T, G>(untypedOutput.Kind);
@@ -306,14 +304,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 return;
 
             Value<TFrom> inputValue = untypedInput.As<TFrom>();
-            TFrom[] input = inputValue.GetInitializedDataArray();
-            DataBuffer<G> typedGradInput = inputValue.GetOrInitializeGradBuffer<G>();
-            G[] inputGrad = typedGradInput.GetInitializedDataArray();
+            TFrom[] input = inputValue.GetInitializedData();
+            G[] inputGrad = inputValue.GetOrInitializeGrad<G>();
 
             Value<TTo> outputValue = untypedOutput.As<TTo>();
-            TTo[] output = outputValue.GetInitializedDataArray();
-            DataBuffer<G> typedGradOutput = GetInitializedDataBuffer<G>(outputValue.untypedGrad);
-            G[] outputGrad = typedGradOutput.GetInitializedDataArray();
+            TTo[] output = outputValue.GetInitializedData();
+            G[] outputGrad = outputValue.GetInitializedGrad<G>();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {

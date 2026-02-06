@@ -67,13 +67,13 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         {
             // Throw an exception if the inputs and output are not of the expected type
             Value<TType> leftValue = untypedLeft.As<TType>();
-            TType[] left = leftValue.GetInitializedDataArray();
+            TType[] left = leftValue.GetInitializedData();
 
             Value<TType> rightValue = untypedRight.As<TType>();
-            TType[] right = rightValue.GetInitializedDataArray();
+            TType[] right = rightValue.GetInitializedData();
 
             Value<TType> outputValue = untypedOutput.As<TType>();
-            TType[] output = outputValue.GetInitializedDataArray();
+            TType[] output = outputValue.GetInitializedData();
 
             // Get the appropriate method for the binary operation
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(kind);
@@ -193,34 +193,32 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedDataArray();
-            DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
-            G[] leftGrad = typedGradLeft.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedData();
+            G[] leftGrad = leftValue.GetOrInitializeGrad<G>();
 
             Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedData();
 
             Value<T> outputValue = untypedOutput.As<T>();
-            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
-            G[] outputGradValue = outputGrad.GetInitializedDataArray();
+            G[] outputGrad = outputValue.GetInitializedGrad<G>();
 
             Func<T, T, G, G> func = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
 
-            int length = outputGradValue.Length;
+            int length = outputGrad.Length;
             if (leftValue.Shape == rightValue.Shape)
             {
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGradValue[iOutput]);
+                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
                     }
                 }
                 else
                 {
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGradValue[iOutput]);
+                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
                     });
                 }
             }
@@ -232,7 +230,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                     {
                         int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
                         int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGradValue[iOutput]);
+                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         leftGrad[iLeft] += grad;
                     }
                 }
@@ -242,7 +240,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                     {
                         int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
                         int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGradValue[iOutput]);
+                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         lock (leftGrad)
                         {
                             leftGrad[iLeft] += grad;
@@ -285,35 +283,32 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedData();
 
             Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedDataArray();
-
-            DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
-            G[] rightGrad = typedGradRight.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedData();
+            G[] rightGrad = rightValue.GetOrInitializeGrad<G>();
 
             Value<T> outputValue = untypedOutput.As<T>();
-            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
-            G[] outputGradValue = outputGrad.GetInitializedDataArray();
+            G[] outputGrad = outputValue.GetInitializedGrad<G>();
 
             Func<T, T, G, G> func = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
 
-            int length = outputGradValue.Length;
+            int length = outputGrad.Length;
             if (leftValue.Shape == rightValue.Shape)
             {
                 if (_parallelOptions.MaxDegreeOfParallelism == 1)
                 {
                     for (int iOutput = length - 1; iOutput >= 0; iOutput--)
                     {
-                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGradValue[iOutput]);
+                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
                     }
                 }
                 else
                 {
                     Parallel.For(0, length, _parallelOptions, iOutput =>
                     {
-                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGradValue[iOutput]);
+                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
                     });
                 }
             }
@@ -325,7 +320,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                     {
                         int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
                         int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGradValue[iOutput]);
+                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         rightGrad[iRight] += grad;
                     }
                 }
@@ -335,7 +330,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                     {
                         int iLeft = leftValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
                         int iRight = rightValue.Shape.GetLinearIndex(iOutput, outputValue.Shape);
-                        G grad = func(left[iLeft], right[iRight], outputGradValue[iOutput]);
+                        G grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
                         lock (rightGrad)
                         {
                             rightGrad[iRight] += grad;
@@ -378,18 +373,15 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where G : struct, IFloatingPointIeee754<G>
         {
             Value<T> leftValue = untypedLeft.As<T>();
-            T[] left = leftValue.GetInitializedDataArray();
-            DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
-            G[] leftGrad = typedGradLeft.GetInitializedDataArray();
+            T[] left = leftValue.GetInitializedData();
+            G[] leftGrad = leftValue.GetOrInitializeGrad<G>();
 
             Value<T> rightValue = untypedRight.As<T>();
-            T[] right = rightValue.GetInitializedDataArray();
-            DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
-            G[] rightGrad = typedGradRight.GetInitializedDataArray();
+            T[] right = rightValue.GetInitializedData();
+            G[] rightGrad = rightValue.GetOrInitializeGrad<G>();
 
             Value<T> outputValue = untypedOutput.As<T>();
-            DataBuffer<G> typedGradOutput = outputValue.GetOrInitializeGradBuffer<G>();
-            G[] outputGrad = typedGradOutput.GetInitializedDataArray();
+            G[] outputGrad = outputValue.GetInitializedGrad<G>();
 
             Func<T, T, G, G> funcLeft = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
             Func<T, T, G, G> funcRight = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
