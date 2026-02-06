@@ -1,15 +1,129 @@
-﻿//#define MP
+﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-#if MP
-using System.Threading.Tasks;
-#endif
 
 namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 {
     public static class BinaryOperations
     {
+        // Cache for the ExecuteBinaryForward MethodInfos
+        private static readonly Dictionary<
+            (KindBinary kind, Type Type),
+            MethodInfo> cacheBinaryKindForwardMethodInfos = [];
+
+        /// <summary>
+        /// Gets the MethodInfo for the forward binary operation corresponding to the given KindBinary and type TType.
+        /// </summary>
+        /// <typeparam name="TType">The numeric type for which to get the MethodInfo.</typeparam>
+        /// <param name="kind">The KindBinary representing the binary operation.</param>
+        /// <returns>The MethodInfo for the forward binary operation.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the corresponding method is not found in the BinaryOperations class.</exception>
+        public static MethodInfo GetKindForwardMethodInfos<TType>(KindBinary kind)
+                where TType : struct, INumber<TType>
+        {
+            if (!cacheBinaryKindForwardMethodInfos.TryGetValue((kind, typeof(TType)), out MethodInfo? method))
+            {
+                string methodName = $"{kind}Forward";
+                method = typeof(BinaryOperations).GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Static,
+                    [typeof(TType), typeof(TType)]
+                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = method.MakeGenericMethod(typeof(TType));
+                cacheBinaryKindForwardMethodInfos[(kind, typeof(TType))] = method;
+            }
+            return method;
+        }
+
+        public static Func<T, T, T> GetKindForwardDelegate<T>(KindBinary kind)
+                where T : struct, INumber<T>
+        {
+            MethodInfo methodInfo = GetKindForwardMethodInfos<T>(kind);
+            return methodInfo.CreateDelegate<Func<T, T, T>>();
+        }
+
+        // Cache for the ExecuteBinaryBackwardLeft MethodInfos
+        private static readonly Dictionary<
+            (KindBinary kind, Type Value, Type Gradient),
+            MethodInfo> cacheBinaryKindBackwardLeftMethodInfos = [];
+
+        /// <summary>
+        /// Gets the MethodInfo for the backward binary operation corresponding to the given KindBinary, value type TValue, and gradient type TGradient.
+        /// </summary>
+        /// <typeparam name="TValue">The numeric type of the value for which to get the MethodInfo.</typeparam>
+        /// <typeparam name="TGradient">The numeric type of the gradient for which to get the MethodInfo.</typeparam>
+        /// <param name="kind">The KindBinary representing the binary operation.</param>
+        /// <returns>The MethodInfo for the backward binary operation.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the corresponding method is not found in the BinaryOperations class.</exception>
+        public static MethodInfo GetKindBackwardLeftMethodInfos<TValue, TGradient>(KindBinary kind)
+                where TValue : struct, INumber<TValue>
+                where TGradient : struct, INumber<TGradient>
+        {
+            if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
+            {
+                string methodName = $"{kind}BackwardLeft";
+                method = typeof(BinaryOperations).GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Static,
+                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
+                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = method.MakeGenericMethod(typeof(TValue));
+                cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+            }
+            return method;
+        }
+
+        public static Func<T, T, G, G> GetKindBackwardLeftDelegate<T, G>(KindBinary kind)
+                where T : struct, INumber<T>
+                where G : struct, INumber<G>
+        {
+            MethodInfo methodInfo = GetKindBackwardLeftMethodInfos<T, G>(kind);
+            return methodInfo.CreateDelegate<Func<T, T, G, G>>();
+        }
+
+        // Cache for the ExecuteBinaryBackwardRight MethodInfos
+        private static readonly Dictionary<
+            (KindBinary kind, Type Value, Type Gradient),
+            MethodInfo> cacheBinaryKindBackwardRightMethodInfos = [];
+
+        /// <summary>
+        /// Gets the MethodInfo for the backward binary operation corresponding to the given KindBinary, value type TValue, and gradient type TGradient.
+        /// </summary>
+        /// <typeparam name="TValue">The numeric type of the value for which to get the MethodInfo.</typeparam>
+        /// <typeparam name="TGradient">The numeric type of the gradient for which to get the MethodInfo.</typeparam>
+        /// <param name="kind">The KindBinary representing the binary operation.</param>
+        /// <returns>The MethodInfo for the backward binary operation.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the corresponding method is not found in the BinaryOperations class.</exception>
+        public static MethodInfo GetKindBackwardRightMethodInfos<TValue, TGradient>(KindBinary kind)
+                where TValue : struct, INumber<TValue>
+                where TGradient : struct, INumber<TGradient>
+        {
+            if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
+            {
+                string methodName = $"{kind}BackwardRight";
+                method = typeof(BinaryOperations).GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Static,
+                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
+                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = method.MakeGenericMethod(typeof(TValue));
+                cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+            }
+            return method;
+        }
+
+        public static Func<T, T, G, G> GetKindBackwardRightDelegate<T, G>(KindBinary kind)
+                where T : struct, INumber<T>
+                where G : struct, INumber<G>
+        {
+            MethodInfo methodInfo = GetKindBackwardRightMethodInfos<T, G>(kind);
+            return methodInfo.CreateDelegate<Func<T, T, G, G>>();
+        }
+
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T AddForward<T>(T left, T right)
             where T : INumber<T>

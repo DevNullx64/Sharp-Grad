@@ -1,5 +1,4 @@
-﻿//#define MP
-using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -11,11 +10,6 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 {
     public partial class DeviceCpu
     {
-        // Cache for the ExecuteBinaryForward MethodInfos
-        private static readonly Dictionary<
-            (KindBinary kind, Type Type),
-            MethodInfo> cacheBinaryKindForwardMethodInfos = [];
-
         // Cache for the ExecuteBinaryForward delegates
         private readonly Dictionary<
             (KindBinary kind, Type Type),
@@ -72,43 +66,20 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
         {
             // Throw an exception if the inputs and output are not of the expected type
-            if (untypedLeft is not Value<TType> leftValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedLeft)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
-            if (untypedRight is not Value<TType> rightValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedRight)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
-            if (untypedOutput is not Value<TType> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
+            Value<TType> leftValue = untypedLeft.As<TType>();
+            DataBuffer<TType> leftData = leftValue.GetOrInitializeDataBuffer();
+            TType[] left = leftData.GetInitializedDataArray();
 
-            DataBuffer<TType> leftData = leftValue.data;
-            ThrowIfNotInitialized(leftData);
-            DataBuffer<TType> rightData = rightValue.data;
-            ThrowIfNotInitialized(rightData);
-            DataBuffer<TType> outputData = outputValue.data;
-            outputData.Initialize();
+            Value<TType> rightValue = untypedRight.As<TType>();
+            DataBuffer<TType> rightData = rightValue.GetOrInitializeDataBuffer();
+            TType[] right = rightData.GetInitializedDataArray();
 
-            TType[] left = leftData.flatData!;
-            TType[] right = rightData.flatData!;
-            TType[] output = outputData.flatData!;
+            Value<TType> outputValue = untypedOutput.As<TType>();
+            DataBuffer<TType> outputData = outputValue.GetOrInitializeDataBuffer();
+            TType[] output = outputData.GetInitializedDataArray();
 
             // Get the appropriate method for the binary operation
-            if (!cacheBinaryKindForwardMethodInfos.TryGetValue((kind, typeof(TType)), out MethodInfo? method))
-            {
-                string methodName = $"{kind}Forward";
-                method = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TType), typeof(TType)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TType));
-                cacheBinaryKindForwardMethodInfos[(kind, typeof(TType))] = method;
-            }
-            Func<TType, TType, TType> operation = method.CreateDelegate<Func<TType, TType, TType>>();
+            Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(kind);
 
             // Perform the binary operation
             int length = output.Length;
@@ -152,14 +123,6 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             }
         }
 
-
-        // Cache for the ExecuteBinaryBackward MethodInfos
-        private static readonly Dictionary<
-            (KindBinary kind, Type Value, Type Gradient),
-            MethodInfo> cacheBinaryKindBackwardLeftMethodInfos = [];
-        private static readonly Dictionary<
-            (KindBinary kind, Type Value, Type Gradient),
-            MethodInfo> cacheBinaryKindBackwardRightMethodInfos = [];
 
         // Cache for the ExecuteBinaryBackward delegates
         private readonly Dictionary<
@@ -232,47 +195,20 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            if (untypedLeft is not Value<T> leftValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedLeft)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedRight is not Value<T> rightValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedRight)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedOutput is not Value<T> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
+            Value<T> leftValue = untypedLeft.As<T>();
+            T[] left = leftValue.data.GetInitializedDataArray();
+            DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
+            G[] leftGrad = typedGradLeft.GetInitializedDataArray();
 
-            if (!leftValue.IsGradTypeSet)
-            {
-                leftValue.InitializeGrad<G>();
-            }
-            if (leftValue.untypedGrad is not DataBuffer<G> typedGradLeft)
-            {
-                throw new InvalidOperationException($"Parameter '{nameof(untypedLeft)}' is not of expected type {nameof(DataBuffer)}<{typeof(G).Name}>. Given type: {leftValue.untypedGrad.GetType().Name}");
-            }
+            Value<T> rightValue = untypedRight.As<T>();
+            DataBuffer<T> rightData = rightValue.GetOrInitializeDataBuffer();
+            T[] right = rightData.GetInitializedDataArray();
 
-            DataBuffer<G> outputGrad = GetInitializedBuffer<G>(outputValue.untypedGrad);
+            Value<T> outputValue = untypedOutput.As<T>();
+            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
+            G[] outputGradValue = outputGrad.GetInitializedDataArray();
 
-            T[] left = leftValue.data.flatData!;
-            G[] leftGrad = typedGradLeft.flatData!;
-            T[] right = rightValue.data.flatData!;
-            G[] outputGradValue = outputGrad.flatData!;
-
-            if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(T), typeof(G)), out MethodInfo? methodInfo))
-            {
-                string methodName = $"{kind}BackwardLeft";
-                methodInfo = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                methodInfo = methodInfo.MakeGenericMethod(typeof(T), typeof(G));
-                cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(T), typeof(G))] = methodInfo;
-            }
-            Func<T, T, G, G> func = methodInfo.CreateDelegate<Func<T, T, G, G>>();
+            Func<T, T, G, G> func = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
 
             int length = outputGradValue.Length;
             if (leftValue.Shape == rightValue.Shape)
@@ -352,47 +288,22 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            if (untypedLeft is not Value<T> leftValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedLeft)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedRight is not Value<T> rightValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedRight)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedOutput is not Value<T> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
+            Value<T> leftValue = untypedLeft.As<T>();
+            DataBuffer<T> typedLeftData = leftValue.GetOrInitializeDataBuffer();
+            T[] left = typedLeftData.GetInitializedDataArray();
 
-            if (!rightValue.IsGradTypeSet)
-            {
-                rightValue.InitializeGrad<G>();
-            }
-            if (rightValue.untypedGrad is not DataBuffer<G> typedGradRight)
-            {
-                throw new InvalidOperationException($"Parameter '{nameof(untypedRight)}' is not of expected type {nameof(DataBuffer)}<{typeof(G).Name}>. Given type: {rightValue.untypedGrad.GetType().Name}");
-            }
+            Value<T> rightValue = untypedRight.As<T>();
+            DataBuffer<T> typedRightData = rightValue.GetOrInitializeDataBuffer();
+            T[] right = typedRightData.GetInitializedDataArray();
 
-            DataBuffer<G> outputGrad = GetInitializedBuffer<G>(outputValue.untypedGrad);
+            DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
+            G[] rightGrad = typedGradRight.GetInitializedDataArray();
 
-            T[] left = leftValue.data.flatData!;
-            T[] right = rightValue.data.flatData!;
-            G[] rightGrad = typedGradRight.flatData!;
-            G[] outputGradValue = outputGrad.flatData!;
+            Value<T> outputValue = untypedOutput.As<T>();
+            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
+            G[] outputGradValue = outputGrad.GetInitializedDataArray();
 
-            if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(T), typeof(G)), out MethodInfo? methodInfo))
-            {
-                string methodName = $"{kind}BackwardRight";
-                methodInfo = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                methodInfo = methodInfo.MakeGenericMethod(typeof(T), typeof(G));
-                cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(T), typeof(G))] = methodInfo;
-            }
-            Func<T, T, G, G> func = methodInfo.CreateDelegate<Func<T, T, G, G>>();
+            Func<T, T, G, G> func = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
 
             int length = outputGradValue.Length;
             if (leftValue.Shape == rightValue.Shape)
@@ -472,70 +383,24 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            if (untypedLeft is not Value<T> leftValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedLeft)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedRight is not Value<T> rightValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedRight)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedOutput is not Value<T> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
+            Value<T> leftValue = untypedLeft.As<T>();
+            DataBuffer< T> typedLeftData = leftValue.GetOrInitializeDataBuffer();
+            T[] left = typedLeftData.GetInitializedDataArray();
+            DataBuffer<G> typedGradLeft = leftValue.GetOrInitializeGradBuffer<G>();
+            G[] leftGrad = typedGradLeft.GetInitializedDataArray();
 
-            if (!leftValue.IsGradTypeSet)
-            {
-                leftValue.InitializeGrad<G>();
-            }
-            if (leftValue.untypedGrad is not DataBuffer<G> typedGradLeft)
-            {
-                throw new InvalidOperationException($"Parameter '{nameof(untypedLeft)}' is not of expected type {nameof(DataBuffer)}<{typeof(G).Name}>. Given type: {leftValue.untypedGrad.GetType().Name}");
-            }
+            Value<T> rightValue = untypedRight.As<T>();
+            DataBuffer< T> typedRightData = rightValue.GetOrInitializeDataBuffer();
+            T[] right = typedRightData.GetInitializedDataArray();
+            DataBuffer<G> typedGradRight = rightValue.GetOrInitializeGradBuffer<G>();
+            G[] rightGrad = typedGradRight.GetInitializedDataArray();
 
-            if (!rightValue.IsGradTypeSet)
-            {
-                rightValue.InitializeGrad<G>();
-            }
-            if (rightValue.untypedGrad is not DataBuffer<G> typedGradRight)
-            {
-                throw new InvalidOperationException($"Parameter '{nameof(untypedRight)}' is not of expected type {nameof(DataBuffer)}<{typeof(G).Name}>. Given type: {rightValue.untypedGrad.GetType().Name}");
-            }
+            Value<T> outputValue = untypedOutput.As<T>();
+            DataBuffer<G> typedGradOutput = outputValue.GetOrInitializeGradBuffer<G>();
+            G[] outputGrad = typedGradOutput.GetInitializedDataArray();
 
-            DataBuffer<G> typedGradOutput = GetInitializedBuffer<G>(outputValue.untypedGrad);
-
-            T[] left = leftValue.data.flatData!;
-            G[] leftGrad = typedGradLeft.flatData!;
-            T[] right = rightValue.data.flatData!;
-            G[] rightGrad = typedGradRight.flatData!;
-            G[] outputGrad = typedGradOutput.flatData!;
-
-            if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(T), typeof(G)), out MethodInfo? methodInfoLeft))
-            {
-                string methodName = $"{kind}BackwardLeft";
-                methodInfoLeft = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                methodInfoLeft = methodInfoLeft.MakeGenericMethod(typeof(T), typeof(G));
-                cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(T), typeof(G))] = methodInfoLeft;
-            }
-            Func<T, T, G, G> funcLeft = methodInfoLeft.CreateDelegate<Func<T, T, G, G>>();
-
-            if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(T), typeof(G)), out MethodInfo? methodInfoRight))
-            {
-                string methodName = $"{kind}BackwardRight";
-                methodInfoRight = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                methodInfoRight = methodInfoRight.MakeGenericMethod(typeof(T), typeof(G));
-                cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(T), typeof(G))] = methodInfoRight;
-            }
-            Func<T, T, G, G> funcRight = methodInfoRight.CreateDelegate<Func<T, T, G, G>>();
+            Func<T, T, G, G> funcLeft = BinaryOperations.GetKindBackwardLeftDelegate<T, G>(kind);
+            Func<T, T, G, G> funcRight = BinaryOperations.GetKindBackwardRightDelegate<T, G>(kind);
 
             int length = outputGrad.Length;
             if (leftValue.Shape == rightValue.Shape)

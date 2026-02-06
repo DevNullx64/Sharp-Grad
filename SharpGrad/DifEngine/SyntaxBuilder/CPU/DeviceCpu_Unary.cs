@@ -10,11 +10,6 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 {
     public partial class DeviceCpu
     {
-        // Cache for the ExecuteForward MethodInfos
-        private static readonly Dictionary<
-            (Type Type, KindGraphNode kind),
-            MethodInfo> cacheUnaryKindForwardMethodInfos = [];
-
         // Cache for the ExecuteUnaryForward delegates
         private readonly Dictionary<
             Type,
@@ -68,38 +63,14 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteUnaryForward<TType>(Value untypedInput, Value untypedOutput)
             where TType : struct, INumber<TType>
         {
-            // Throw an exception if the input and output are not of the expected type
-            if (untypedInput is not Value<TType> inputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedInput)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
-            // Throw an exception if the input and output are not of the expected type
-            if (untypedOutput is not Value<TType> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
+            Value<TType> inputValue = untypedInput.As<TType>();
+            TType[] input = inputValue.GetInitializedDataArray();
 
-            DataBuffer<TType> inputData = inputValue.data;
-            ThrowIfNotInitialized(inputData);
-            DataBuffer<TType> outputData = outputValue.data;
-            outputData.Initialize();
-
-            TType[] input = inputData.flatData!;
-            TType[] output = outputData.flatData!;
+            Value<TType> outputValue = untypedOutput.As<TType>();
+            TType[] output = outputValue.GetInitializedDataArray();
 
             // Get the appropriate method for the unary operation
-            if (!cacheUnaryKindForwardMethodInfos.TryGetValue((typeof(TType), untypedOutput.Kind), out MethodInfo? method))
-            {
-                string methodName = $"{untypedOutput.Kind}Forward";
-                method = typeof(UnaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TType), typeof(TType)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TType));
-                cacheUnaryKindForwardMethodInfos[(typeof(TType), untypedOutput.Kind)] = method;
-            }
-            Func<TType, TType> operation = method.CreateDelegate<Func<TType, TType>>();
+            Func<TType, TType> operation = UnaryOperations.GetKindForwardDelegate<TType>(untypedOutput.Kind);
 
             // Perform the unary operation
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
@@ -172,22 +143,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TFrom : struct, INumber<TFrom>
             where TTo : struct, INumber<TTo>
         {
-            if (untypedInput is not Value<TFrom> inputValue)
-            {
-                throw new InvalidCastException($"Input must be {nameof(Value)}<{nameof(TFrom)}>.");
-            }
-            if (untypedOutput is not Value<TTo> outputValue)
-            {
-                throw new InvalidCastException($"Output must be {nameof(Value)}<{nameof(TTo)}>.");
-            }
+            Value<TFrom> inputValue = untypedInput.As<TFrom>();
+            TFrom[] input = inputValue.GetInitializedDataArray();
 
-            DataBuffer<TFrom> inputData = inputValue.data;
-            ThrowIfNotInitialized(inputData);
-            DataBuffer<TTo> outputData = outputValue.data;
-            outputData.Initialize();
-
-            TFrom[] input = inputData.flatData!;
-            TTo[] output = outputData.flatData!;
+            Value<TTo> outputValue = untypedOutput.As<TTo>();
+            TTo[] output = outputValue.GetInitializedDataArray();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
@@ -204,11 +164,6 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 });
             }
         }
-
-        // Cache for the ExecuteBackward delegates MethodInfos
-        private static readonly Dictionary<
-            (KindGraphNode kind, Type Value, Type Gradient),
-            MethodInfo> cacheExecuteBackwardMethodsInfos = [];
 
         // Cache for the ExecuteUnaryBackward delegates
         private readonly Dictionary<
@@ -235,7 +190,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 MethodInfo method = typeof(DeviceCpu).GetMethod(
                     nameof(ExecuteUnaryBackward),
                     BindingFlags.NonPublic | BindingFlags.Instance,
-                    new[] { typeof(Value), typeof(Value) }
+                    [typeof(Value), typeof(Value)]
                 ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteUnaryBackward)} not found.");
                 method = method.MakeGenericMethod(key.Value, key.Gradient);
 
@@ -264,43 +219,18 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            if (untypedInput is not Value<T> inputValue)
-            {
-                // Throw an exception if the input and output are not of the expected type
-                throw new InvalidCastException($"'{nameof(untypedInput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedOutput is not Value<T> outputValue)
-            {
-                // Throw an exception if the input and output are not of the expected type
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
+            Value<T> inputValue = untypedInput.As<T>();
+            T[] input = inputValue.GetInitializedDataArray();
+            DataBuffer<G> inputGrad = inputValue.GetOrInitializeGradBuffer<G>();
+            G[] gradInput = inputGrad.GetInitializedDataArray();
 
-            DataBuffer<T> inputData = inputValue.data;
-            ThrowIfNotInitialized(inputData);
-            DataBuffer<G> inputGrad = inputValue.InitializeGrad<G>();
-            DataBuffer<T> outputData = outputValue.data;
-            ThrowIfNotInitialized(outputData);
-            DataBuffer<G> outputGrad = GetInitializedBuffer<G>(outputValue.untypedGrad);
+            Value<T> outputValue = untypedOutput.As<T>();
+            T[] output = outputValue.GetInitializedDataArray();
+            DataBuffer<G> outputGrad = outputValue.GetOrInitializeGradBuffer<G>();
+            G[] gradOutput = outputGrad.GetInitializedDataArray();
 
-            T[] input = inputData.flatData!;
-            G[] gradInput = inputGrad.flatData!;
-            T[] output = outputData.flatData!;
-            G[] gradOutput = outputGrad.flatData!;
-
-            // Get the appropriate method for the unary operation
-            if (!cacheExecuteBackwardMethodsInfos.TryGetValue((outputValue.Kind, typeof(T), typeof(G)), out MethodInfo? method))
-            {
-                string methodName = $"{outputValue.Kind}Backward";
-                method = typeof(UnaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(T), typeof(G));
-                cacheExecuteBackwardMethodsInfos[(outputValue.Kind, typeof(T), typeof(G))] = method;
-            }
             // Create a delegate for the method
-            Func<T, T, G, G> func = method.CreateDelegate<Func<T, T, G, G>>();
+            Func<T, T, G, G> func = UnaryOperations.GetKindBackwardDelegate<T, G>(untypedOutput.Kind);
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
@@ -375,37 +305,28 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!untypedInput.IsGradiable)
                 return;
 
-            if (untypedInput is not Value<TFrom> input)
-            {
-                throw new InvalidCastException($"Input must be {nameof(Value)}<{nameof(TFrom)}>.");
-            }
-            if (untypedOutput is not Value<TTo> output)
-            {
-                throw new InvalidCastException($"Output must be {nameof(Value)}<{nameof(TTo)}>.");
-            }
+            Value<TFrom> inputValue = untypedInput.As<TFrom>();
+            TFrom[] input = inputValue.GetInitializedDataArray();
+            DataBuffer<G> typedGradInput = inputValue.GetOrInitializeGradBuffer<G>();
+            G[] inputGrad = typedGradInput.GetInitializedDataArray();
 
-            ThrowIfNotInitialized(input.data);
-            DataBuffer<G> typedGradInput = input.InitializeGrad<G>();
-            ThrowIfNotInitialized(output.data);
-            DataBuffer<G> typedGradOutput = GetInitializedBuffer<G>(output.untypedGrad);
-
-            TFrom[] inputValue = input.data.flatData!;
-            TTo[] outputValue = output.data.flatData!;
-            G[] gradOutputValue = typedGradOutput.flatData!;
-            G[] gradInputValue = typedGradInput.flatData!;
+            Value<TTo> outputValue = untypedOutput.As<TTo>();
+            TTo[] output = outputValue.GetInitializedDataArray();
+            DataBuffer<G> typedGradOutput = GetInitializedDataBuffer<G>(outputValue.untypedGrad);
+            G[] outputGrad = typedGradOutput.GetInitializedDataArray();
 
             if (_parallelOptions.MaxDegreeOfParallelism == 1)
             {
-                for (int iOutput = inputValue.Length - 1; iOutput >= 0; iOutput--)
+                for (int iOutput = input.Length - 1; iOutput >= 0; iOutput--)
                 {
-                    gradInputValue[iOutput] += UnaryOperations.CastBackward(inputValue[iOutput], outputValue[iOutput], gradOutputValue[iOutput]);
+                    inputGrad[iOutput] += UnaryOperations.CastBackward(input[iOutput], output[iOutput], outputGrad[iOutput]);
                 }
             }
             else
             {
-                Parallel.For(0, inputValue.Length, _parallelOptions, iOutput =>
+                Parallel.For(0, input.Length, _parallelOptions, iOutput =>
                 {
-                    gradInputValue[iOutput] += UnaryOperations.CastBackward(inputValue[iOutput], outputValue[iOutput], gradOutputValue[iOutput]);
+                    inputGrad[iOutput] += UnaryOperations.CastBackward(input[iOutput], output[iOutput], outputGrad[iOutput]);
                 });
             }
         }

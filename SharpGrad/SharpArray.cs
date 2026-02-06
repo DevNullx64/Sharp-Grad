@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace SharpGrad
@@ -270,6 +271,34 @@ namespace SharpGrad
                 Array.Fill(flatData!, value);
             }
         }
+
+        /// <summary>
+        /// Gets the initialized DataBuffer of type G from a untyped DataBuffer.
+        /// </summary>
+        /// <typeparam name="T">The type of the DataBuffer.</typeparam>
+        /// <param name="buffer">The untyped DataBuffer.</param>
+        /// <returns>The already initialized <see cref="DataBuffer{G}"/>.</returns>
+        /// <remarks>
+        /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">Thrown if the buffer is not of the expected type or is not initialized.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public DataBuffer<T> ThrowIfNotInitialized()
+            => IsInitialized
+            ? this
+            : throw new InvalidOperationException("Buffer is not initialized.");
+
+        /// <summary>
+        /// Gets the initialized flat data array of type T from a untyped DataBuffer.
+        /// </summary>
+        /// <param name="buffer">The untyped DataBuffer.</param>
+        /// <returns>The already initialized flat data array of type T.</returns>
+        /// <remarks>
+        /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal T[] GetInitializedDataArray()
+            => ThrowIfNotInitialized().flatData!;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override void NoLock_Free()

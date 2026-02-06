@@ -68,20 +68,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteReductionForward<TType>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension reduceDim)
             where TType : struct, INumber<TType>
         {
-            // Throw an exception if the input and output are not of the expected type
-            if (untypedInput is not Value<TType> inputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedInput)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
-            if (untypedOutput is not Value<TType> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(TType)}>.");
-            }
-
-            DataBuffer<TType> inputData = inputValue.data;
-            ThrowIfNotInitialized(inputData);
-            DataBuffer<TType> outputData = outputValue.data;
-            outputData.Initialize();
+            Value<TType> inputValue = untypedInput.As<TType>();
+            DataBuffer<TType> inputData = inputValue.GetInitializedDataBuffer();
+            Value<TType> outputValue = untypedOutput.As<TType>();
+            DataBuffer<TType> outputData = outputValue.GetOrInitializeDataBuffer();
 
             TType[] input = inputData.flatData!;
             TType[] output = outputData.flatData!;
@@ -90,61 +80,32 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             KindBinary baseOp = kind.GetBaseOperation();
 
             // Get the appropriate forward method for the base binary operation
-            if (!cacheBinaryKindForwardMethodInfos.TryGetValue((baseOp, typeof(TType)), out MethodInfo? method))
-            {
-                string methodName = $"{baseOp}Forward";
-                method = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TType), typeof(TType)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TType));
-                cacheBinaryKindForwardMethodInfos[(baseOp, typeof(TType))] = method;
-            }
-            Func<TType, TType, TType> operation = method.CreateDelegate<Func<TType, TType, TType>>();
+            Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(baseOp);
 
-            // Get the neutral element for the operation
-            TType neutralElement = outputValue.Kind.GetNeutralElement<TType>();
-
-            // Initialize output with neutral element
-            int outputLength = output.Length;
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
-            {
-                for (int iOutput = 0; iOutput < outputLength; iOutput++)
-                {
-                    output[iOutput] = neutralElement;
-                }
-            }
-            else
-            {
-                Parallel.For(0, outputLength, _parallelOptions, iOutput =>
-                {
-                    output[iOutput] = neutralElement;
-                });
-            }
+            //// Initialize output with neutral element
+            FillArray(output, outputValue.Kind.GetNeutralElement<TType>());
 
             // Reduce the single dimension
             Reduce(input, inputValue.Shape, output, reduceDim, operation);
         }
 
-        internal void InitializeOutputForReduction<TType>(TType[] output, KindGraphNode kind)
+        public static void FillArray<TType>(TType[] output, TType neutralElement)
             where TType : struct, INumber<TType>
         {
-            TType neutralElement = kind.GetNeutralElement<TType>();
-            int outputLength = output.Length;
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            int iOutput = 0;
+            if (Vector<TType>.IsSupported && output.Length >= Vector<TType>.Count)
             {
-                for (int iOutput = 0; iOutput < outputLength; iOutput++)
+                Span<TType> outputSpan = output.AsSpan();
+                Vector<TType> neutralVector = new(neutralElement);
+                int iVectorEnd = output.Length - (output.Length % Vector<TType>.Count);
+                for (; iOutput < iVectorEnd; iOutput += Vector<TType>.Count)
                 {
-                    output[iOutput] = neutralElement;
+                    neutralVector.CopyTo(outputSpan[iOutput..]);
                 }
             }
-            else
+            for (; iOutput < output.Length; iOutput++)
             {
-                Parallel.For(0, outputLength, _parallelOptions, iOutput =>
-                {
-                    output[iOutput] = neutralElement;
-                });
+                output[iOutput] = neutralElement;
             }
         }
 
@@ -253,21 +214,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where T : struct, INumber<T>
             where G : struct, IFloatingPointIeee754<G>
         {
-            if (untypedInput is not Value<T> inputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedInput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-            if (untypedOutput is not Value<T> outputValue)
-            {
-                throw new InvalidCastException($"'{nameof(untypedOutput)}' must be {nameof(Value)}<{nameof(T)}>.");
-            }
-
-            DataBuffer<T> inputData = inputValue.data;
-            ThrowIfNotInitialized(inputData);
-            DataBuffer<G> inputGrad = inputValue.InitializeGrad<G>();
-            DataBuffer<T> outputData = outputValue.data;
-            ThrowIfNotInitialized(outputData);
-            DataBuffer<G> outputGrad = GetInitializedBuffer<G>(outputValue.untypedGrad);
+            Value<T> inputValue = untypedInput.As<T>();
+            DataBuffer<T> inputData = inputValue.GetInitializedDataBuffer();
+            DataBuffer<G> inputGrad = inputValue.GetOrInitializeGradBuffer<G>();
+            Value<T> outputValue = untypedOutput.As<T>();
+            DataBuffer<T> outputData = outputValue.GetInitializedDataBuffer();
+            DataBuffer<G> outputGrad = outputValue.GetInitializedGradBuffer<G>();
 
             T[] input = inputData.flatData!;
             G[] gradInput = inputGrad.flatData!;
@@ -281,32 +233,10 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             KindBinary inverseOp = (KindBinary)((int)baseOp | (int)KindProperty.Inverse);
 
             // Get the inverse operation forward method
-            if (!cacheBinaryKindForwardMethodInfos.TryGetValue((inverseOp, typeof(T)), out MethodInfo? inverseMethod))
-            {
-                string methodName = $"{inverseOp}Forward";
-                inverseMethod = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                inverseMethod = inverseMethod.MakeGenericMethod(typeof(T));
-                cacheBinaryKindForwardMethodInfos[(inverseOp, typeof(T))] = inverseMethod;
-            }
-            Func<T, T, T> inverseOperation = inverseMethod.CreateDelegate<Func<T, T, T>>();
+            Func<T, T, T> inverseOperation = BinaryOperations.GetKindForwardDelegate<T>(inverseOp);
 
             // Get the backward right method for the base operation
-            if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((baseOp, typeof(T), typeof(G)), out MethodInfo? backwardMethod))
-            {
-                string methodName = $"{baseOp}BackwardRight";
-                backwardMethod = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T), typeof(G)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                backwardMethod = backwardMethod.MakeGenericMethod(typeof(T), typeof(G));
-                cacheBinaryKindBackwardRightMethodInfos[(baseOp, typeof(T), typeof(G))] = backwardMethod;
-            }
-            Func<T, T, G, G> backwardRight = backwardMethod.CreateDelegate<Func<T, T, G, G>>();
+            Func<T, T, G, G> backwardRight = BinaryOperations.GetKindBackwardRightDelegate<T, G>(baseOp);
 
             // Propagate gradients
             int inputLength = input.Length;

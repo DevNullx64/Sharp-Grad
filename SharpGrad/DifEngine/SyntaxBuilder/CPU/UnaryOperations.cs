@@ -1,11 +1,74 @@
-﻿using System;
+﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 {
     public static class UnaryOperations
     {
+        private static readonly Dictionary<
+            (Type Type, KindGraphNode kind),
+            MethodInfo> cacheUnaryKindForwardMethodInfos = [];
+
+        public static MethodInfo GetKindForwardMethodInfo<T>(KindGraphNode kind)
+            where T : INumber<T>
+        {
+            if (!cacheUnaryKindForwardMethodInfos.TryGetValue((typeof(T), kind), out MethodInfo? method))
+            {
+                string methodName = $"{kind}Forward";
+                method = typeof(UnaryOperations).GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Static,
+                    [typeof(T), typeof(T)]
+                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                method = method.MakeGenericMethod(typeof(T));
+                cacheUnaryKindForwardMethodInfos[(typeof(T), kind)] = method;
+            }
+            return method;
+        }
+
+        public static Func<TType, TType> GetKindForwardDelegate<TType>(KindGraphNode kind)
+            where TType : INumber<TType>
+        {
+            var methodInfo = GetKindForwardMethodInfo<TType>(kind);
+            return methodInfo.CreateDelegate<Func<TType, TType>>();
+        }
+
+        // Cache for the ExecuteBackward delegates MethodInfos
+        private static readonly Dictionary<
+            (KindGraphNode kind, Type Value, Type Gradient),
+            MethodInfo> cacheExecuteBackwardMethodsInfos = [];
+
+        public static MethodInfo GetKindBackwardMethodInfo<TValue, TGradient>(KindGraphNode kind)
+            where TValue : INumber<TValue>
+            where TGradient : IFloatingPoint<TGradient>
+        {
+            if (!cacheExecuteBackwardMethodsInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
+            {
+                string methodName = $"{kind}Backward";
+                method = typeof(UnaryOperations).GetMethod(
+                    methodName,
+                    BindingFlags.Public | BindingFlags.Static,
+                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
+                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                method = method.MakeGenericMethod(typeof(TValue), typeof(TGradient));
+                cacheExecuteBackwardMethodsInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+            }
+            return method;
+        }
+
+        public static Func<TValue, TValue, TGradient, TGradient> GetKindBackwardDelegate<TValue, TGradient>(KindGraphNode kind)
+            where TValue : INumber<TValue>
+            where TGradient : IFloatingPoint<TGradient>
+        {
+            var methodInfo = GetKindBackwardMethodInfo<TValue, TGradient>(kind);
+            return methodInfo.CreateDelegate<Func<TValue, TValue, TGradient, TGradient>>();
+        }
+
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T NegateForward<T>(T input)
         where T : INumber<T>

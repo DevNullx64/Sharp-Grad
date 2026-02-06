@@ -47,26 +47,47 @@ namespace SharpGrad
         }
 
         /// <summary>
+        /// Gets the initialized gradient buffer with the specified type.
+        /// </summary>
+        /// <typeparam name="TGrad">The type of the gradient buffer.</typeparam>
+        /// <returns>The gradient buffer.</returns>
+        /// <remarks>
+        /// If the gradient buffer is not initialized or is initialized with a different type, an exception is thrown.
+        /// </remarks>
+        public DataBuffer<TGrad> GetInitializedGradBuffer<TGrad>()
+        {
+            if (untypedGrad is null)
+            {
+                throw new InvalidOperationException("Gradient is not initialized.");
+            }
+            if (untypedGrad is DataBuffer<TGrad> dataBuffer)
+            {
+                return dataBuffer;
+            }
+            throw new InvalidOperationException($"Trying to get gradient type {typeof(TGrad)}, but it is set to {untypedGrad.ElementType}.");
+        }
+
+        /// <summary>
         /// Gets or initializes the gradient buffer with the specified type.
         /// </summary>
-        /// <typeparam name="GradType">The type of the gradient buffer.</typeparam>
+        /// <typeparam name="TGrad">The type of the gradient buffer.</typeparam>
         /// <returns>The gradient buffer.</returns>
         /// <remarks>
         /// If the gradient buffer is already initialized with a different type, an exception is thrown.
         /// </remarks>
         /// <exception cref="InvalidOperationException">Thrown if the gradient buffer is already initialized with a different type.</exception>
-        public DataBuffer<GradType> InitializeGrad<GradType>()
-            where GradType : struct, IFloatingPointIeee754<GradType>
+        public DataBuffer<TGrad> GetOrInitializeGradBuffer<TGrad>()
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
             if (untypedGrad is not null)
             {
-                if (untypedGrad is DataBuffer<GradType> dataBuffer)
+                if (untypedGrad is DataBuffer<TGrad> dataBuffer)
                 {
                     return dataBuffer;
                 }
-                throw new InvalidOperationException($"Trying to set gradient type to {typeof(GradType)}, but it is already set to {untypedGrad.ElementType}.");
+                throw new InvalidOperationException($"Trying to set gradient type to {typeof(TGrad)}, but it is already set to {untypedGrad.ElementType}.");
             }
-            DataBuffer<GradType> newGrad = DataBuffer.Create<GradType>(Shape);
+            DataBuffer<TGrad> newGrad = DataBuffer.Create<TGrad>(Shape);
             newGrad.Initialize();
             untypedGrad = newGrad;
             return newGrad;
@@ -109,12 +130,6 @@ namespace SharpGrad
 
         public Value<T> As<T>()
             where T : struct, INumber<T>
-        {
-            if (Data.ElementType != typeof(T))
-            {
-                throw new InvalidCastException($"Cannot cast Value of type {Data.ElementType} to Value<{typeof(T)}>.");
-            }
-            return (Value<T>)this;
-        }
+            => (Value<T>)this;
     }
 }

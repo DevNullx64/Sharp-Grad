@@ -29,42 +29,20 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         public string Name => nameof(DeviceCpu);
 
         /// <summary>
-        /// Throws an InvalidOperationException if the DataBuffer is not initialized.
+        /// Gets the typed DataBuffer of type T from an untyped DataBuffer.
         /// </summary>
         /// <typeparam name="T">The type of the DataBuffer.</typeparam>
-        /// <param name="data">The DataBuffer to check.</param>
-        /// <exception cref="InvalidOperationException">Thrown if the DataBuffer is not initialized.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ThrowIfNotInitialized<T>(DataBuffer<T> data)
+        /// <param name="buffer">The untyped DataBuffer.</param>
+        /// <returns>The typed <see cref="DataBuffer{T}"/>.</returns>
+        /// <remarks>
+        /// Throws an InvalidOperationException if the buffer is not of the expected type.
+        /// </remarks>
+        private static DataBuffer<T> GetBuffer<T>(DataBuffer? buffer)
             where T : struct, INumber<T>
         {
-            if (!data.IsInitialized)
+            if (buffer is not DataBuffer<T> typeBuffer)
             {
-                throw new InvalidOperationException("Data is not initialized.");
-            }
-        }
-
-        /// <summary>
-        /// Gets the initialized DataBuffer of type G from a untyped DataBuffer.
-        /// </summary>
-        /// <typeparam name="G">The type of the DataBuffer.</typeparam>
-        /// <param name="buffer">The untyped DataBuffer.</param>
-        /// <returns>The already initialized <see cref="DataBuffer{G}"/>.</returns>
-        /// <remarks>
-        /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
-        /// </remarks>
-        /// <exception cref="InvalidOperationException">Thrown if the buffer is not of the expected type or is not initialized.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static DataBuffer<G> GetInitializedBuffer<G>(DataBuffer? buffer)
-            where G : struct, INumber<G>
-        {
-            if (buffer is not DataBuffer<G> typeBuffer)
-            {
-                throw new InvalidOperationException($"Expected buffer of type {typeof(DataBuffer<G>).Name}, but got {buffer?.GetType().Name ?? "null"}.");
-            }
-            if (!typeBuffer.IsInitialized)
-            {
-                throw new InvalidOperationException("Buffer is not initialized.");
+                throw new InvalidOperationException($"Expected buffer of type {typeof(DataBuffer<T>).Name}, but got {buffer?.GetType().Name ?? "null"}.");
             }
             return typeBuffer;
         }

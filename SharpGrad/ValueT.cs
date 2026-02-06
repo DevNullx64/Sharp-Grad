@@ -1,5 +1,4 @@
 ﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
-using SharpGrad.DifEngine.SyntaxBuilder.Operations.Arithmetic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,6 +56,44 @@ namespace SharpGrad
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => data;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal DataBuffer<TType> GetInitializedDataBuffer()
+        {
+            if (!data.IsInitialized)
+            {
+                throw new InvalidOperationException($"Data buffer for value '{Name}' is not initialized.");
+            }
+            return data;
+        }
+
+        /// <summary>
+        /// Gets the data buffer, initializing it if it hasn't been initialized yet.
+        /// </summary>
+        /// <returns>The initialized data buffer.</returns>
+        /// <remarks>
+        /// This method is used internally to ensure that the data buffer is initialized before use.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal DataBuffer<TType> GetOrInitializeDataBuffer()
+        {
+            data.Initialize();
+            return data;
+        }
+
+        /// <summary>
+        /// Gets the underlying array of the data buffer, initializing it if it hasn't been initialized yet.
+        /// </summary>
+        /// <returns>The initialized data array.</returns>
+        /// <remarks>
+        /// This method is used internally to ensure that the data buffer is initialized before accessing the underlying array.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal TType[] GetInitializedDataArray()
+            {
+            return data.GetInitializedDataArray();
+        }
+
 
         #region BASIC ARITHMETIC OPERATIONS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
