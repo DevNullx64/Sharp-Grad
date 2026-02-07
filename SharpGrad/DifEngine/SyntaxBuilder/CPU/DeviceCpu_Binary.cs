@@ -296,7 +296,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 {
                     for (int iDest = reducedLength - 1; iDest >= 0; iDest--)
                     {
-                        int iSourceBase = currentShape.GetLinearIndex(iDest, reducedShape);
+                        int iSourceBase = Shape.GetLinearIndex(iDest, reducedShape, currentShape);
                         TGrad accumulator = TGrad.Zero;
                         int iSourceEnd = iSourceBase + dimSize * dimStride;
                         for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
@@ -318,7 +318,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                 {
                     Parallel.For(0, reducedLength, _parallelOptions, iDest =>
                     {
-                        int iSourceBase = currentShape.GetLinearIndex(iDest, reducedShape);
+                        int iSourceBase = Shape.GetLinearIndex(iDest, reducedShape, currentShape);
                         TGrad accumulator = TGrad.Zero;
                         int iSourceEnd = iSourceBase + dimSize * dimStride;
                         for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
