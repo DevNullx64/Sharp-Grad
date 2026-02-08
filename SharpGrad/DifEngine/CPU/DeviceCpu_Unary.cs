@@ -31,11 +31,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteUnaryForwards.TryGetValue(inputElement, out Action<Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteUnaryForward<T>(Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteUnaryForward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteUnaryForward)} not found.");
+                    1,
+                    typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteUnaryForward)} not found.");
                 method = method.MakeGenericMethod(inputElement);
 
                 // Create a delegate for the method using the current instance
@@ -107,11 +107,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteCastForwards.TryGetValue(key, out Action<Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteCastForward<TFrom, TTo>(Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteCastForward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteCastForward)} not found.");
+                    2,
+                    typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteCastForward)} not found.");
                 method = method.MakeGenericMethod(key.From, key.To);
 
                 // Create a delegate for the method using the current instance
@@ -180,11 +180,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteUnaryBackwards.TryGetValue(key, out Action<Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteUnaryBackward<T, G>(Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteUnaryBackward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteUnaryBackward)} not found.");
+                    2,
+                    typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteUnaryBackward)} not found.");
                 method = method.MakeGenericMethod(key.Value, key.Gradient);
 
                 // Create a delegate for the method using the current instance
@@ -256,11 +256,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteCastBackwards.TryGetValue(key, out Action<Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteCastBackward<From, To, Grad>(Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteCastBackward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteCastBackward)} not found.");
+                    3,
+                    typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteCastBackward)} not found.");
                 method = method.MakeGenericMethod(key.From, key.To, key.Grad);
 
                 // Create a delegate for the method using the current instance

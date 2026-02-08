@@ -21,18 +21,18 @@ namespace SharpGrad.DifEngine
                 Value current = stack.Pop();
                 if (visited.Add(current))
                 {
-                    if (func(current) && reverseDFS.Count != 0)
+                    if (func(current))
                     {
-                        allSubgraphs.AddRange(GetParallelSubgraphsDFS(current, func));
-                    }
-                    else
-                    {
-                        KindGraphNode kind = current.Kind;
-                        if (kind.IsValidKind())
+                        if (reverseDFS.Count != 0)
                         {
-                            stack.Push(current);
+                            allSubgraphs.AddRange(GetParallelSubgraphsDFS(current, func));
+                            continue;
                         }
-                        else
+                    }
+
+                    KindGraphNode kind = current.Kind;
+                    if (!kind.IsValue())
+                    {
                         if (kind.IsUnary())
                         {
                             IGraphNodeUnary<Value> unaryNode = (IGraphNodeUnary<Value>)current;
@@ -53,8 +53,8 @@ namespace SharpGrad.DifEngine
                         {
                             throw new NotSupportedException($"Unsupported graph node kind: {current.Kind}");
                         }
-                        reverseDFS.Push(current);
                     }
+                    reverseDFS.Push(current);
                 }
             }
 

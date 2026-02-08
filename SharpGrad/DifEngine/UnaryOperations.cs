@@ -18,12 +18,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             if (!cacheUnaryKindForwardMethodInfos.TryGetValue((typeof(T), kind), out MethodInfo? method))
             {
                 string methodName = $"{kind}Forward";
-                method = typeof(UnaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(T), typeof(T)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(T));
+                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
+                    ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                method = genericMethod.MakeGenericMethod(typeof(T));
                 cacheUnaryKindForwardMethodInfos[(typeof(T), kind)] = method;
             }
             return method;
@@ -48,12 +45,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             if (!cacheExecuteBackwardMethodsInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
                 string methodName = $"{kind}Backward";
-                method = typeof(UnaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TValue), typeof(TGradient));
+                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
+                    ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                method = genericMethod.MakeGenericMethod(typeof(TValue), typeof(TGradient));
                 cacheExecuteBackwardMethodsInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
             }
             return method;

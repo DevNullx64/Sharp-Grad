@@ -33,11 +33,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteBinaryForwards.TryGetValue((kind, elementType), out Action<KindBinary, Value, Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteBinaryForward<elementType>(BinaryKind, Value, Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryForward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryForward)} not found.");
+                    1,
+                    typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryForward)} not found.");
                 method = method.MakeGenericMethod(elementType);
                 // Create a delegate for the method using the current instance
                 action = method.CreateDelegate<Action<KindBinary, Value, Value, Value>>(this);
@@ -168,11 +168,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteBinaryBackwardLeftOnlyDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteBinaryBackwardLeftOnly<valueType, gradientType>(BinaryKind, Value, Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardLeftOnly),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftOnly)} not found.");
+                    2,
+                    typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftOnly)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
 
                 // Create a delegate for the method using the current instance
@@ -352,11 +352,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteBinaryBackwardRightOnlyDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteBinaryBackwardRightOnly<valueType, gradientType>(BinaryKind, Value, Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardRightOnly),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardRightOnly)} not found.");
+                    2,
+                    typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardRightOnly)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
 
                 // Create a delegate for the method using the current instance
@@ -444,11 +444,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteBinaryBackwardLeftAndRightDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteBinaryBackwardLeftAndRight<valueType, gradientType>(BinaryKind, Value, Value, Value)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardLeftAndRight),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftAndRight)} not found.");
+                    2,
+                    typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftAndRight)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
 
                 // Create a delegate for the method using the current instance
@@ -567,6 +567,4 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             }
         }
     }
-
-
 }

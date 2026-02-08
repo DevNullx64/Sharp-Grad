@@ -34,11 +34,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!cacheExecuteReductionForwards.TryGetValue((kind, elementType), out Action<KindReduction, Value, Value, Dimension>? action))
             {
                 // Get the MethodInfo for the instance method ExecuteReductionForward<elementType>(KindReduction, Value, Value, Dimension)
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteReductionForward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindReduction), typeof(Value), typeof(Value), typeof(Dimension)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteReductionForward)} not found.");
+                    1,
+                    typeof(KindReduction), typeof(Value), typeof(Value), typeof(Dimension))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteReductionForward)} not found.");
                 method = method.MakeGenericMethod(elementType);
 
                 // Create a delegate for the method using the current instance
@@ -178,11 +178,11 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             (KindReduction, Type Value, Type Gradient) key = (kind, output.ElementType, output.Grad.ElementType);
             if (!cacheExecuteReductionBackwards.TryGetValue(key, out Action<KindReduction, Value, Value, Dimension>? action))
             {
-                MethodInfo method = typeof(DeviceCpu).GetMethod(
+                MethodInfo method = GetGenericMethod(
                     nameof(ExecuteReductionBackward),
-                    BindingFlags.NonPublic | BindingFlags.Instance,
-                    [typeof(KindReduction), typeof(Value), typeof(Value), typeof(Dimension)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteReductionBackward)} not found.");
+                    2,
+                    typeof(KindReduction), typeof(Value), typeof(Value), typeof(Dimension))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteReductionBackward)} not found.");
                 method = method.MakeGenericMethod(key.Value, key.Gradient);
                 action = method.CreateDelegate<Action<KindReduction, Value, Value, Dimension>>(this);
                 cacheExecuteReductionBackwards[key] = action;

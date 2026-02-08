@@ -26,12 +26,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             if (!cacheBinaryKindForwardMethodInfos.TryGetValue((kind, typeof(TType)), out MethodInfo? method))
             {
                 string methodName = $"{kind}Forward";
-                method = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TType), typeof(TType)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TType));
+                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = genericMethod.MakeGenericMethod(typeof(TType));
                 cacheBinaryKindForwardMethodInfos[(kind, typeof(TType))] = method;
             }
             return method;
@@ -64,12 +61,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
                 string methodName = $"{kind}BackwardLeft";
-                method = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TValue));
+                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = genericMethod.MakeGenericMethod(typeof(TValue));
                 cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
             }
             return method;
@@ -103,12 +97,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
                 string methodName = $"{kind}BackwardRight";
-                method = typeof(BinaryOperations).GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Static,
-                    [typeof(TValue), typeof(TValue), typeof(TGradient)]
-                ) ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = method.MakeGenericMethod(typeof(TValue));
+                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                method = genericMethod.MakeGenericMethod(typeof(TValue));
                 cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
             }
             return method;

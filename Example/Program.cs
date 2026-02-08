@@ -33,7 +33,7 @@ internal class Program
                 xData[b, i] = v[b].X[i];
             }
         }
-        Variable<float> X = new((batch, input), "X");
+        Variable<float> X = new("X", xData, batch, input);
 
         // List of ground truth data
         var ygt = v.Select(d => (float)d.Y[0]).ToArray();
