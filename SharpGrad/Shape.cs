@@ -156,7 +156,7 @@ namespace SharpGrad
 
         public static Shape Remove(Shape shape, params Dimension[] dimsToRemove)
         {
-            int reducedDim = 0;
+            int reducedDim = dimsToRemove.Where(d => !d.IsScalar).Count();
             List<Dimension> resultDims = new(shape.Rank);
             for(int i = 0; i < shape.Rank; i++)
             {
@@ -167,10 +167,10 @@ namespace SharpGrad
                 }
                 else
                 {
-                    reducedDim++;
+                    reducedDim--;
                 }
             }
-            if (reducedDim != dimsToRemove.Length)
+            if (reducedDim != 0)
             {
                 throw new ArgumentException($"Some reduction dimensions were not found in the input shape. Original shape: {shape}, dimensions to remove: [{string.Join(", ", dimsToRemove)}]");
             }

@@ -1,5 +1,4 @@
 ﻿using SharpGrad.DifEngine.SyntaxBuilder;
-using SharpGrad.DifEngine.SyntaxBuilder.Operations;
 using System;
 using System.Collections.Generic;
 using System.Linq;

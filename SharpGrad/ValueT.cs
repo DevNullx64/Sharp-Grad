@@ -1,4 +1,4 @@
-﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+﻿using SharpGrad.DifEngine.SyntaxBuilder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,8 +15,6 @@ namespace SharpGrad
         where TType : struct, INumber<TType>
     {
         private static int InstanceCount = 0;
-        public static readonly Constant<TType> E = new(TType.CreateSaturating(Math.E), "e");
-        public static readonly Constant<TType> Zero = new(TType.Zero, "0");
 
         public Value(IReadOnlyList<Dimension> shape, string name, KindGraphNode kind)
             : base(name, typeof(TType), new Shape([.. shape.Where(e => e.Size > 1).Distinct()]), kind)
@@ -57,30 +55,6 @@ namespace SharpGrad
             get => data;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal DataBuffer<TType> GetInitializedDataBuffer()
-        {
-            if (!data.IsInitialized)
-            {
-                throw new InvalidOperationException($"Data buffer for value '{Name}' is not initialized.");
-            }
-            return data;
-        }
-
-        /// <summary>
-        /// Gets the data buffer, initializing it if it hasn't been initialized yet.
-        /// </summary>
-        /// <returns>The initialized data buffer.</returns>
-        /// <remarks>
-        /// This method is used internally to ensure that the data buffer is initialized before use.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal DataBuffer<TType> GetOrInitializeDataBuffer()
-        {
-            data.Initialize();
-            return data;
-        }
-
         /// <summary>
         /// Gets the initialized data as an array.
         /// </summary>
@@ -93,6 +67,11 @@ namespace SharpGrad
 
         internal TType[] GetOrInitializeData() => data.GetOrInitializeData();
 
+        public new IReadOnlyDataBuffer<TType> Grad
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (DataBuffer<TType>)(untypedGrad ?? throw new InvalidOperationException("Gradient is not available."));
+        }
 
         #region BASIC ARITHMETIC OPERATIONS
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

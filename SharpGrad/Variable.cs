@@ -1,8 +1,7 @@
-using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+using SharpGrad.DifEngine.SyntaxBuilder;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad
 {
@@ -16,20 +15,13 @@ namespace SharpGrad
             set => base[indices] = value;
         }
 
-        public Variable(string name, Array data, Shape shape)
+        public Variable(string name, Shape shape)
             : base(shape, name, KindGraphNode.Variable)
+        { }
+
+        public Variable(string name, Array data, Shape shape)
+            : this(shape, name)
         {
-            if(shape.Rank != data.Rank)
-            {
-                throw new ArgumentException($"The shape rank {shape.Rank} is not equal to the data rank {data.Rank}");
-            }
-            for (int d = 0; d < data.Rank; d++)
-            {
-                if (shape[d].Size != data.GetLength(d))
-                {
-                    throw new ArgumentException($"The shape dimension size {shape[d].Size} is not equal to the data dimension length {data.GetLength(d)} at dimension {d}");
-                }
-            }
             base.data.SetData(data);
         }
 
@@ -59,7 +51,7 @@ namespace SharpGrad
         { }
 
         public Variable(Shape shape, string name) :
-            this(name, new TType[shape.Size], shape)
+            this(name, shape)
         { }
     }
 }

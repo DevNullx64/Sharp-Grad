@@ -1,4 +1,4 @@
-﻿using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+﻿using SharpGrad.DifEngine.SyntaxBuilder;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 

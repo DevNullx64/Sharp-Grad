@@ -89,5 +89,7 @@ namespace SharpGrad
             if (left.IsScalar) return left;
             return new($"{left.Name}/{right}", left.Size / right);
         }
+
+        public override string ToString() => Name;
     }
 }

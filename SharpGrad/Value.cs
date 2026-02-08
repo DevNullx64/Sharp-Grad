@@ -1,5 +1,5 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using SharpGrad.DifEngine.SyntaxBuilder.Operations;
+using SharpGrad.DifEngine.SyntaxBuilder;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -17,7 +17,7 @@ namespace SharpGrad
         /// <summary>
         /// The shape of the value.
         /// </summary>
-        public Shape Shape { get; } = shape;
+        public Shape Shape { get; protected set; } = shape;
 
         /// <summary>
         /// If true, this value is an output of the computation graph and should be saved back to its data field.
