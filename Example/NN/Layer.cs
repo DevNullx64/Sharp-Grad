@@ -1,12 +1,11 @@
 ﻿using SharpGrad;
 using SharpGrad.Activation;
-using SharpGrad.Operators;
 using System.Numerics;
 
 namespace SharpGrad.NN
 {
     public class Layer<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : struct, INumber<TType>
     {
         public static readonly Random Rand = new();
 
@@ -22,37 +21,41 @@ namespace SharpGrad.NN
         {
             Shape = [output, input];
 
-            Weights = new Variable<TType>(Shape, "W");
-            Dimdexer dimdexer = new(Shape);
-            foreach (Dimdices dimdices in dimdexer)
+            TType[,] weights = new TType[output.Size, input.Size];
+            for(int o = 0; o < output.Size; o++)
             {
-                Weights[dimdices] = TType.CreateSaturating(Rand.NextDouble());
+                for(int i = 0; i < input.Size; i++)
+                {
+                    weights[o, i] = TType.CreateSaturating(Rand.NextDouble());
+                }
             }
+            Weights = new Variable<TType>("W", weights, Shape);
 
-            Biai = new Variable<TType>(output, "B");
-            dimdexer = new(Biai.Shape);
-            foreach (Dimdices dimdices in dimdexer)
+            TType[] bias = new TType[output.Size];
+            for(int o = 0; o < output.Size; o++)
             {
-                Biai[dimdices] = TType.CreateSaturating(Rand.NextDouble());
+                bias[o] = TType.CreateSaturating(Rand.NextDouble());
             }
+            Biai = new Variable<TType>("B", bias, new Shape(output));
 
             ActFunc = act_func;
         }
 
-        public NariOperation<TType> Forward(Value<TType> X)
+        public Value<TType> Forward(Value<TType> X)
         {
-            MulValue<TType> mul = X * Weights;
-            SumValue<TType> sum = VMath.Sum(mul, Shape[1]);
-            AddValue<TType> sumB = sum + Biai;
+            Value<TType> mul = X * Weights;
+            Value<TType> sum = VMath.Sum(mul, Shape[1]);
+            Value<TType> sumB = sum + Biai;
             return ActFunc ? sumB.ReLU() : sumB;
         }
 
         public void Step(TType lr)
         {
             Dimdexer dimdexer = new(Weights.Shape);
+            IReadOnlyDataBuffer<TType> WeightsGrad = Weights.Grad;
             foreach (Dimdices dimdices in dimdexer)
             {
-                Weights[dimdices] -= lr * Weights.Grad[dimdices];
+                Weights[dimdices] -= lr * WeightsGrad[dimdices];
             }
         }
     }

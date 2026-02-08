@@ -3,7 +3,7 @@ using System.Numerics;
 namespace SharpGrad.NN
 {
     public class MLP<TType>
-        where TType : IBinaryFloatingPointIeee754<TType>
+        where TType : struct, INumber<TType>
     {
         public Dimension[] Shape;
         public Layer<TType>[] Layers;

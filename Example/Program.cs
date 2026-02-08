@@ -1,12 +1,14 @@
 ﻿using SharpGrad;
 using SharpGrad.DifEngine.Loss;
+using SharpGrad.DifEngine.SyntaxBuilder.CPU;
 using SharpGrad.NN;
-using SharpGrad.Operators;
 
 internal class Program
 {
     private static void Main(string[] args)
     {
+        DeviceCpu cpu = new();
+
         Console.SetWindowSize(DataSet.N * 2 + 4, DataSet.N + 4);
 
         Dimension batch = new(nameof(batch), 400);
@@ -23,11 +25,15 @@ internal class Program
 
         float lr = 1e-4f;
         // List of input data
-        Variable<float> X = new((batch, input), "X");
-        foreach (Dimdices dimdices in new Dimdexer(X.Shape))
+        float[,] xData = new float[batch.Size, input.Size];
+        for(int b = 0; b < batch.Size; b++)
         {
-            X[dimdices] = v[dimdices[batch]].X[dimdices[input]];
+            for(int i = 0; i < input.Size; i++)
+            {
+                xData[b, i] = v[b].X[i];
+            }
         }
+        Variable<float> X = new((batch, input), "X");
 
         // List of ground truth data
         var ygt = v.Select(d => (float)d.Y[0]).ToArray();
@@ -35,7 +41,7 @@ internal class Program
 
         // Build execution expression graph (no computation done here)
         Value<float> Y = cerebrin.Forward(X);
-        NariOperation<float> loss = Loss.MSE(Y, Ygt, output);
+        Value<float> loss = Loss.MSE(Y, Ygt, output);
         loss = VMath.Sum(loss, batch) / batch.Size;
         loss.IsOutput = true;
 
@@ -48,7 +54,8 @@ internal class Program
             Console.WriteLine($"LR: {lr:E2} | Epoch: {i} / {epochs}");
             // Forward and backward pass
             //loss.Forward();
-            loss.Backward();
+            cpu.Forward(loss);
+            cpu.Backward(loss);
 
             // Build prediction data
             foreach (Dimdices dimdices in new Dimdexer(Y.Shape))
@@ -62,7 +69,7 @@ internal class Program
             // Update weights
             cerebrin.Step(lr);
             // Reset gradients
-            loss.ResetGradient();
+            cpu.ResetGradient(loss);
 
             // Print loss and scatter plot
             Dimdices lossDim = new(loss.Shape, new int[loss.Shape.Rank]);
