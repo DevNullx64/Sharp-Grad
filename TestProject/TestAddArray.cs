@@ -1,5 +1,6 @@
 ﻿using SharpGrad;
 using SharpGrad.DifEngine;
+using SharpGrad.DifEngine.SyntaxBuilder.CPU;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -10,23 +11,23 @@ namespace TestProject.Operators
     public sealed class TestAddArray
     {
         public static void Add<T>()
-            where T : INumber<T>
+            where T : struct, INumber<T>
         {
             T _oneAndHalf = T.CreateTruncating(1.5);
             T _two = T.CreateTruncating(2.0);
             T _three = T.CreateTruncating(3.0);
             T _four = T.CreateTruncating(4.0);
 
-            Dimension dim = new(nameof(dim), 3);
-            Dimension[] shape = [dim];
-            Variable<T> a = new([_oneAndHalf, _two, _three], shape, "a");
-            Variable<T> b = new([_two, _three, _four], shape, "b");
-            Variable<T> c = new(_two, "scalar");
+            Dimension dim = Common.CreateDimension(nameof(dim), 3);
+            Variable<T> a = new("a", [_oneAndHalf, _two, _three], dim);
+            Variable<T> b = new("b", [_two, _three, _four], dim);
+            Variable<T> c = new("scalar", _two);
+
+            var cpu = new DeviceCpu();
 
             Debug.WriteLine("d[3] = a[3] + b[3]");
             var d = a + b;
-            var dFunc = d.Forward;
-            dFunc();
+            cpu.Forward(d);
             Debug.Assert(d.Data[0] == T.CreateTruncating(3.5), $"d[0] = {d.Data[0]}. Expected {T.CreateTruncating(3.5)}");
             Debug.WriteLine($"d[0] = {d.Data[0]} Expected {T.CreateTruncating(3.5)}");
             Debug.Assert(d.Data[1] == T.CreateTruncating(5.0), $"d[1] = {d.Data[1]}. Expected  {T.CreateTruncating(5.0)}");
@@ -36,8 +37,7 @@ namespace TestProject.Operators
 
             Debug.WriteLine("e = d[3] + c");
             var e = d + c;
-            var eFunc = e.Forward;
-            eFunc();
+            cpu.Forward(e);
             Debug.Assert(e.Data[0] == T.CreateTruncating(5.5), $"e[0] = {e.Data[0]}. Expected {T.CreateTruncating(5.5)}");
             Debug.WriteLine($"e[0] = {e.Data[0]} Expected {T.CreateTruncating(5.5)}");
             Debug.Assert(e.Data[1] == T.CreateTruncating(7.0), $"e[1] = {e.Data[1]}. Expected {T.CreateTruncating(7.0)}");
@@ -47,8 +47,7 @@ namespace TestProject.Operators
 
             Debug.WriteLine("f[3] = c + d[3]");
             var f = c + d;
-            var fFunc = f.Forward;
-            fFunc();
+            cpu.Forward(f);
             Debug.Assert(f.Data[0] == T.CreateTruncating(5.5), $"f[0] = {f.Data[0]}. Expected {T.CreateTruncating(5.5)}");
             Debug.WriteLine($"f[0] = {f.Data[0]} Expected {T.CreateTruncating(5.5)}");
             Debug.Assert(f.Data[1] == T.CreateTruncating(7.0), $"f[1] = {f.Data[1]}. Expected {T.CreateTruncating(7.0)}");

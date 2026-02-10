@@ -1,5 +1,7 @@
-﻿using SharpGrad.Activation;
+﻿using SharpGrad;
+using SharpGrad.Activation;
 using SharpGrad.DifEngine;
+using SharpGrad.DifEngine.SyntaxBuilder.CPU;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -9,27 +11,27 @@ namespace TestProject.Activations
     public class TestReLU
     {
         public static void ReLU<T>()
-            where T : INumber<T>
+            where T : struct, INumber<T>
         {
-            Variable<T> a = new(T.CreateTruncating(1.5), "a");
+            Variable<T> a = new("a", T.CreateTruncating(1.5));
             var c = a.ReLU();
-            var cFunc = c.Forward;
-            cFunc();
+            var cpu = new DeviceCpu();
+            cpu.Forward(c);
             var r = T.Max(T.Zero, T.CreateTruncating(1.5));
-            Debug.Assert(c.Data[0] == r);
+            Assert.AreEqual(r, c.Data[0]);
 
-            a.Data[0] = T.CreateTruncating(-2.0);
-            cFunc();
+            a[0] = T.CreateTruncating(-2.0);
+            cpu.Forward(c);
             r = T.Max(T.Zero, T.CreateTruncating(-2.0));
-            Debug.Assert(c.Data[0] == r);
+            Assert.AreEqual(r, c.Data[0]);
 
             for (int i = 0; i < 10; i++)
             {
                 var aData = Common.Random<T>();
-                a.Data[0] = aData;
-                cFunc();
+                a[0] = aData;
+                cpu.Forward(c);
                 r = T.Max(T.Zero, aData);
-                Debug.Assert(c.Data[0] == r);
+                Assert.AreEqual(r, c.Data[0]);
             }
         }
 

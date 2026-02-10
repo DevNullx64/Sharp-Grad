@@ -1,7 +1,7 @@
 ﻿using SharpGrad;
 using SharpGrad.DifEngine;
-using SharpGrad.ExprLambda;
-using SharpGrad.Operators;
+using SharpGrad.DifEngine.SyntaxBuilder;
+using System.Linq;
 
 namespace TestProject.Compilation
 {
@@ -15,28 +15,28 @@ namespace TestProject.Compilation
             Dimension Db = new(nameof(Db), 2);
 
             // Variables
-            Variable<float> a = new([1, 2], Da, nameof(a));
-            Variable<float> b = new([3, 4], Db, nameof(b));
+            Variable<float> a = new(nameof(a), [1, 2], Da);
+            Variable<float> b = new(nameof(b), [3, 4], Db);
 
             // A+B
-            AddValue<float> a_plus_b = a + b;
+            BinaryComputedValue<float> a_plus_b = a + b;
 
             // sum(A) and sum(A+B) (in general, the barrier is set by the type or context)
-            SumValue<float> sum_a = VMath.Sum(a, Da);
-            SumValue<float> sum_a_plus_b = VMath.Sum(a_plus_b, Db);
+            ReducedValue<float> sum_a = VMath.Sum(a, Da);
+            ReducedValue<float> sum_a_plus_b = VMath.Sum(a_plus_b, Db);
 
-            // Check that these are indeed parallel barriers
-            Assert.IsTrue(sum_a.IsParallelBarrier, "sumA should be a parallel barrier.");
-            Assert.IsTrue(sum_a_plus_b.IsParallelBarrier, "sumAplusB should be a parallel barrier.");
+            // Check that these are reduction barriers
+            Assert.IsTrue(((Value)sum_a).Kind.IsReduction(), "sumA should be a reduction barrier.");
+            Assert.IsTrue(((Value)sum_a_plus_b).Kind.IsReduction(), "sumAplusB should be a reduction barrier.");
 
             // sum(A) + sum(A+B)
-            AddValue<float> add_sums = sum_a + sum_a_plus_b;
+            BinaryComputedValue<float> add_sums = sum_a + sum_a_plus_b;
 
             // root
-            AddValue<float> root = add_sums;
+            BinaryComputedValue<float> root = add_sums;
 
             // Call the method to test
-            Value[][] subgraphs = root.GetParallelSubgraphsDFS<Value>();
+            Value[][] subgraphs = root.GetParallelSubgraphsDFS(node => node.Kind.IsReduction());
 
             // There should be 3 subgraphs: [sumA], [sumAplusB], [addSums]
             Assert.AreEqual(

@@ -1,5 +1,7 @@
-﻿using SharpGrad.Activation;
+﻿using SharpGrad;
+using SharpGrad.Activation;
 using SharpGrad.DifEngine;
+using SharpGrad.DifEngine.SyntaxBuilder.CPU;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -9,27 +11,27 @@ namespace TestProject.Activations
     public class TestSigmoid
     {
         public static void Sigmoid<T>()
-            where T : IBinaryFloatingPointIeee754<T>, IExponentialFunctions<T>
+            where T : struct, IBinaryFloatingPointIeee754<T>, IExponentialFunctions<T>
         {
-            Variable<T> a = new(T.CreateTruncating(1.5), "a");
+            Variable<T> a = new("a", T.CreateTruncating(1.5));
             var c = a.Sigmoid();
-            var cFunc = c.Forward;
-            cFunc();
+            var cpu = new DeviceCpu();
+            cpu.Forward(c);
             var r = T.One / (T.One + T.Exp(T.CreateTruncating(-1.5)));
-            Debug.Assert(c.Data[0] == r);
+            Assert.AreEqual(r, c.Data[0]);
 
-            a.Data[0] = T.CreateTruncating(2.0);
-            cFunc();
+            a[0] = T.CreateTruncating(2.0);
+            cpu.Forward(c);
             r = T.One / (T.One + T.Exp(T.CreateTruncating(-2.0)));
-            Debug.Assert(c.Data[0] == r);
+            Assert.AreEqual(r, c.Data[0]);
 
             for (int i = 0; i < 10; i++)
             {
                 var aData = Common.Random<T>();
-                a.Data[0] = aData;
-                cFunc();
+                a[0] = aData;
+                cpu.Forward(c);
                 r = T.One / (T.One + T.Exp(T.CreateTruncating(-aData)));
-                Debug.Assert(c.Data[0] == r);
+                Assert.AreEqual(r, c.Data[0]);
             }
         }
 

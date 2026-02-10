@@ -1,4 +1,6 @@
-﻿using SharpGrad.DifEngine;
+﻿using SharpGrad;
+using SharpGrad.DifEngine;
+using SharpGrad.DifEngine.SyntaxBuilder.CPU;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -8,25 +10,25 @@ namespace TestProject.Operators
     public class TestDiv
     {
         public static void Div<T>()
-            where T : INumber<T>
+            where T : struct, INumber<T>
         {
-            Variable<T> a = new(T.CreateTruncating(1.5), "a");
-            Variable<T> b = new(T.CreateTruncating(2.0), "b");
+            Variable<T> a = new("a", T.CreateTruncating(1.5));
+            Variable<T> b = new("b", T.CreateTruncating(2.0));
             var c = a / b;
-            var cFunc = c.Forward;
-            cFunc();
+            var cpu = new DeviceCpu();
+            cpu.Forward(c);
             Debug.Assert(c.Data[0] == T.CreateTruncating(0.75));
-            a.Data[0] = T.CreateTruncating(2.0);
-            b.Data[0] = T.CreateTruncating(3.0);
-            cFunc();
+            a[0] = T.CreateTruncating(2.0);
+            b[0] = T.CreateTruncating(3.0);
+            cpu.Forward(c);
             Debug.Assert(c.Data[0] == T.CreateTruncating(2.0) / T.CreateTruncating(3.0));
             for (int i = 0; i < 10; i++)
             {
                 var aData = Common.Random<T>();
-                a.Data[0] = aData;
+                a[0] = aData;
                 var bData = Common.Random<T>() + T.One;
-                b.Data[0] = bData;
-                cFunc();
+                b[0] = bData;
+                cpu.Forward(c);
                 Debug.Assert(c.Data[0] == aData / bData);
             }
         }
