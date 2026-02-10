@@ -8,6 +8,7 @@ namespace SharpGrad
     /// </summary>
     internal static class DimensionsPool
     {
+        private static readonly object SyncRoot = new();
         /// <summary>
         /// Maximum number of dimensions supported.
         /// </summary>
@@ -31,17 +32,35 @@ namespace SharpGrad
         /// <summary>
         /// Gets the name of a dimension by its index.
         /// </summary>
-        public static string GetName(byte index) => Names[index];
+        public static string GetName(byte index)
+        {
+            lock (SyncRoot)
+            {
+                return Names[index];
+            }
+        }
 
         /// <summary>
         /// Gets the index of a dimension by its name.
         /// </summary>
-        public static byte IndexOf(string name) => (byte)Names.IndexOf(name);
+        public static byte IndexOf(string name)
+        {
+            lock (SyncRoot)
+            {
+                return (byte)Names.IndexOf(name);
+            }
+        }
 
         /// <summary>
         /// Gets the size of a dimension by its index.
         /// </summary>
-        public static int GetSize(byte index) => Sizes[index];
+        public static int GetSize(byte index)
+        {
+            lock (SyncRoot)
+            {
+                return Sizes[index];
+            }
+        }
 
         /// <summary>
         /// Gets the index of a dimension by its name, adding it if it does not exist.
@@ -60,24 +79,27 @@ namespace SharpGrad
             {
                 throw new ArgumentException("Dimension name cannot be null or whitespace.", nameof(name));
             }
-            byte index = (byte)Names.IndexOf(name);
-            if (index != NotFound)
+            lock (SyncRoot)
             {
-                if (Sizes[index] != size)
+                byte index = (byte)Names.IndexOf(name);
+                if (index != NotFound)
                 {
-                    throw new ArgumentException($"Dimension '{name}' already exists with size {Sizes[index]}, cannot redefine with size {size}.");
+                    if (Sizes[index] != size)
+                    {
+                        throw new ArgumentException($"Dimension '{name}' already exists with size {Sizes[index]}, cannot redefine with size {size}.");
+                    }
+                    return index;
                 }
-                return index;
-            }
-            else
-            {
-                if (Names.Count == MaxDimensions)
+                else
                 {
-                    throw new ArgumentException($"Too many dimensions defined. Maximum is {MaxDimensions}.");
+                    if (Names.Count == MaxDimensions)
+                    {
+                        throw new ArgumentException($"Too many dimensions defined. Maximum is {MaxDimensions}.");
+                    }
+                    Names.Add(name);
+                    Sizes.Add(size);
+                    return (byte)(Names.Count - 1);
                 }
-                Names.Add(name);
-                Sizes.Add(size);
-                return (byte)(Names.Count - 1);
             }
         }
     }

@@ -14,6 +14,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private readonly Dictionary<
             (KindReduction kind, Type Type),
             Action<KindReduction, Value, Value, Dimension>> cacheExecuteReductionForwards = [];
+        private readonly Dictionary<
+            (KindReduction kind, Type Type),
+            Action<KindReduction, Value, Value, Dimension[]>> cacheExecuteReductionForwardsMulti = [];
 
         /// <summary>
         /// Executes the forward pass of a reduction operation on the given input and stores the result in the given output.
@@ -52,62 +55,98 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         }
 
         /// <summary>
-        /// Executes the forward pass of a reduction operation for a given input and stores the result in the given output.
+        /// Executes the forward pass of a reduction operation on the given input and stores the result in the given output.
         /// </summary>
-        /// <typeparam name="TType">The type of the elements in the input and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
         /// <param name="kind">The kind of reduction operation to execute.</param>
-        /// <param name="untypedInput">The input <see cref="Value"/>.</param>
-        /// <param name="untypedOutput">The output <see cref="Value"/>.</param>
-        /// <param name="reduceDim">The dimension to reduce over.</param>
+        /// <param name="input">The input Value.</param>
+        /// <param name="output">The output Value.</param>
+        /// <param name="reduceDims">The dimensions to reduce over.</param>
         /// <remarks>
-        /// <paramref name="untypedInput"/> and <paramref name="untypedOutput"/> must be of type <see cref="Value{T}"/>.
+        /// This method uses caching to optimize the execution of the forward pass for different element types.
         /// </remarks>
-        /// <exception cref="InvalidCastException">Thrown if the input or output are not of type <see cref="Value{T}"/>.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the <see cref="BinaryOperations"/> forward method is not found.</exception>
+        /// <exception cref="InvalidOperationException">Thrown if the <see cref="DeviceCpu.ExecuteReductionForward"/> method is not found.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ExecuteReductionForward(KindReduction kind, Value input, Value output, Dimension[] reduceDims)
+        {
+            if (reduceDims.Length == 1)
+            {
+                ExecuteReductionForward(kind, input, output, reduceDims[0]);
+                return;
+            }
+
+            Type elementType = output.ElementType;
+            if (!cacheExecuteReductionForwardsMulti.TryGetValue((kind, elementType), out Action<KindReduction, Value, Value, Dimension[]>? action))
+            {
+                MethodInfo method = GetGenericMethod(
+                    nameof(ExecuteReductionForward),
+                    1,
+                    typeof(KindReduction), typeof(Value), typeof(Value), typeof(Dimension[]))
+                    ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteReductionForward)} not found.");
+                method = method.MakeGenericMethod(elementType);
+                action = method.CreateDelegate<Action<KindReduction, Value, Value, Dimension[]>>(this);
+                cacheExecuteReductionForwardsMulti[(kind, elementType)] = action;
+            }
+            action(kind, input, output, reduceDims);
+        }
+
+        private void ExecuteReductionForward<TType>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension[] reduceDims)
+            where TType : struct, INumber<TType>
+        {
+            TType[] currentInput = untypedInput.GetInitializedData<TType>().ToArray();
+            Shape currentShape = untypedInput.Shape;
+
+            KindBinary baseOp = kind.GetBaseOperation();
+            Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(baseOp);
+            TType neutral = ((KindGraphNode)baseOp).GetNeutralElement<TType>();
+
+            for (int d = reduceDims.Length - 1; d >= 0; d--)
+            {
+                Dimension reduceDim = reduceDims[d];
+                Shape reducedShape = currentShape.Remove(reduceDim);
+                bool isFinal = d == 0;
+                TType[] currentOutput = isFinal
+                    ? untypedOutput.GetOrInitializeData<TType>().ToArray()
+                    : new TType[reducedShape.Size];
+
+                FillSpan(currentOutput.AsSpan(), neutral);
+                Reduce(currentInput, currentShape, currentOutput, reduceDim, operation);
+
+                if (isFinal)
+                {
+                    currentOutput.CopyTo(untypedOutput.GetInitializedData<TType>());
+                }
+
+                currentInput = currentOutput;
+                currentShape = reducedShape;
+            }
+        }
+
         private void ExecuteReductionForward<TType>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension reduceDim)
             where TType : struct, INumber<TType>
         {
-            TType[] input = untypedInput.GetInitializedData<TType>();
-            TType[] output = untypedOutput.GetOrInitializeData<TType>();
+            untypedOutput.InitializeData();
 
-            // Extract the base binary operation from the reduction kind
+            TType[] input = untypedInput.GetInitializedData<TType>().ToArray();
+            TType[] output = untypedOutput.GetInitializedData<TType>().ToArray();
+
             KindBinary baseOp = kind.GetBaseOperation();
-
-            // Get the appropriate forward method for the base binary operation
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(baseOp);
 
-            //// Initialize output with neutral element
-            FillArray(output, untypedInput.Kind.GetNeutralElement<TType>());
-
-            // Reduce the single dimension
+            FillSpan(output.AsSpan(), ((KindGraphNode)baseOp).GetNeutralElement<TType>());
             Reduce(input, untypedInput.Shape, output, reduceDim, operation);
+            output.CopyTo(untypedOutput.GetInitializedData<TType>());
         }
 
         public static void FillArray<TType>(TType[] output, TType neutralElement)
             where TType : struct, INumber<TType>
         {
-            int iOutput = 0;
-            if (Vector<TType>.IsSupported && output.Length >= Vector<TType>.Count)
-            {
-                Span<TType> outputSpan = output.AsSpan();
-                Vector<TType> neutralVector = new(neutralElement);
-                int iVectorEnd = output.Length - (output.Length % Vector<TType>.Count);
-                for (; iOutput < iVectorEnd; iOutput += Vector<TType>.Count)
-                {
-                    neutralVector.CopyTo(outputSpan[iOutput..]);
-                }
-            }
-            for (; iOutput < output.Length; iOutput++)
-            {
-                output[iOutput] = neutralElement;
-            }
+            FillSpan(output.AsSpan(), neutralElement);
         }
 
         internal void Reduce<TType>(TType[] input, Shape inputShape, TType[] output, Dimension reduceDim, Func<TType, TType, TType> operation)
          where TType : struct, INumber<TType>
         {
             Shape outputShape = inputShape.Remove(reduceDim);
-            // Find the dimension index in input shape
             int dimIndex = inputShape.IndexOf(reduceDim);
             if (dimIndex < 0)
             {
@@ -118,15 +157,12 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             int dimStride = inputShape.GetStride(dimIndex);
             int outputLength = output.Length;
 
-            // For each position in output, accumulate along the dimension to reduce
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            ParallelFor(0, outputLength, range =>
             {
-                for (int iOutput = 0; iOutput < outputLength; iOutput++)
+                for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
-                    // Map output index to input base index using Shape.GetLinearIndex
-                    int iInputBase = inputShape.GetLinearIndex(iOutput, outputShape);
+                    int iInputBase = inputShape.GetLinearIndex(iOutput, outputShape, false);
 
-                    // Accumulate along the dimension to reduce
                     TType accumulator = output[iOutput];
                     int iInputEnd = iInputBase + dimSize * dimStride;
                     for (int iInput = iInputBase; iInput < iInputEnd; iInput += dimStride)
@@ -135,24 +171,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                     }
                     output[iOutput] = accumulator;
                 }
-            }
-            else
-            {
-                Parallel.For(0, outputLength, _parallelOptions, iOutput =>
-                {
-                    // Map output index to input base index using Shape.GetLinearIndex
-                    int iInputBase = inputShape.GetLinearIndex(iOutput, outputShape);
-
-                    // Accumulate along the dimension to reduce
-                    TType accumulator = output[iOutput];
-                    int iInputEnd = iInputBase + dimSize * dimStride;
-                    for (int iInput = iInputBase; iInput < iInputEnd; iInput += dimStride)
-                    {
-                        accumulator = operation(accumulator, input[iInput]);
-                    }
-                    output[iOutput] = accumulator;
-                });
-            }
+            });
         }
 
         // Cache for the ExecuteReductionBackward delegates
@@ -193,8 +212,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         /// <summary>
         /// Executes the backward pass of a reduction operation on the given input and output Values.
         /// </summary>
-        /// <typeparam name="T">The type of the elements in the input and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
-        /// <typeparam name="G">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
+        /// <typeparam name="TType">The type of the elements in the input and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
+        /// <typeparam name="TGrad">The type of the gradients. Must be a struct that implements <see cref="IFloatingPointIeee754{G}"/>.</typeparam>
         /// <param name="kind">The kind of reduction operation.</param>
         /// <param name="untypedInput">The input <see cref="Value"/>.</param>
         /// <param name="untypedOutput">The output <see cref="Value"/>.</param>
@@ -204,70 +223,39 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         /// </remarks>
         /// <exception cref="InvalidCastException">Thrown if the input or output are not of type <see cref="Value{T}"/>.</exception>
         /// <exception cref="InvalidOperationException">Thrown if the backward method is not found.</exception>
-        private void ExecuteReductionBackward<T, G>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension reduceDim)
-            where T : struct, INumber<T>
-            where G : struct, IFloatingPointIeee754<G>
+        private void ExecuteReductionBackward<TType, TGrad>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension reduceDim)
+            where TType : struct, INumber<TType>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            T[] input = untypedInput.GetInitializedData<T>();
-            G[] gradInput = untypedInput.GetOrInitializeGrad<G>();
-            T[] output = untypedOutput.GetInitializedData<T>();
-            G[] gradOutput = untypedOutput.GetInitializedGrad<G>();
+            untypedInput.InitializeGrad<TGrad>();
 
-            // Extract the base binary operation from the reduction kind
             KindBinary baseOp = (KindBinary)((int)kind & ~(int)KindCategory.Reduction);
-            
-            // Get the inverse operation
             KindBinary inverseOp = (KindBinary)((int)baseOp | (int)KindProperty.Inverse);
 
-            // Get the inverse operation forward method
-            Func<T, T, T> inverseOperation = BinaryOperations.GetKindForwardDelegate<T>(inverseOp);
+            Func<TType, TType, TType> inverseOperation = BinaryOperations.GetKindForwardDelegate<TType>(inverseOp);
+            Func<TType, TType, TGrad, TGrad> backwardRight = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(baseOp);
 
-            // Get the backward right method for the base operation
-            Func<T, T, G, G> backwardRight = BinaryOperations.GetKindBackwardRightDelegate<T, G>(baseOp);
-
-            // Propagate gradients
-            int inputLength = input.Length;
+            int inputLength = untypedInput.Shape.Size;
             Shape inputShape = untypedInput.Shape;
             Shape outputShape = untypedOutput.Shape;
 
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            ParallelFor(0, inputLength, range =>
             {
-                for (int iInput = inputLength - 1; iInput >= 0; iInput--)
-                {
-                    // Map input index to output index
-                    int iOutput = outputShape.GetLinearIndex(iInput, inputShape);
+                Span<TType> input = untypedInput.GetInitializedData<TType>();
+                Span<TGrad> gradInput = untypedInput.GetInitializedGrad<TGrad>();
+                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                Span<TGrad> gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
 
-                    // Calculate the complement: the reduced value without the current input element
-                    // complement = inverseOperation(output, input[i])
-                    T complement = inverseOperation(output[iOutput], input[iInput]);
+                for (int iInput = range.Item1; iInput < range.Item2; iInput++)
+                {
+                    int iOutput = outputShape.GetLinearIndex(iInput, inputShape, false);
+
+                    TType complement = inverseOperation(output[iOutput], input[iInput]);
+                    TGrad grad = backwardRight(complement, input[iInput], gradOutput[iOutput]);
                     
-                    // Calculate the gradient using the backward right operation
-                    // grad = backwardRight(complement, input[i], gradOutput)
-                    G grad = backwardRight(complement, input[iInput], gradOutput[iOutput]);
-                    
-                    // Accumulate the gradient
                     gradInput[iInput] += grad;
                 }
-            }
-            else
-            {
-                Parallel.For(0, inputLength, _parallelOptions, iInput =>
-                {
-                    // Map input index to output index
-                    int iOutput = outputShape.GetLinearIndex(iInput, inputShape);
-
-                    // Calculate the complement: the reduced value without the current input element
-                    // complement = inverseOperation(output, input[i])
-                    T complement = inverseOperation(output[iOutput], input[iInput]);
-                    
-                    // Calculate the gradient using the backward right operation
-                    // grad = backwardRight(complement, input[i], gradOutput)
-                    G grad = backwardRight(complement, input[iInput], gradOutput[iOutput]);
-                    
-                    // Accumulate the gradient
-                    gradInput[iInput] += grad;
-                });
-            }
+            });
         }
     }
 }

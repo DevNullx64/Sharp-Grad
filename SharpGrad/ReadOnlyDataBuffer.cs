@@ -52,15 +52,25 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         protected ReadOnlyDataBuffer(Array data, Shape shape)
         {
-            if(data.Rank != shape.Rank)
+            if (shape.IsScalar)
             {
-                throw new ArgumentException($"Data rank {data.Rank} does not match shape rank {shape.Rank}.");
-            }
-            for(int i = 0; i < shape.Rank; i++)
-            {
-                if(data.GetLength(i) != shape[i].Size)
+                if (data.Rank != 1 || data.GetLength(0) != 1)
                 {
-                    throw new ArgumentException($"Data dimension {i} size {data.GetLength(i)} does not match shape dimension size {shape[i].Size}.");
+                    throw new ArgumentException($"Scalar shape expects a rank-1 array of length 1. Got rank {data.Rank} length {data.GetLength(0)}.");
+                }
+            }
+            else
+            {
+                if (data.Rank != shape.Rank)
+                {
+                    throw new ArgumentException($"Data rank {data.Rank} does not match shape rank {shape.Rank}.");
+                }
+                for (int i = 0; i < shape.Rank; i++)
+                {
+                    if (data.GetLength(i) != shape[i].Size)
+                    {
+                        throw new ArgumentException($"Data dimension {i} size {data.GetLength(i)} does not match shape dimension size {shape[i].Size}.");
+                    }
                 }
             }
             internalData = data;

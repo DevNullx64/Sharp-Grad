@@ -10,7 +10,7 @@ namespace SharpGrad
     /// <summary>
     /// Base class for all values in the computation graph.
     /// </summary>
-    public abstract class Value(string name, DataBuffer data, DataBuffer grad, Shape shape, KindGraphNode kind) : IValue
+    public abstract class Value(string name, DataBuffer data, Shape shape, KindGraphNode kind) : IValue
     {
         public readonly string Name = name;
 
@@ -31,8 +31,17 @@ namespace SharpGrad
             get => untypedData;
         }
 
+        /// <summary>
+        /// Initializes the data buffer with the specified type.
+        /// </summary>
+        /// <typeparam name="TType">The type to initialize the data buffer with.</typeparam>
+        /// <returns>True if the data buffer was successfully initialized, false if it was already initialized.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TType[] GetInitializedData<TType>() where TType : struct, INumber<TType>
+        public abstract bool InitializeData();
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal Span<TType> GetInitializedData<TType>() where TType : struct, INumber<TType>
         {
             if (untypedData is DataBuffer<TType> dataBuffer)
             {
@@ -42,7 +51,7 @@ namespace SharpGrad
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TType[] GetOrInitializeData<TType>() where TType : struct, INumber<TType>
+        internal Span<TType> GetOrInitializeData<TType>() where TType : struct, INumber<TType>
         {
             if (untypedData is DataBuffer<TType> dataBuffer)
             {
@@ -51,7 +60,7 @@ namespace SharpGrad
             throw new InvalidOperationException($"Trying to get data type {typeof(TType)}, but it is set to {untypedData.ElementType}.");
         }
 
-        internal DataBuffer? untypedGrad = grad;
+        internal DataBuffer? untypedGrad = null;
         public ReadOnlyDataBuffer Grad
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -66,6 +75,32 @@ namespace SharpGrad
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => untypedGrad is not null;
+        }
+
+        /// <summary>
+        /// Initializes the gradient buffer with the specified type if it is not already initialized. If it is already initialized with the same type, does nothing.
+        /// If it is already initialized with a different type, throws an exception.
+        /// </summary>
+        /// <typeparam name="TGrad">The type to initialize the gradient buffer with.</typeparam>
+        /// <returns>True if the gradient buffer was successfully initialized, false if it was already initialized with the same type.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the gradient buffer is already initialized with a different type.</exception>
+        internal bool InitializeGrad<TGrad>() where TGrad : struct, IFloatingPointIeee754<TGrad>
+        {
+            if (untypedGrad is null)
+            {
+                DataBuffer<TGrad> newGrad = DataBuffer.Create<TGrad>(Shape);
+                newGrad.Initialize();
+                untypedGrad = newGrad;
+                return true;
+            }
+            else
+            {
+                if (untypedGrad is DataBuffer<TGrad> dataBuffer)
+                {
+                    return dataBuffer.Initialize();
+                }
+                throw new InvalidOperationException($"Trying to set gradient type to {typeof(TGrad)}, but it is already set to {untypedGrad.ElementType}.");
+            }
         }
 
         /// <summary>
@@ -90,9 +125,9 @@ namespace SharpGrad
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TGrad[] GetInitializedGrad<TGrad>()
+        internal Span<TGrad> GetInitializedGrad<TGrad>()
         {
-            if(untypedGrad is null)
+            if (untypedGrad is null)
             {
                 throw new InvalidOperationException("Gradient is not initialized.");
             }
@@ -112,9 +147,16 @@ namespace SharpGrad
         /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TGrad[] GetOrInitializeGrad<TGrad>()
+        internal Span<TGrad> GetOrInitializeGrad<TGrad>()
             where TGrad : struct, IFloatingPointIeee754<TGrad>
-            => GetOrInitializeGradBuffer<TGrad>().GetInitializedData();
+        {
+            DataBuffer<TGrad> buffer = GetOrInitializeGradBuffer<TGrad>();
+            if (!buffer.IsInitialized)
+            {
+                buffer.Initialize();
+            }
+            return buffer.GetOrInitializeData();
+        }
 
 
         /// <summary>
@@ -129,26 +171,10 @@ namespace SharpGrad
         public DataBuffer<TGrad> GetOrInitializeGradBuffer<TGrad>()
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            if (untypedGrad is null)
-            {
-                DataBuffer<TGrad> newGrad = DataBuffer.Create<TGrad>(Shape);
-                newGrad.Initialize();
-                untypedGrad = newGrad;
-                return newGrad;
-            }
-            else
-            {
-                if (untypedGrad is DataBuffer<TGrad> dataBuffer)
-                {
-                    if (!dataBuffer.IsInitialized)
-                    {
-                        dataBuffer.Initialize();
-                    }
-                    return dataBuffer;
-                }
-                throw new InvalidOperationException($"Trying to set gradient type to {typeof(TGrad)}, but it is already set to {untypedGrad.ElementType}.");
-            }
+            InitializeGrad<TGrad>();
+            return GetInitializedGradBuffer<TGrad>();
         }
+
         public bool IsGradiable { get; set; } = !kind.IsValue();
 
         public KindGraphNode Kind
@@ -167,7 +193,6 @@ namespace SharpGrad
             : this(
                   name,
                   DataBuffer.Create(type, shape),
-                  DataBuffer.Create(type, shape),
                   shape,
                   kind
             )
@@ -176,7 +201,6 @@ namespace SharpGrad
         protected Value(string name, Array data, Shape shape, KindGraphNode kind)
             : this(
                   name,
-                  DataBuffer.Create(data, shape),
                   DataBuffer.Create(data, shape),
                   shape,
                   kind

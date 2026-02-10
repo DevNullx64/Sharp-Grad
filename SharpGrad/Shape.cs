@@ -8,8 +8,8 @@ namespace SharpGrad
 {
     public readonly struct Shape : IReadOnlyList<Dimension>, IEquatable<Shape>
     {
-        private readonly Dimension[]? dimensions;
-        private readonly int[]? Strides;
+        internal readonly Dimension[]? dimensions;
+        internal readonly int[]? Strides;
 
         /// <summary>
         /// Creates a new Shape from the given dimensions.
@@ -123,7 +123,11 @@ namespace SharpGrad
         /// <summary>
         /// Gets the total size of the shape (the product of all dimension sizes).
         /// </summary>
-        public int Size => (Strides?[0] ?? 1) * (dimensions?[0].Size ?? 1);
+        public int Size
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Strides?[0] ?? 1) * (dimensions?[0].Size ?? 1);
+        }
 
         /// <summary>
         /// Broadcast two shapes together.
@@ -151,6 +155,7 @@ namespace SharpGrad
             }
             return new([.. mergedDimensions]);
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Shape Broadcast(Shape other)
             => Broadcast(this, other);
 
@@ -176,20 +181,28 @@ namespace SharpGrad
             }
             return new(resultDims);
         }
-        public Shape Remove(params Dimension[] dimsToRemove)
-            => Remove(this, (IEnumerable<Dimension>)dimsToRemove);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Shape Remove(Shape shape, IEnumerable<Dimension> dimsToRemove)
             => Remove(shape, [.. dimsToRemove]);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Shape Remove(params Dimension[] dimsToRemove)
+            => Remove(this, (IEnumerable<Dimension>)dimsToRemove);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Shape Remove(IEnumerable<Dimension> dimsToRemove)
             => Remove(this, dimsToRemove);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetLinearIndex(params int[] indices)
         {
-            int rank = Rank;
-            if (rank == 0)
+            if(dimensions is null || Strides is null) // this.Rank == 0
+            {
+                if (indices.Length != 0)
+                {
+                    throw new ArgumentException($"The shape is scalar, but indices length is {indices.Length}.");
+                }
                 return 0;
-
+            }
+            int rank = dimensions.Length;
             if (rank != indices.Length)
             {
                 throw new ArgumentException($"The shape is of rank {rank} which is not equal to the indices length {indices.Length}");
@@ -200,268 +213,144 @@ namespace SharpGrad
             {
                 checked
                 {
-                    idx += indices[i] * Strides![i];
+                    idx += indices[i] * Strides[i];
                 }
             }
             return idx;
         }
 
-
-        private int[] GetOffsetsFromIndices(Index[] indices)
-        {
-            int r = Rank;
-            if (indices.Length != r)
-            {
-                throw new ArgumentException($"The shape size {Size} is not equal to the indices length {indices.Length}");
-            }
-            int[] offsets = new int[r];
-            for (int i = r - 1; i >= 0; i--)
-            {
-                offsets[i] = indices[i].GetOffset(dimensions![i].Size);
-            }
-            return offsets;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetLinearIndex(params Index[] indices)
         {
-            int[] offsets = GetOffsetsFromIndices(indices);
+            if(dimensions is null) // this.Rank == 0
+            {
+                if (indices.Length != 0)
+                {
+                    throw new ArgumentException($"The shape is scalar, but indices length is {indices.Length}.");
+                }
+                return 0;
+            }
+
+            int rank = dimensions.Length;
+            if (rank != indices.Length)
+            {
+                throw new ArgumentException($"The shape is of rank {rank} which is not equal to the indices length {indices.Length}");
+            }
+
+            int[] offsets = new int[rank];
+            for (int i = rank - 1; i >= 0; i--)
+            {
+                offsets[i] = indices[i].GetOffset(dimensions[i].Size);
+            }
             return GetLinearIndex(offsets);
         }
 
+        /// <summary>
+        /// Get the linear index in this shape from the given dimdices, which must contain all dimensions of this shape.
+        /// </summary>
+        /// <param name="dimdices">The dimdices containing the indices for each dimension of this shape.</param>
+        /// <returns>The linear index corresponding to the given dimdices.</returns>
+        /// <remarks>
+        /// This method assumes that the provided dimdices contain all dimensions of this shape.
+        /// It will throw an exception if any dimension of this shape is missing in the dimdices.
+        /// </remarks>
+        /// <exception cref="IndexOutOfRangeException">Thrown if any dimension of this shape is missing in the dimdices or if any index is out of range for its corresponding dimension.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int GetLinearIndex(Dimdices dimdices)
         {
-            int[] localIndices = GetLocalIndices(dimdices);
-            return GetLinearIndex(localIndices);
-        }
-
-        /// <summary>
-        /// Convert an index from one shape to another shape.
-        /// </summary>
-        /// <param name="at">The index in the 'from' shape.</param>
-        /// <param name="from">The shape of the 'at' index.</param>
-        /// <param name="to">The target shape to convert the index to.</param>
-        public static int GetLinearIndex(int at, Shape from, Shape to)
-        {
-            if(from == to)
-            {
-                return at;
-            }
-            int toRank = to.Rank;
-            if(toRank == 0)
+            if (dimensions is null) // this.Rank == 0
             {
                 return 0;
             }
-            int fromRank = from.Rank;
-            if (fromRank == 0)
+
+            int rank = dimensions.Length;
+            int[] localIndices = new int[rank];
+            for (int i = 0; i < rank; i++)
             {
-                throw new ArgumentException($"The '{nameof(from)}' shape is scalar, cannot convert index to non-scalar shape." );
-            }
-            int linearIndex = 0;
-            int setted = 0;
-            for (int indexFromShape = 0; indexFromShape < fromRank; indexFromShape++)
-            {
-                Dimension dim = from[indexFromShape];
-                int i = at / from.GetStride(indexFromShape) % dim.Size;
-                int indexToShape = to.IndexOf(dim);
-                if (indexToShape >= 0)
+                Dimension dim = dimensions[i];
+                Index index = dimdices[dim]; // Throws if the dimension is not found in the dimdices.
+                int dimSize = dim.Size;
+                int idx = index.GetOffset(dimSize);
+                if(idx < 0 || idx >= dimSize)
                 {
-                    linearIndex += i * to.GetStride(indexToShape);
-                    setted++;
+                    throw new IndexOutOfRangeException($"Index {index} is out of range for dimension {dim} with size {dim.Size}.");
                 }
+                localIndices[i] = idx;
             }
-            return linearIndex;
+
+            return GetLinearIndex(localIndices);
         }
 
         /// <summary>
         /// Get the index in this shape from the index in another shape.
         /// </summary>
-        /// <param name="index">The index in the other shape.</param>
-        /// <param name="shape">The other shape. Must be broadcastable to this shape.</param>
+        /// <param name="fromIndex">The index in the other shape.</param>
+        /// <param name="fromShape">The other shape. Must be broadcastable to this shape.</param>
+        /// <param name="requireAllDimensions">
+        /// When true, all dimensions of this shape must exist in <paramref name="fromShape"/>; otherwise an exception is thrown.
+        /// When false, missing dimensions are treated as having index 0 (broadcasting).
+        /// </param>
         /// <returns>The index in this shape.</returns>
-        /// <remarks>
-        /// This method doesn't use intermediate array allocations. It uses only integer arithmetic to compute the index based on precomputed strides.
-        /// </remarks>
-        public int GetLinearIndex(int index, Shape shape)
+        public static int GetLinearIndex(Shape toShape, int fromIndex, Shape fromShape, bool requireAllDimensions)
         {
-            if (this == shape)
+            if (toShape.dimensions is null || toShape.Strides is null) // this.Rank == 0
             {
-                return index;
+                return 0;
             }
 
-            if (dimensions is null || Strides is null)
+            if (fromShape.dimensions is null || fromShape.Strides is null) // shape.Rank == 0
             {
-                if (shape.dimensions is null)
-                    return 0;
-                else
-                    throw new ArgumentException("The provided shape is not broadcastable to this shape.");
-            }
-            if(shape.dimensions is null || shape.Strides is null)
-            {
-                throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+                return requireAllDimensions
+                    ? throw new ArgumentException("The provided shape is not broadcastable to this shape.")
+                    : 0;
             }
 
-            int treated = 0;
+            if (toShape == fromShape)
+            {
+                return fromIndex;
+            }
+
             int resultIndex = 0;
-            int thisLastDimIndex = dimensions.Length - 1;
-            for (int odi = shape.dimensions.Length - 1; odi >= 0; odi--)
+            for (int itd = toShape.dimensions.Length - 1; itd >= 0; itd--)
             {
-                Dimension dim = shape.dimensions[odi];
-
-                for (int tdi = thisLastDimIndex; tdi >= 0; tdi--)
+                Dimension dim = toShape.dimensions[itd];
+                int iod = Array.IndexOf(fromShape.dimensions, dim);
+                if (iod >= 0)
                 {
-                    if (dimensions[tdi] == dim)
-                    {
-                        int dimSize = dim.Size;
-                        int coord = index / shape.Strides[odi] % dimSize;
-                        resultIndex += coord * Strides[tdi];
-                        treated++;
-                        break;
-                    }
+                    int coord = fromIndex / fromShape.Strides[iod] % dim.Size;
+                    resultIndex += coord * toShape.Strides[itd];
+                }
+                else if (requireAllDimensions)
+                {
+                    throw new ArgumentException("The provided shape is not broadcastable to this shape.");
                 }
             }
 
-            if (treated == dimensions.Length)
-            {
-                return resultIndex;
-            }
-            throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+            return resultIndex;
         }
 
         /// <summary>
-        /// Get the local indices in this shape from the given dimdices.
+        /// Get the index in this shape from the index in this shape.
         /// </summary>
-        /// <param name="indices">The dimdices to convert.</param>
-        /// <returns>The local indices in this shape.</returns>
-        /// <remarks>
-        /// If the dimdices shape is equal to this shape, the indices are returned as is.
-        /// If the dimdices is scalar, the local indices are [0].
-        /// Otherwise, the indices are converted to local indices based on the dimension sizes.
-        /// </remarks>
-        private int[] GetLocalIndices(Dimdices indices)
-        {
-            if (indices.IsScalar)
-            {
-                return [0];
-            }
-            if (this == indices.Shape)
-            {
-                return [.. indices.Indices];
-            }
-            else
-            {
-                int rank = Rank;
-                int[] localIndices = new int[rank];
-                for (int i = rank - 1; i >= 0; i--)
-                {
-                    Dimension dim = this[i];
-                    Index index = indices[dim];
-                    int idx = index.Value;
-                    if (index.IsFromEnd)
-                    {
-                        if (idx > dim.Size)
-                        {
-                            throw new IndexOutOfRangeException($"Index {idx} is out of range for dimension {dim.Size}");
-                        }
-                        localIndices[i] = dim.Size - idx;
-                    }
-                    else
-                    {
-                        if (idx >= dim.Size)
-                        {
-                            throw new IndexOutOfRangeException($"Index {idx} is out of range for dimension {dim.Size}");
-                        }
-                        localIndices[i] = idx;
-                    }
-                }
-                return localIndices;
-            }
-        }
-
-        public static int[] GetIndicesArray(int at, Shape from, Shape to)
-        {
-            int toRank = to.Rank;
-            if (toRank == 0)
-            {
-                return [0];
-            }
-
-            int fromRank = from.Rank;
-            if (toRank > fromRank)
-            {
-                throw new ArgumentException($"Impossible to get indices from shape with rank {fromRank} to shape with rank {toRank}.");
-            }
-
-            int[] indicesFrom = InternalGetIndicesArray(at, from);
-            if (from == to)
-            {
-                return indicesFrom;
-            }
-
-            return InternalGetIndicesArray(indicesFrom, from, to);
-        }
-
-        public static int[] GetIndicesArray(int[] at, Shape from, Shape to)
-        {
-            int toRank = to.Rank;
-            if (toRank == 0)
-            {
-                return [0];
-            }
-            int fromRank = from.Rank;
-            if (toRank > fromRank)
-            {
-                throw new ArgumentException($"Impossible to get indices from shape with rank {fromRank} to shape with rank {toRank}.");
-            }
-            return InternalGetIndicesArray(at, from, to);
-        }
-
-        private static int[] InternalGetIndicesArray(int at, Shape from)
-        {
-            int fromRank = from.Rank;
-            int[] indicesFrom = new int[fromRank];
-            for (int i = fromRank - 1; i >= 0; i--)
-            {
-                Dimension dim = from[i];
-                indicesFrom[i] = at / from.GetStride(i) % dim.Size;
-            }
-            return indicesFrom;
-        }
-
-        private static int[] InternalGetIndicesArray(int[] at, Shape from, Shape to)
-        {
-            if(from == to)
-            {
-                return at;
-            }
-            int toRank = to.Rank;
-            int[] indicesTo = new int[toRank];
-            int dimAssigned = 0;
-            for (int i = 0; i < toRank; i--)
-            {
-                Dimension dim = to[i];
-                int indexInFrom = from.IndexOf(dim);
-                if (indexInFrom != -1)
-                {
-                    indicesTo[i] = at[indexInFrom];
-                    dimAssigned++;
-                }
-            }
-            if (dimAssigned != toRank)
-            {
-                throw new ArgumentException("The provided shape is not broadcastable to this shape.");
-            }
-            return indicesTo;
-        }
-
-        public static int[] GetIndicesArray(Dimdices indices, Shape toShape)
-        {
-            return GetIndicesArray([.. indices.Indices], indices.Shape, toShape);
-        }
+        /// <param name="fromIndex">The index in the other shape.</param>
+        /// <param name="fromShape">The other shape.</param>
+        /// <param name="requireAllDimensions">When true, all dimensions of this shape must exist in <paramref name="fromShape"/>; otherwise an exception is thrown.
+        /// When false, missing dimensions are treated as having index 0 (broadcasting).</param>
+        /// <returns>The index in this shape.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int GetLinearIndex(int fromIndex, Shape fromShape, bool requireAllDimensions)
+            => GetLinearIndex(this, fromIndex, fromShape, requireAllDimensions);
 
         public static void ThrowIfNotCompatible(Array array, Shape shape)
         {
+            if (shape.IsScalar)
+            {
+                if (array.Rank != 1 || array.GetLength(0) != 1)
+                {
+                    throw new ArgumentException($"Scalar shape expects a rank-1 array of length 1. Got rank {array.Rank} length {array.GetLength(0)}");
+                }
+                return;
+            }
             if (array.Rank != shape.Rank)
             {
                 throw new ArgumentException($"The array rank {array.Rank} is not equal to the shape rank {shape.Rank}");
@@ -530,6 +419,65 @@ namespace SharpGrad
             => new(dimensions.Item1, dimensions.Item2, dimensions.Item3, dimensions.Item4, dimensions.Item5, dimensions.Item6);
         public static implicit operator Shape((Dimension, Dimension, Dimension, Dimension, Dimension, Dimension, Dimension) dimensions)
             => new(dimensions.Item1, dimensions.Item2, dimensions.Item3, dimensions.Item4, dimensions.Item5, dimensions.Item6, dimensions.Item7);
+
+        public static implicit operator Dimension[](Shape shape)
+            => shape.dimensions is null
+            ? []
+            : shape.dimensions;
         #endregion
+    }
+
+    public static class ShapeExtensions
+    {
+        /// <summary>
+        /// Get the index of the specified dimension in the shape.
+        /// </summary>
+        /// <param name="toShape">The shape to search.</param>
+        /// <param name="dimension">The dimension to find.</param>
+        /// <returns>The index of the dimension in the shape, or -1 if the dimension is not found.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int GetLinearIndex(this List<Dimension> toShape, int indexFrom, List<Dimension> shapeFrom, bool requireAllDimensions)
+        {
+            if (toShape.Count == 0)
+            {
+                return 0;
+            }
+            if (shapeFrom.Count == 0)
+            {
+                if (requireAllDimensions)
+                {
+                    throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+                }
+                return 0;
+            }
+
+            // Précalculer les strides pour shapeFrom
+            int[] stridesFrom = new int[shapeFrom.Count];
+            int strideFrom = 1;
+            for (int i = shapeFrom.Count - 1; i >= 0; i--)
+            {
+                stridesFrom[i] = strideFrom;
+                strideFrom *= shapeFrom[i].Size;
+            }
+
+            int resultIndex = 0;
+            int strideTo = 1;
+            for (int itd = toShape.Count - 1; itd >= 0; itd--)
+            {
+                Dimension dim = toShape[itd];
+                int iod = shapeFrom.IndexOf(dim);
+                if (iod >= 0)
+                {
+                    int coord = indexFrom / stridesFrom[iod] % dim.Size;
+                    resultIndex += coord * strideTo;
+                }
+                else if (requireAllDimensions)
+                {
+                    throw new ArgumentException("The provided shape is not broadcastable to this shape.");
+                }
+                strideTo *= dim.Size;
+            }
+            return resultIndex;
+        }
     }
 }

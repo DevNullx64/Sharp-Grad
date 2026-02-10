@@ -11,17 +11,24 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         private static readonly Dictionary<
             (Type Type, KindGraphNode kind),
             MethodInfo> cacheUnaryKindForwardMethodInfos = [];
+        private static readonly object ForwardCacheLock = new();
 
         public static MethodInfo GetKindForwardMethodInfo<T>(KindGraphNode kind)
             where T : INumber<T>
         {
             if (!cacheUnaryKindForwardMethodInfos.TryGetValue((typeof(T), kind), out MethodInfo? method))
             {
-                string methodName = $"{kind}Forward";
-                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
-                    ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = genericMethod.MakeGenericMethod(typeof(T));
-                cacheUnaryKindForwardMethodInfos[(typeof(T), kind)] = method;
+                lock (ForwardCacheLock)
+                {
+                    if (!cacheUnaryKindForwardMethodInfos.TryGetValue((typeof(T), kind), out method))
+                    {
+                        string methodName = $"{kind}Forward";
+                        MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
+                            ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                        method = genericMethod.MakeGenericMethod(typeof(T));
+                        cacheUnaryKindForwardMethodInfos[(typeof(T), kind)] = method;
+                    }
+                }
             }
             return method;
         }
@@ -37,6 +44,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         private static readonly Dictionary<
             (KindGraphNode kind, Type Value, Type Gradient),
             MethodInfo> cacheExecuteBackwardMethodsInfos = [];
+        private static readonly object BackwardCacheLock = new();
 
         public static MethodInfo GetKindBackwardMethodInfo<TValue, TGradient>(KindGraphNode kind)
             where TValue : INumber<TValue>
@@ -44,11 +52,17 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         {
             if (!cacheExecuteBackwardMethodsInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
-                string methodName = $"{kind}Backward";
-                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
-                    ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
-                method = genericMethod.MakeGenericMethod(typeof(TValue), typeof(TGradient));
-                cacheExecuteBackwardMethodsInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                lock (BackwardCacheLock)
+                {
+                    if (!cacheExecuteBackwardMethodsInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out method))
+                    {
+                        string methodName = $"{kind}Backward";
+                        MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(UnaryOperations), methodName)
+                            ?? throw new InvalidOperationException($"Method {nameof(UnaryOperations)}.{methodName} not found.");
+                        method = genericMethod.MakeGenericMethod(typeof(TValue), typeof(TGradient));
+                        cacheExecuteBackwardMethodsInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                    }
+                }
             }
             return method;
         }

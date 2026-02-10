@@ -24,7 +24,7 @@ namespace SharpGrad
         /// <summary>
         /// Get if the <see cref="Dimdices"/> is a scalar.
         /// </summary>
-        public bool IsScalar => Shape.Rank == 0;
+        public bool IsScalar => Shape.IsScalar;
 
         /// <summary>
         /// Get the index of the specified <see cref="Dimension"/>.
@@ -58,6 +58,11 @@ namespace SharpGrad
         // Convert Index[] to int[]
         private static int[] ToInts(Dimension[] shape, Index[] indices)
         {
+            if(shape.Length != indices.Length)
+            {
+                throw new ArgumentException($"The shape size {shape.Length} is not equal to the indices length {indices.Length}");
+            }
+
             int[] idxs = new int[indices.Length];
             for (int i = 0; i < indices.Length; i++)
             {
@@ -103,22 +108,6 @@ namespace SharpGrad
             : this(shape, ToInts(shape, indices))
         { }
 
-
-        /// <summary>
-        /// Get the linear index of the <see cref="Dimdices"/>.
-        /// </summary>
-        /// <returns>The linear index of the <see cref="Dimdices"/>.</returns>
-        public long GetLinearIndex()
-        {
-            long index = 0;
-            long stride = 1;
-            for (int i = 0; i < Shape.Rank; i++)
-            {
-                index += Indices[i] * stride;
-                stride *= Shape[i].Size;
-            }
-            return index;
-        }
 
         public override string ToString() => $"[{string.Join(", ", Indices)}]";
     }

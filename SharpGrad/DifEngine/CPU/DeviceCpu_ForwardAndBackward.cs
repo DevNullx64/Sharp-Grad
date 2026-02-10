@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
@@ -67,11 +69,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                             ExecuteBinaryForward(binaryNode.Kind, binaryNode.Left, binaryNode.Right, node);
                             break;
                         case IGraphNodeReduction<Value> reductionNode:
-                            Dimension[] dimensions = reductionNode.Dimensions;
-                            for (int d = dimensions.Length - 1; d >= 0; d--)
-                            {
-                                ExecuteReductionForward(reductionNode.Kind, reductionNode.Operand, node, dimensions[d]);
-                            }
+                            ExecuteReductionForward(reductionNode.Kind, reductionNode.Operand, node, reductionNode.Dimensions);
                             break;
                         case IFunctionGraphNode<Value> functionNode:
                             throw new NotImplementedException($"Computation for GraphNodeKind {node.Kind} is not implemented.");
@@ -96,11 +94,36 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 return;
             }
+
+            InitializeRootGradient(root);
+
             Value[][] dfs = root.GetParallelSubgraphsDFS(n => n.Kind.IsReduction());
             for (int i = dfs.Length - 1; i >= 0; i--)
             {
                 BackwardDFS(dfs[i]);
             }
+        }
+
+        private void InitializeRootGradient(Value root)
+        {
+            Type elementType = root.ElementType;
+            MethodInfo? method = FindGenericMethod(
+                typeof(DeviceCpu),
+                nameof(InitializeRootGradient),
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            if (method is null)
+            {
+                throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(InitializeRootGradient)} not found.");
+            }
+            MethodInfo? generic = method.MakeGenericMethod(elementType);
+            generic.Invoke(this, [root]);
+        }
+
+        private void InitializeRootGradient<TGrad>(Value root)
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+        {
+            DataBuffer<TGrad> grad = root.GetOrInitializeGradBuffer<TGrad>();
+            grad.Fill(TGrad.One);
         }
 
         /// <summary>

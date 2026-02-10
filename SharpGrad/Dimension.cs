@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace SharpGrad
 {
@@ -14,8 +15,17 @@ namespace SharpGrad
             _index = index;
         }
 
-        public readonly string Name => DimensionsPool.GetName(_index);
-        public readonly int Size => DimensionsPool.GetSize(_index);
+        public readonly string Name
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => DimensionsPool.GetName(_index);
+        }
+
+        public readonly int Size
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => DimensionsPool.GetSize(_index);
+        }
 
         public Dimension(string name)
         {

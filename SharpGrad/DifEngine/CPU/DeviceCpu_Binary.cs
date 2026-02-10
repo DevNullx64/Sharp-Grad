@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -14,109 +16,67 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             (KindBinary kind, Type Type),
             Action<KindBinary, Value, Value, Value>> cacheExecuteBinaryForwards = [];
 
-        /// <summary>
-        /// Executes the forward pass of a binary operation on the given left and right inputs and stores the result in the given output.
-        /// </summary>
-        /// <param name="kind">The kind of binary operation to execute.</param>
-        /// <param name="left">The left input Value.</param>
-        /// <param name="right">The right input Value.</param>
-        /// <param name="output">The output Value.</param>
-        /// <remarks>
-        /// This method uses caching to optimize the execution of the forward pass for different element types.
-        /// </remarks>
-        /// <exception cref="InvalidOperationException">Thrown if the <see cref="DeviceCpu.ExecuteBinaryForward"/> method is not found.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteBinaryForward(KindBinary kind, Value left, Value right, Value output)
         {
-            // Check if a cached delegate exists for the operation kind and element type
             Type elementType = output.ElementType;
             if (!cacheExecuteBinaryForwards.TryGetValue((kind, elementType), out Action<KindBinary, Value, Value, Value>? action))
             {
-                // Get the MethodInfo for the instance method ExecuteBinaryForward<elementType>(BinaryKind, Value, Value, Value)
                 MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryForward),
                     1,
                     typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
                     ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryForward)} not found.");
                 method = method.MakeGenericMethod(elementType);
-                // Create a delegate for the method using the current instance
                 action = method.CreateDelegate<Action<KindBinary, Value, Value, Value>>(this);
-                // Cache the delegate for future use
                 cacheExecuteBinaryForwards[(kind, elementType)] = action;
             }
-            // Call the generic ExecuteBinaryForward<T> method
             action(kind, left, right, output);
         }
 
-        /// <summary>
-        /// Executes the forward pass of a binary operation for given left and right inputs and stores the result in the given output.
-        /// </summary>
-        /// <typeparam name="TType">The type of the elements in the left, right, and output Values. Must be a struct that implements <see cref="INumber{T}"/>.</typeparam>
-        /// <param name="kind">The kind of binary operation to execute.</param>
-        /// <param name="untypedLeft">The left input <see cref="Value"/>.</param>
-        /// <param name="untypedRight">The right input <see cref="Value"/>.</param>
-        /// <param name="untypedOutput">The output <see cref="Value"/>.</param>
-        /// <remarks>
-        /// <paramref name="untypedLeft"/>, <paramref name="untypedRight"/>, and <paramref name="untypedOutput"/> must be of type <see cref="Value{T}"/>.
-        /// </remarks>
-        /// <exception cref="InvalidCastException">Thrown if the inputs or output are not of type <see cref="Value{T}"/>.</exception>
-        /// <exception cref="InvalidOperationException">Thrown if the <see cref="BinaryOperations"/>."[<see cref="KindBinary"/>]Forward" method is not found.</exception>
         private void ExecuteBinaryForward<TType>(KindBinary kind, Value untypedLeft, Value untypedRight, Value untypedOutput)
             where TType : struct, INumber<TType>
         {
-            // Throw an exception if the inputs and output are not of the expected type
-            TType[] left = untypedLeft.GetInitializedData<TType>();
-            TType[] right = untypedRight.GetInitializedData<TType>();
-            TType[] output = untypedOutput.GetOrInitializeData<TType>();
+            untypedOutput.InitializeData();
 
-            // Get the appropriate method for the binary operation
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(kind);
 
-            // Perform the binary operation
             Shape leftShape = untypedLeft.Shape;
             Shape rightShape = untypedRight.Shape;
             Shape outputShape = untypedOutput.Shape;
-            int length = output.Length;
+            int length = outputShape.Size;
+            
             if (leftShape == rightShape)
             {
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> output = untypedOutput.GetInitializedData<TType>();
+
+                    for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                     {
                         output[iOutput] = operation(left[iOutput], right[iOutput]);
                     }
-                }
-                else
-                {
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
-                    {
-                        output[iOutput] = operation(left[iOutput], right[iOutput]);
-                    });
-                }
+                });
             }
             else
             {
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> output = untypedOutput.GetInitializedData<TType>();
+
+                    for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                     {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape, true);
+                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape, true);
                         output[iOutput] = operation(left[iLeft], right[iRight]);
                     }
-                }
-                else
-                {
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
-                    {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
-                        output[iOutput] = operation(left[iLeft], right[iRight]);
-                    });
-                }
+                });
             }
         }
-
 
         // Cache for the ExecuteBinaryBackward delegates
         private readonly Dictionary<
@@ -129,17 +89,6 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             (KindBinary kind, Type Value, Type Gradient),
             Action<KindBinary, Value, Value, Value>> cacheExecuteBinaryBackwardLeftAndRightDelegates = [];
 
-        /// <summary>
-        /// Executes the backward pass of a binary operation on the given left and right inputs and output Value.
-        /// </summary>
-        /// <param name="kind">The kind of binary operation to execute backward pass for.</param>
-        /// <param name="left">The left input <see cref="Value"/>.</param>
-        /// <param name="right">The right input <see cref="Value"/>.</param>
-        /// <param name="output">The output <see cref="Value"/>.</param>
-        /// <remarks>
-        /// This method uses caching to optimize the execution of the backward pass for different combinations of element types and gradient types.
-        /// </remarks>
-        /// <exception cref="InvalidOperationException">Thrown if the <see cref="DeviceCpu.ExecuteBinaryBackward"/> method is not found.</exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteBinaryBackward(KindBinary kind, Value left, Value right, Value output)
         {
@@ -160,28 +109,21 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteBinaryBackwardLeftOnly(KindBinary kind, Value left, Value right, Value output)
         {
-            // Check if a cached delegate exists for the operation kind and types
             Type valueType = output.ElementType;
             Type gradientType = output.Grad.ElementType;
             (KindBinary, Type, Type) key = (kind, valueType, gradientType);
 
             if (!cacheExecuteBinaryBackwardLeftOnlyDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
-                // Get the MethodInfo for the instance method ExecuteBinaryBackwardLeftOnly<valueType, gradientType>(BinaryKind, Value, Value, Value)
                 MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardLeftOnly),
                     2,
                     typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
                     ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftOnly)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
-
-                // Create a delegate for the method using the current instance
                 action = method.CreateDelegate<Action<KindBinary, Value, Value, Value>>(this);
-
-                // Cache the delegate for future use
                 cacheExecuteBinaryBackwardLeftOnlyDelegates[key] = action;
             }
-            // Call the generic ExecuteBinaryBackwardLeftOnly<T, G> method
             action(kind, left, right, output);
         }
 
@@ -189,183 +131,87 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            TType[] left = untypedLeft.GetInitializedData<TType>();
-            TGrad[] leftGrad = untypedLeft.GetOrInitializeGrad<TGrad>();
-            TType[] right = untypedRight.GetInitializedData<TType>();
-            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+            untypedLeft.InitializeGrad<TGrad>();
 
             Func<TType, TType, TGrad, TGrad> func = BinaryOperations.GetKindBackwardLeftDelegate<TType, TGrad>(kind);
 
-            int length = outputGrad.Length;
             Shape leftShape = untypedLeft.Shape;
             Shape rightShape = untypedRight.Shape;
             Shape outputShape = untypedOutput.Shape;
-            
+            int length = untypedOutput.Shape.Size;
+
             if (leftShape == rightShape)
             {
-                // No broadcasting: direct accumulation
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        leftGrad[i] += func(left[i], right[i], outputGrad[i]);
                     }
-                }
-                else
+                });
+            }
+            else if (leftShape == outputShape)
+            {
+                ParallelFor(0, length, range =>
                 {
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+                    
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        leftGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                    });
-                }
+                        int iRight = rightShape.GetLinearIndex(i, outputShape, true);
+                        leftGrad[i] += func(left[i], right[iRight], outputGrad[i]);
+                    }
+                });
             }
             else
             {
-                // Broadcasting required: dimension-by-dimension reduction
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                TGrad[] toReduceLeftGrad = new TGrad[length];
+
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = toReduceLeftGrad;
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
-                        TGrad grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        leftGrad[iLeft] += grad;
+                        int iLeft = leftShape.GetLinearIndex(i, outputShape, true);
+                        int iRight = rightShape.GetLinearIndex(i, outputShape, true);
+                        leftGrad[i] += func(left[iLeft], right[iRight], outputGrad[i]);
                     }
-                }
-                else
-                {
-                    // Calculate gradients into temporary buffer
-                    TGrad[] tempGrad = new TGrad[length];
-                    
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
-                    {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
-                        tempGrad[iOutput] = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                    });
-                    
-                    // Reduce dimension by dimension
-                    ReduceBroadcastedGradient(tempGrad, outputShape, leftGrad, leftShape);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Reduces broadcasted gradient by accumulating over dimensions present in source but not in dest.
-        /// Uses dimension-by-dimension reduction with temporary buffers for optimal performance.
-        /// </summary>
-        private void ReduceBroadcastedGradient<TGrad>(TGrad[] sourceGrad, Shape sourceShape, TGrad[] destGrad, Shape destShape)
-            where TGrad : struct, IFloatingPointIeee754<TGrad>
-        {
-            List<Dimension> dimsToReduce = [];
-
-            for (int iSource = 0; iSource < sourceShape.Rank; iSource++)
-            {
-                Dimension sourceDim = sourceShape[iSource];
-                if (destShape.IndexOf(sourceDim) < 0)
-                {
-                    dimsToReduce.Add(sourceDim);
-                }
-            }
-
-            if (dimsToReduce.Count == 0)
-            {
-                Parallel.For(0, Math.Min(sourceGrad.Length, destGrad.Length), _parallelOptions, i =>
-                {
-                    destGrad[i] += sourceGrad[i];
                 });
-                return;
-            }
 
-            TGrad[] currentSource = sourceGrad;
-            Shape currentShape = sourceShape;
-
-            for (int dimIdx = dimsToReduce.Count - 1; dimIdx >= 0; dimIdx--)
-            {
-                Dimension dim = dimsToReduce[dimIdx];
-                int dimIndexInShape = currentShape.IndexOf(dim);
-                int dimSize = dim.Size;
-                int dimStride = currentShape.GetStride(dimIndexInShape);
-                Shape reducedShape = currentShape.Remove(dim);
-                int reducedLength = currentSource.Length / dimSize;
-                bool isFinal = dimIdx == 0;
-                TGrad[] currentDest = isFinal ? destGrad : new TGrad[reducedLength];
-
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
-                {
-                    for (int iDest = reducedLength - 1; iDest >= 0; iDest--)
-                    {
-                        int iSourceBase = Shape.GetLinearIndex(iDest, reducedShape, currentShape);
-                        TGrad accumulator = TGrad.Zero;
-                        int iSourceEnd = iSourceBase + dimSize * dimStride;
-                        for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
-                        {
-                            accumulator += currentSource[iSource];
-                        }
-
-                        if (isFinal)
-                        {
-                            currentDest[iDest] += accumulator;
-                        }
-                        else
-                        {
-                            currentDest[iDest] = accumulator;
-                        }
-                    }
-                }
-                else
-                {
-                    Parallel.For(0, reducedLength, _parallelOptions, iDest =>
-                    {
-                        int iSourceBase = Shape.GetLinearIndex(iDest, reducedShape, currentShape);
-                        TGrad accumulator = TGrad.Zero;
-                        int iSourceEnd = iSourceBase + dimSize * dimStride;
-                        for (int iSource = iSourceBase; iSource < iSourceEnd; iSource += dimStride)
-                        {
-                            accumulator += currentSource[iSource];
-                        }
-
-                        if (isFinal)
-                        {
-                            currentDest[iDest] += accumulator;
-                        }
-                        else
-                        {
-                            currentDest[iDest] = accumulator;
-                        }
-                    });
-                }
-
-                currentSource = currentDest;
-                currentShape = reducedShape;
+                ReduceBroadcastedGradientToShape(toReduceLeftGrad, outputShape, leftShape, untypedLeft);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteBinaryBackwardRightOnly(KindBinary kind, Value left, Value right, Value output)
         {
-            // Check if a cached delegate exists for the operation kind and types
             Type valueType = output.ElementType;
             Type gradientType = output.Grad.ElementType;
             (KindBinary, Type, Type) key = (kind, valueType, gradientType);
 
             if (!cacheExecuteBinaryBackwardRightOnlyDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
-                // Get the MethodInfo for the instance method ExecuteBinaryBackwardRightOnly<valueType, gradientType>(BinaryKind, Value, Value, Value)
                 MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardRightOnly),
                     2,
                     typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
                     ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardRightOnly)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
-
-                // Create a delegate for the method using the current instance
                 action = method.CreateDelegate<Action<KindBinary, Value, Value, Value>>(this);
-
-                // Cache the delegate for future use
                 cacheExecuteBinaryBackwardRightOnlyDelegates[key] = action;
             }
-            // Call the generic ExecuteBinaryBackwardRightOnly<T, G> method
             action(kind, left, right, output);
         }
 
@@ -373,91 +219,87 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            TType[] left = untypedLeft.GetInitializedData<TType>();
-            TType[] right = untypedRight.GetInitializedData<TType>();
-            TGrad[] rightGrad = untypedRight.GetOrInitializeGrad<TGrad>();
-            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+            untypedRight.InitializeGrad<TGrad>();
 
             Func<TType, TType, TGrad, TGrad> func = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(kind);
 
-            int length = outputGrad.Length;
             Shape leftShape = untypedLeft.Shape;
             Shape rightShape = untypedRight.Shape;
             Shape outputShape = untypedOutput.Shape;
-            
+            int length = outputShape.Size;
+
             if (leftShape == rightShape)
             {
-                // No broadcasting: direct accumulation
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
+                        rightGrad[i] += func(left[i], right[i], outputGrad[i]);
                     }
-                }
-                else
+                });
+            }
+            else if (rightShape == outputShape)
+            {
+                ParallelFor(0, length, range =>
                 {
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        rightGrad[iOutput] += func(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                    });
-                }
+                        int iLeft = leftShape.GetLinearIndex(i, outputShape, true);
+                        rightGrad[i] += func(left[iLeft], right[i], outputGrad[i]);
+                    }
+                });
             }
             else
             {
-                // Broadcasting required
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                TGrad[] toReduceRightGrad = new TGrad[length];
+
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = toReduceRightGrad;
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
-                        TGrad grad = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        rightGrad[iRight] += grad;
+                        int iLeft = leftShape.GetLinearIndex(i, outputShape, true);
+                        int iRight = rightShape.GetLinearIndex(i, outputShape, true);
+                        rightGrad[i] += func(left[iLeft], right[iRight], outputGrad[i]);
                     }
-                }
-                else
-                {
-                    TGrad[] rightGradTemp = new TGrad[length];
+                });
 
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
-                    {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
-                        rightGradTemp[iOutput] = func(left[iLeft], right[iRight], outputGrad[iOutput]);
-                    });
-
-                    // Use shared reduction method
-                    ReduceBroadcastedGradient(rightGradTemp, outputShape, rightGrad, rightShape);
-                }
+                ReduceBroadcastedGradientToShape(toReduceRightGrad, outputShape, rightShape, untypedRight);
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ExecuteBinaryBackwardLeftAndRight(KindBinary kind, Value left, Value right, Value output)
         {
-            // Check if a cached delegate exists for the operation kind and types
             Type valueType = output.ElementType;
             Type gradientType = output.Grad.ElementType;
             (KindBinary, Type, Type) key = (kind, valueType, gradientType);
 
             if (!cacheExecuteBinaryBackwardLeftAndRightDelegates.TryGetValue(key, out Action<KindBinary, Value, Value, Value>? action))
             {
-                // Get the MethodInfo for the instance method ExecuteBinaryBackwardLeftAndRight<valueType, gradientType>(BinaryKind, Value, Value, Value)
                 MethodInfo method = GetGenericMethod(
                     nameof(ExecuteBinaryBackwardLeftAndRight),
                     2,
                     typeof(KindBinary), typeof(Value), typeof(Value), typeof(Value))
                     ?? throw new InvalidOperationException($"Method {nameof(DeviceCpu)}.{nameof(ExecuteBinaryBackwardLeftAndRight)} not found.");
                 method = method.MakeGenericMethod(valueType, gradientType);
-
-                // Create a delegate for the method using the current instance
                 action = method.CreateDelegate<Action<KindBinary, Value, Value, Value>>(this);
-
-                // Cache the delegate for future use
                 cacheExecuteBinaryBackwardLeftAndRightDelegates[key] = action;
             }
-            // Call the generic ExecuteBinaryBackwardLeftAndRight<T, G> method
             action(kind, left, right, output);
         }
 
@@ -465,105 +307,94 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            TType[] left = untypedLeft.GetInitializedData<TType>();
-            TGrad[] leftGrad = untypedLeft.GetOrInitializeGrad<TGrad>();
-            TType[] right = untypedRight.GetInitializedData<TType>();
-            TGrad[] rightGrad = untypedRight.GetOrInitializeGrad<TGrad>();
-            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+            untypedLeft.InitializeGrad<TGrad>();
+            untypedRight.InitializeGrad<TGrad>();
 
             Func<TType, TType, TGrad, TGrad> funcLeft = BinaryOperations.GetKindBackwardLeftDelegate<TType, TGrad>(kind);
             Func<TType, TType, TGrad, TGrad> funcRight = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(kind);
 
-            int length = outputGrad.Length;
             Shape leftShape = untypedLeft.Shape;
             Shape rightShape = untypedRight.Shape;
             Shape outputShape = untypedOutput.Shape;
-            
+            int length = outputShape.Size;
+
             if (leftShape == rightShape)
             {
-                // No broadcasting: direct accumulation
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
+                ParallelFor(0, length, range =>
                 {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        TGrad gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        TGrad gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        leftGrad[iOutput] += gradLeft;
-                        rightGrad[iOutput] += gradRight;
+                        leftGrad[i] += funcLeft(left[i], right[i], outputGrad[i]);
+                        rightGrad[i] += funcRight(left[i], right[i], outputGrad[i]);
                     }
-                }
-                else
+                });
+            }
+            else if (leftShape == outputShape)
+            {
+                ParallelFor(0, length, range =>
                 {
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        TGrad gradLeft = funcLeft(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        TGrad gradRight = funcRight(left[iOutput], right[iOutput], outputGrad[iOutput]);
-                        leftGrad[iOutput] += gradLeft;
-                        rightGrad[iOutput] += gradRight;
-                    });
-                }
+                        int iRight = rightShape.GetLinearIndex(i, outputShape, true);
+                        leftGrad[i] += funcLeft(left[i], right[iRight], outputGrad[i]);
+                        rightGrad[iRight] += funcRight(left[i], right[iRight], outputGrad[i]);
+                    }
+                });
+            }
+            else if (rightShape == outputShape)
+            {
+                ParallelFor(0, length, range =>
+                {
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                    for (int i = range.Item1; i < range.Item2; i++)
+                    {
+                        int iLeft = leftShape.GetLinearIndex(i, outputShape, true);
+                        leftGrad[iLeft] += funcLeft(left[iLeft], right[i], outputGrad[i]);
+                        rightGrad[i] += funcRight(left[iLeft], right[i], outputGrad[i]);
+                    }
+                });
             }
             else
             {
-                bool leftNeedsBroadcast = leftShape != outputShape;
-                bool rightNeedsBroadcast = rightShape != outputShape;
-                
-                if (_parallelOptions.MaxDegreeOfParallelism == 1)
-                {
-                    for (int iOutput = length - 1; iOutput >= 0; iOutput--)
-                    {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                TGrad[] toReduceLeftGrad = new TGrad[length];
+                TGrad[] toReduceRightGrad = new TGrad[length];
 
-                        TGrad gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        TGrad gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        leftGrad[iLeft] += gradLeft;
-                        rightGrad[iRight] += gradRight;
-                    }
-                }
-                else
+                ParallelFor(0, length, range =>
                 {
-                    TGrad[] leftGradTemp = new TGrad[length];
-                    TGrad[] rightGradTemp = new TGrad[length];
-                    
-                    Parallel.For(0, length, _parallelOptions, iOutput =>
-                    {
-                        int iLeft = leftShape.GetLinearIndex(iOutput, outputShape);
-                        int iRight = rightShape.GetLinearIndex(iOutput, outputShape);
+                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TGrad> leftGrad = toReduceLeftGrad;
+                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TGrad> rightGrad = toReduceRightGrad;
+                    Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
-                        TGrad gradLeft = funcLeft(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        TGrad gradRight = funcRight(left[iLeft], right[iRight], outputGrad[iOutput]);
-                        leftGradTemp[iOutput] = gradLeft;
-                        rightGradTemp[iOutput] = gradRight;
-                    });
-                    
-                    // Use shared reduction method for both gradients
-                    if (leftNeedsBroadcast)
+                    for (int i = range.Item1; i < range.Item2; i++)
                     {
-                        ReduceBroadcastedGradient(leftGradTemp, outputShape, leftGrad, leftShape);
+                        int iLeft = leftShape.GetLinearIndex(i, outputShape, true);
+                        int iRight = rightShape.GetLinearIndex(i, outputShape, true);
+                        leftGrad[i] += funcLeft(left[iLeft], right[iRight], outputGrad[i]);
+                        rightGrad[i] += funcRight(left[iLeft], right[iRight], outputGrad[i]);
                     }
-                    else
-                    {
-                        // Direct 1-to-1 mapping
-                        Parallel.For(0, leftGrad.Length, _parallelOptions, iLeft =>
-                        {
-                            leftGrad[iLeft] += leftGradTemp[iLeft];
-                        });
-                    }
-                    
-                    if (rightNeedsBroadcast)
-                    {
-                        ReduceBroadcastedGradient(rightGradTemp, outputShape, rightGrad, rightShape);
-                    }
-                    else
-                    {
-                        // Direct 1-to-1 mapping
-                        Parallel.For(0, rightGrad.Length, _parallelOptions, iRight =>
-                        {
-                            rightGrad[iRight] += rightGradTemp[iRight];
-                        });
-                    }
-                }
+                });
+
+                ReduceBroadcastedGradientToShape(toReduceLeftGrad, outputShape, leftShape, untypedLeft);
+                ReduceBroadcastedGradientToShape(toReduceRightGrad, outputShape, rightShape, untypedRight);
             }
         }
     }

@@ -12,6 +12,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         private static readonly Dictionary<
             (KindBinary kind, Type Type),
             MethodInfo> cacheBinaryKindForwardMethodInfos = [];
+        private static readonly object ForwardCacheLock = new();
 
         /// <summary>
         /// Gets the MethodInfo for the forward binary operation corresponding to the given KindBinary and type TType.
@@ -25,11 +26,17 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         {
             if (!cacheBinaryKindForwardMethodInfos.TryGetValue((kind, typeof(TType)), out MethodInfo? method))
             {
-                string methodName = $"{kind}Forward";
-                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
-                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = genericMethod.MakeGenericMethod(typeof(TType));
-                cacheBinaryKindForwardMethodInfos[(kind, typeof(TType))] = method;
+                lock (ForwardCacheLock)
+                {
+                    if (!cacheBinaryKindForwardMethodInfos.TryGetValue((kind, typeof(TType)), out method))
+                    {
+                        String methodName = $"{kind}Forward";
+                        MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                            ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                        method = genericMethod.MakeGenericMethod(typeof(TType));
+                        cacheBinaryKindForwardMethodInfos[(kind, typeof(TType))] = method;
+                    }
+                }
             }
             return method;
         }
@@ -45,6 +52,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         private static readonly Dictionary<
             (KindBinary kind, Type Value, Type Gradient),
             MethodInfo> cacheBinaryKindBackwardLeftMethodInfos = [];
+        private static readonly object BackwardLeftCacheLock = new();
 
         /// <summary>
         /// Gets the MethodInfo for the backward binary operation corresponding to the given KindBinary, value type TValue, and gradient type TGradient.
@@ -60,11 +68,17 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         {
             if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
-                string methodName = $"{kind}BackwardLeft";
-                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
-                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = genericMethod.MakeGenericMethod(typeof(TValue));
-                cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                lock (BackwardLeftCacheLock)
+                {
+                    if (!cacheBinaryKindBackwardLeftMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out method))
+                    {
+                        String methodName = $"{kind}BackwardLeft";
+                        MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                            ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                        method = genericMethod.MakeGenericMethod(typeof(TValue), typeof(TGradient));
+                        cacheBinaryKindBackwardLeftMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                    }
+                }
             }
             return method;
         }
@@ -81,6 +95,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         private static readonly Dictionary<
             (KindBinary kind, Type Value, Type Gradient),
             MethodInfo> cacheBinaryKindBackwardRightMethodInfos = [];
+        private static readonly object BackwardRightCacheLock = new();
 
         /// <summary>
         /// Gets the MethodInfo for the backward binary operation corresponding to the given KindBinary, value type TValue, and gradient type TGradient.
@@ -96,11 +111,17 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
         {
             if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out MethodInfo? method))
             {
-                string methodName = $"{kind}BackwardRight";
-                MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
-                    ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
-                method = genericMethod.MakeGenericMethod(typeof(TValue));
-                cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                lock (BackwardRightCacheLock)
+                {
+                    if (!cacheBinaryKindBackwardRightMethodInfos.TryGetValue((kind, typeof(TValue), typeof(TGradient)), out method))
+                    {
+                        String methodName = $"{kind}BackwardRight";
+                        MethodInfo genericMethod = CPU.DeviceCpu.FindGenericMethod(typeof(BinaryOperations), methodName)
+                            ?? throw new InvalidOperationException($"Method {nameof(BinaryOperations)}.{methodName} not found.");
+                        method = genericMethod.MakeGenericMethod(typeof(TValue), typeof(TGradient));
+                        cacheBinaryKindBackwardRightMethodInfos[(kind, typeof(TValue), typeof(TGradient))] = method;
+                    }
+                }
             }
             return method;
         }
@@ -119,12 +140,14 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             where T : INumber<T>
             => left + right;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T AddBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
+        public static TGrad AddBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => gradOutput;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T AddBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
+        public static TGrad AddBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => gradOutput;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -132,12 +155,14 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             where T : INumber<T>
             => left - right;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T SubtractBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
+        public static TGrad SubtractBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => gradOutput;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T SubtractBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
+        public static TGrad SubtractBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => -gradOutput;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -145,74 +170,99 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             where T : INumber<T>
             => left * right;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MultiplyBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
-            => right * gradOutput;
+        public static TGrad MultiplyBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => TGrad.CreateTruncating(right) * gradOutput;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MultiplyBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
-            => left * gradOutput;
+        public static TGrad MultiplyBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => TGrad.CreateTruncating(left) * gradOutput;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T DivideForward<T>(T left, T right)
             where T : INumber<T>
             => left / right;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T DivideBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
-            => gradOutput / right;
+        public static TGrad DivideBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => gradOutput / TGrad.CreateTruncating(right);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T DivideBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
-            => -left * gradOutput / (right * right);
+        public static TGrad DivideBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => -TGrad.CreateTruncating(left) * gradOutput / (TGrad.CreateTruncating(right) * TGrad.CreateTruncating(right));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T PowForward<T>(T left, T right)
             where T : INumber<T>, IPowerFunctions<T>
             => T.Pow(left, right);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T PowBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IPowerFunctions<T>
-            => right * T.Pow(left, right - T.One) * gradOutput;
+        public static TGrad PowBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IPowerFunctions<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>, IPowerFunctions<TGrad>
+            => TGrad.CreateTruncating(right) * TGrad.Pow(TGrad.CreateTruncating(left), TGrad.CreateTruncating(right) - TGrad.One) * gradOutput;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T PowBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IPowerFunctions<T>, ILogarithmicFunctions<T>
-            => T.Log(left) * T.Pow(left, right) * gradOutput;
+        public static TGrad PowBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IPowerFunctions<TValue>, ILogarithmicFunctions<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>, IPowerFunctions<TGrad>, ILogarithmicFunctions<TGrad>
+            => TGrad.Log(TGrad.CreateTruncating(left)) * TGrad.Pow(TGrad.CreateTruncating(left), TGrad.CreateTruncating(right)) * gradOutput;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T PowerForward<T>(T left, T right)
+            where T : INumber<T>, IPowerFunctions<T>
+            => PowForward(left, right);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TGrad PowerBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IPowerFunctions<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>, IPowerFunctions<TGrad>
+            => PowBackwardLeft(left, right, gradOutput);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static TGrad PowerBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IPowerFunctions<TValue>, ILogarithmicFunctions<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>, IPowerFunctions<TGrad>, ILogarithmicFunctions<TGrad>
+            => PowBackwardRight(left, right, gradOutput);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T ModuloForward<T>(T left, T right)
             where T : INumber<T>
             => left % right;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T ModuloBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
+        public static TGrad ModuloBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => gradOutput;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T ModuloBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>
-            => -(left / right) * gradOutput;
+        public static TGrad ModuloBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
+            => -(TGrad.CreateTruncating(left) / TGrad.CreateTruncating(right)) * gradOutput;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T MaxForward<T>(T left, T right)
             where T : INumber<T>
             => T.Max(left, right);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MaxBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IComparable<T>
+        public static TGrad MaxBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IComparable<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => left.CompareTo(right) switch
                 {
-                    < 0 => T.CreateTruncating(T.Zero),
-                    > 0 => T.CreateTruncating(gradOutput),
-                    _ => T.CreateTruncating(gradOutput / T.CreateChecked(2)),
+                    < 0 => TGrad.Zero,
+                    > 0 => gradOutput,
+                    _ => gradOutput / TGrad.CreateTruncating(2),
                 };
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MaxBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IComparable<T>
+        public static TGrad MaxBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IComparable<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => left.CompareTo(right) switch
                 {
-                    < 0 => T.CreateTruncating(gradOutput),
-                    > 0 => T.CreateTruncating(T.Zero),
-                    _ => T.CreateTruncating(gradOutput / T.CreateChecked(2)),
+                    < 0 => gradOutput,
+                    > 0 => TGrad.Zero,
+                    _ => gradOutput / TGrad.CreateTruncating(2),
                 };
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -220,22 +270,24 @@ namespace SharpGrad.DifEngine.SyntaxBuilder
             where T : INumber<T>
             => T.Min(left, right);
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MinBackwardLeft<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IComparable<T>
+        public static TGrad MinBackwardLeft<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IComparable<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => left.CompareTo(right) switch
                 {
-                    < 0 => T.CreateTruncating(gradOutput),
-                    > 0 => T.CreateTruncating(T.Zero),
-                    _ => T.CreateTruncating(gradOutput / T.CreateChecked(2)),
+                    < 0 => gradOutput,
+                    > 0 => TGrad.Zero,
+                    _ => gradOutput / TGrad.CreateTruncating(2),
                 };
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T MinBackwardRight<T>(T left, T right, T gradOutput)
-            where T : INumber<T>, IComparable<T>
+        public static TGrad MinBackwardRight<TValue, TGrad>(TValue left, TValue right, TGrad gradOutput)
+            where TValue : struct, INumber<TValue>, IComparable<TValue>
+            where TGrad : struct, IFloatingPointIeee754<TGrad>
             => left.CompareTo(right) switch
             {
-                < 0 => T.CreateTruncating(T.Zero),
-                > 0 => T.CreateTruncating(gradOutput),
-                _ => T.CreateTruncating(gradOutput / T.CreateChecked(2)),
+                < 0 => TGrad.Zero,
+                > 0 => gradOutput,
+                _ => gradOutput / TGrad.CreateTruncating(2),
             };
     }
 }

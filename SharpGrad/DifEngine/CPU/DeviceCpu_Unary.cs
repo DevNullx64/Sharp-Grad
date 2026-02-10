@@ -62,27 +62,22 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteUnaryForward<TType>(Value untypedInput, Value untypedOutput)
             where TType : struct, INumber<TType>
         {
-            TType[] input = untypedInput.GetInitializedData<TType>();
-            TType[] output = untypedOutput.GetOrInitializeData<TType>();
+            untypedOutput.InitializeData();
 
-            // Get the appropriate method for the unary operation
             Func<TType, TType> operation = UnaryOperations.GetKindForwardDelegate<TType>(untypedOutput.Kind);
 
-            // Perform the unary operation
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            int length = untypedInput.Shape.Size;
+            
+            ParallelFor(0, length, range =>
             {
-                for (int iOutput = input.Length - 1; iOutput >= 0; iOutput--)
+                Span<TType> input = untypedInput.GetInitializedData<TType>();
+                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+
+                for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
                     output[iOutput] = operation(input[iOutput]);
                 }
-            }
-            else
-            {
-                Parallel.For(0, input.Length, _parallelOptions, iOutput =>
-                {
-                    output[iOutput] = operation(input[iOutput]);
-                });
-            }
+            });
         }
 
         // Cache for the ExecuteCastForward delegates
@@ -139,23 +134,20 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TFrom : struct, INumber<TFrom>
             where TTo : struct, INumber<TTo>
         {
-            TFrom[] input = untypedInput.GetInitializedData<TFrom>();
-            TTo[] output = untypedOutput.GetOrInitializeData<TTo>();
+            untypedOutput.InitializeData();
 
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            int length = untypedInput.Shape.Size;
+
+            ParallelFor(0, length, range =>
             {
-                for (int iOutput = output.Length - 1; iOutput >= 0; iOutput--)
+                Span<TFrom> input = untypedInput.GetInitializedData<TFrom>();
+                Span<TTo> output = untypedOutput.GetInitializedData<TTo>();
+
+                for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
                     output[iOutput] = UnaryOperations.CastForward<TFrom, TTo>(input[iOutput]);
                 }
-            }
-            else
-            {
-                Parallel.For(0, output.Length, _parallelOptions, iOutput =>
-                {
-                    output[iOutput] = UnaryOperations.CastForward<TFrom, TTo>(input[iOutput]);
-                });
-            }
+            });
         }
 
         // Cache for the ExecuteUnaryBackward delegates
@@ -212,28 +204,24 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             where TType : struct, INumber<TType>
             where TGrad : struct, IFloatingPointIeee754<TGrad>
         {
-            TType[] input = untypedInput.GetInitializedData<TType>();
-            TGrad[] gradInput = untypedInput.GetOrInitializeGrad<TGrad>();
-            TType[] output = untypedOutput.GetInitializedData<TType>();
-            TGrad[] gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
+            untypedInput.InitializeGrad<TGrad>();
 
-            // Create a delegate for the method
             Func<TType, TType, TGrad, TGrad> func = UnaryOperations.GetKindBackwardDelegate<TType, TGrad>(untypedOutput.Kind);
 
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            int length = untypedOutput.Shape.Size;
+
+            ParallelFor(0, length, range =>
             {
-                for (int iOutput = gradOutput.Length - 1; iOutput >= 0; iOutput--)
+                Span<TType> input = untypedInput.GetInitializedData<TType>();
+                Span<TGrad> gradInput = untypedInput.GetInitializedGrad<TGrad>();
+                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                Span<TGrad> gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
+
+                for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
                     gradInput[iOutput] += func(input[iOutput], output[iOutput], gradOutput[iOutput]);
                 }
-            }
-            else
-            {
-                Parallel.For(0, gradOutput.Length, _parallelOptions, iOutput =>
-                {
-                    gradInput[iOutput] += func(input[iOutput], output[iOutput], gradOutput[iOutput]);
-                });
-            }
+            });
         }
 
         // Cache for the ExecuteCastBackward delegates
@@ -293,25 +281,22 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             if (!untypedInput.IsGradiable)
                 return;
 
-            TFrom[] input = untypedInput.GetInitializedData<TFrom>();
-            TGrad[] inputGrad = untypedInput.GetOrInitializeGrad<TGrad>();
-            TTo[] output = untypedOutput.GetInitializedData<TTo>();
-            TGrad[] outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+            untypedInput.InitializeGrad<TGrad>();
 
-            if (_parallelOptions.MaxDegreeOfParallelism == 1)
+            int length = untypedInput.Shape.Size;
+
+            ParallelFor(0, length, range =>
             {
-                for (int iOutput = input.Length - 1; iOutput >= 0; iOutput--)
+                Span<TFrom> input = untypedInput.GetInitializedData<TFrom>();
+                Span<TGrad> inputGrad = untypedInput.GetInitializedGrad<TGrad>();
+                Span<TTo> output = untypedOutput.GetInitializedData<TTo>();
+                Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
+
+                for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
                     inputGrad[iOutput] += UnaryOperations.CastBackward(input[iOutput], output[iOutput], outputGrad[iOutput]);
                 }
-            }
-            else
-            {
-                Parallel.For(0, input.Length, _parallelOptions, iOutput =>
-                {
-                    inputGrad[iOutput] += UnaryOperations.CastBackward(input[iOutput], output[iOutput], outputGrad[iOutput]);
-                });
-            }
+            });
         }
     }
 }

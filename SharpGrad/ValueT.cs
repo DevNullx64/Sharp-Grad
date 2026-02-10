@@ -55,6 +55,16 @@ namespace SharpGrad
             get => data;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override bool InitializeData()
+        {
+            if (untypedData is DataBuffer<TType> dataBuffer)
+            {
+                return dataBuffer.Initialize();
+            }
+            throw new InvalidOperationException($"Trying to get data type {typeof(TType)}, but it is set to {untypedData.ElementType}.");
+        }
+
         /// <summary>
         /// Gets the initialized data as an array.
         /// </summary>
@@ -63,9 +73,9 @@ namespace SharpGrad
         /// This method is used internally to get the initialized data as an array.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal TType[] GetInitializedData() => data.GetInitializedData();
+        internal Span<TType> GetInitializedData() => data.GetInitializedData();
 
-        internal TType[] GetOrInitializeData() => data.GetOrInitializeData();
+        internal Span<TType> GetOrInitializeData() => data.GetOrInitializeData();
 
         public new IReadOnlyDataBuffer<TType> Grad
         {

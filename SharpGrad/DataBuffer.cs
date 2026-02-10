@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SharpGrad
 {
@@ -92,7 +94,24 @@ namespace SharpGrad
     /// <typeparam name="T">The element type of the array.</typeparam>
     public class DataBuffer<T> : DataBuffer, IDataBuffer<T>
     {
-        internal T[]? flatData;
+        internal Span<T> GetFlatData()
+        {
+            if (internalData is null)
+            {
+                throw new InvalidOperationException("Buffer is not initialized.");
+            }
+            return internalData.Rank switch
+            {
+                1 => MemoryMarshal.CreateSpan(ref ((T[])internalData)[0], internalData.Length),
+                2 => MemoryMarshal.CreateSpan(ref ((T[,])internalData)[0, 0], internalData.Length),
+                3 => MemoryMarshal.CreateSpan(ref ((T[,,])internalData)[0, 0, 0], internalData.Length),
+                4 => MemoryMarshal.CreateSpan(ref ((T[,,,])internalData)[0, 0, 0, 0], internalData.Length),
+                5 => MemoryMarshal.CreateSpan(ref ((T[,,,,])internalData)[0, 0, 0, 0, 0], internalData.Length),
+                6 => MemoryMarshal.CreateSpan(ref ((T[,,,,,])internalData)[0, 0, 0, 0, 0, 0], internalData.Length),
+                7 => MemoryMarshal.CreateSpan(ref ((T[,,,,,,])internalData)[0, 0, 0, 0, 0, 0, 0], internalData.Length),
+                _ => throw new InvalidOperationException($"Unsupported array rank {internalData.Rank}."),
+            };
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DataBuffer{T}"/> class with the specified shape.
@@ -112,9 +131,8 @@ namespace SharpGrad
                 throw new ArgumentException($"The element type of the data {data.GetType().GetElementType()} does not match the specified type {typeof(T)}.");
             }
             Shape.ThrowIfNotCompatible(data, Shape);
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DataBuffer{T}"/> class with the specified data and shape.
@@ -123,7 +141,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -133,7 +151,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -143,7 +161,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -153,7 +171,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,,,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -163,7 +181,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,,,,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -173,7 +191,7 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,,,,,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
         }
 
         /// <summary>
@@ -183,37 +201,68 @@ namespace SharpGrad
         /// <param name="shape">The shape of the array.</param>
         public DataBuffer(T[,,,,,,] data, Shape shape) : base(data, shape)
         {
-            flatData = Unsafe.As<T[]>(data);
+            internalData = data;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="DataBuffer{T}"/> class with the specified data and shape.
+        /// </summary>
+        /// <param name="data">The array data.</param>
+        /// <param name="shape">The shape of the array.</param>
+        public DataBuffer(T[,,,,,,,] data, Shape shape) : base(data, shape)
+        {
+            internalData = data;
         }
 
         public T this[params int[] indices]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => flatData![Shape.GetLinearIndex(indices)];
+            //get => (internalData ?? GetOrInitializeData())[Shape.GetLinearIndex(indices)];
+            get => GetFlatData()[Shape.GetLinearIndex(indices)];
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => flatData![Shape.GetLinearIndex(indices)] = value;
+            set
+            {
+                if(internalData is null)
+                {
+                    throw new InvalidOperationException("Buffer is not initialized.");
+                }
+                GetFlatData()[Shape.GetLinearIndex(indices)] = value;
+            }
         }
 
         public T this[params Index[] indices]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => flatData![Shape.GetLinearIndex(indices)];
+            get => GetFlatData()[Shape.GetLinearIndex(indices)];
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => flatData![Shape.GetLinearIndex(indices)] = value;
+            set
+            {
+                if (internalData is null)
+                {
+                    throw new InvalidOperationException("Buffer is not initialized.");
+                }
+                GetFlatData()[Shape.GetLinearIndex(indices)] = value;
+            }
         }
 
         public T this[Dimdices indices]
         {
-            get => flatData![Shape.GetLinearIndex(indices)];
-            set => flatData![Shape.GetLinearIndex(indices)] = value;
+            get => GetFlatData()[Shape.GetLinearIndex(indices)];
+            set
+            {
+                if (internalData is null)
+                {
+                    throw new InvalidOperationException("Buffer is not initialized.");
+                }
+                GetFlatData()[Shape.GetLinearIndex(indices)] = value;
+            }
         }
 
         protected bool NoLock_Initialize()
         {
             if (internalData is null)
             {
-                internalData = Array.CreateInstance(typeof(T), Shape.Select(d => d.Size).ToArray());
-                flatData = Unsafe.As<T[]>(internalData);
+                internalData = new T[Shape.IsScalar ? 1 : Shape.Size];
                 return true;
             }
             return false;
@@ -248,7 +297,6 @@ namespace SharpGrad
             lock (this)
             {
                 internalData = newData;
-                flatData = Unsafe.As<T[]>(newData);
             }
         }
         public override void SetData(Array newData)
@@ -273,7 +321,7 @@ namespace SharpGrad
             lock (this)
             {
                 NoLock_Initialize();
-                Array.Fill(flatData!, value);
+                GetFlatData().Fill(value);
             }
         }
 
@@ -302,22 +350,21 @@ namespace SharpGrad
         /// Throws an InvalidOperationException if the buffer is not of the expected type or is not initialized.
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal T[] GetInitializedData()
-            => ThrowIfNotInitialized().flatData!;
+        internal Span<T> GetInitializedData()
+            => ThrowIfNotInitialized().GetFlatData();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected override void NoLock_Free()
         {
             base.NoLock_Free();
-            flatData = null;
         }
 
-        internal T[] GetOrInitializeData()
+        internal Span<T> GetOrInitializeData()
         {
             lock (this)
             {
                 NoLock_Initialize();
-                return flatData!;
+                return GetFlatData()!;
             }
         }
 
@@ -328,7 +375,7 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The one-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[](DataBuffer<T> shapedArray) => (T[])shapedArray.internalData!;
+        public static explicit operator Span<T>(DataBuffer<T> shapedArray) => shapedArray.GetFlatData();
 
         /// <summary>
         /// Explicitly converts the shaped array to a two-dimensional array.
@@ -336,7 +383,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The two-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,](DataBuffer<T> shapedArray) => (T[,])shapedArray.internalData!;
+        public static explicit operator T[,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 2D array.");
 
         /// <summary>
         /// Explicitly converts the shaped array to a three-dimensional array.
@@ -344,7 +394,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The three-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,,](DataBuffer<T> shapedArray) => (T[,,])shapedArray.internalData!;
+        public static explicit operator T[,,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 3D array.");
 
         /// <summary>
         /// Explicitly converts the shaped array to a four-dimensional array.
@@ -352,7 +405,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The four-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,,,](DataBuffer<T> shapedArray) => (T[,,,])shapedArray.internalData!;
+        public static explicit operator T[,,,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,,,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 4D array.");
 
         /// <summary>
         /// Explicitly converts the shaped array to a five-dimensional array.
@@ -360,7 +416,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The five-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,,,,](DataBuffer<T> shapedArray) => (T[,,,,])shapedArray.internalData!;
+        public static explicit operator T[,,,,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,,,,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 5D array.");
 
         /// <summary>
         /// Explicitly converts the shaped array to a six-dimensional array.
@@ -368,7 +427,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The six-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,,,,,](DataBuffer<T> shapedArray) => (T[,,,,,])shapedArray.internalData!;
+        public static explicit operator T[,,,,,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,,,,,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 6D array.");
 
         /// <summary>
         /// Explicitly converts the shaped array to a seven-dimensional array.
@@ -376,7 +438,10 @@ namespace SharpGrad
         /// <param name="shapedArray">The shaped array to convert.</param>
         /// <returns>The seven-dimensional array.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static explicit operator T[,,,,,,](DataBuffer<T> shapedArray) => (T[,,,,,,])shapedArray.internalData!;
+        public static explicit operator T[,,,,,,](DataBuffer<T> shapedArray)
+            => shapedArray.internalData is T[,,,,,,] data
+                ? data
+                : throw new InvalidOperationException("Buffer is not a 7D array.");
         #endregion
     }
 }
