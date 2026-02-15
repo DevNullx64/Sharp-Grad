@@ -58,7 +58,7 @@ namespace TestProject.Activations
 
             var cpu = new DeviceCpu();
 
-            ReducedValue<T> sum = VMath.Sum(a, dim1);
+            Value<T> sum = VMath.Sum(a, dim1);
             cpu.Forward(sum);
             Debug.Assert(sum.Data[0] == T.CreateTruncating(6.0));
             Debug.WriteLine($"Test sum passed. Result: {sum.Data[0]}");
@@ -69,13 +69,13 @@ namespace TestProject.Activations
                 { T.CreateTruncating(3.0), T.CreateTruncating(4.0) },
                 { T.CreateTruncating(5.0), T.CreateTruncating(6.0) } },
                 dim1, dim2);
-            ReducedValue<T> sum2 = VMath.Sum(b, dim1, dim2);
+            Value<T> sum2 = VMath.Sum(b, dim1, dim2);
             cpu.Forward(sum2);
             Debug.Assert(sum2.Data[0] == T.CreateTruncating(21.0));
             Debug.WriteLine($"Test sum passed. Result: {sum2.Data[0]}");
 
             // Sum along the second dimension
-            ReducedValue<T> sum3 = VMath.Sum(b, dim2);
+            Value<T> sum3 = VMath.Sum(b, dim2);
             cpu.Forward(sum3);
             Debug.Assert(sum3.Data[0] == T.CreateTruncating(1 + 2));
             Debug.Assert(sum3.Data[1] == T.CreateTruncating(3 + 4));
@@ -83,20 +83,20 @@ namespace TestProject.Activations
             var sum3Data = sum3.Data;
             Debug.WriteLine($"Test sum along dim2 passed. Result: [{sum3Data[0]}, {sum3Data[1]}, {sum3Data[2]}]");
 
-            ReducedValue<T> sum3bis = VMath.Sum(sum3, dim1);
+            Value<T> sum3bis = VMath.Sum(sum3, dim1);
             cpu.Forward(sum3bis);
             Debug.Assert(sum3bis.Data[0] == T.CreateTruncating(1 + 2 + 3 + 4 + 5 + 6));
             Debug.WriteLine($"Test sum along dim1 passed. Result: {sum3bis.Data[0]}");
 
             // Sum along the first dimension
-            ReducedValue<T> sum4 = VMath.Sum(b, dim1);
+            Value<T> sum4 = VMath.Sum(b, dim1);
             cpu.Forward(sum4);
             Debug.Assert(sum4.Data[0] == T.CreateTruncating(1 + 3 + 5));
             Debug.Assert(sum4.Data[1] == T.CreateTruncating(2 + 4 + 6));
             var sum4Data = sum4.Data;
             Debug.WriteLine($"Test sum along dim1 passed. Result: [{sum4Data[0]}, {sum4Data[1]}]");
 
-            ReducedValue<T> sum4bis = VMath.Sum(sum4, dim2);
+            Value<T> sum4bis = VMath.Sum(sum4, dim2);
             cpu.Forward(sum4bis);
             Debug.Assert(sum4bis.Data[0] == T.CreateTruncating(1 + 3 + 5 + 2 + 4 + 6));
             Debug.WriteLine($"Test sum along dim2 passed. Result: {sum4bis.Data[0]}");

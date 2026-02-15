@@ -22,8 +22,8 @@ namespace TestProject.Compilation
             BinaryComputedValue<float> a_plus_b = a + b;
 
             // sum(A) and sum(A+B) (in general, the barrier is set by the type or context)
-            ReducedValue<float> sum_a = VMath.Sum(a, Da);
-            ReducedValue<float> sum_a_plus_b = VMath.Sum(a_plus_b, Db);
+            Value<float> sum_a = VMath.Sum(a, Da);
+            Value<float> sum_a_plus_b = VMath.Sum(a_plus_b, Db);
 
             // Check that these are reduction barriers
             Assert.IsTrue(((Value)sum_a).Kind.IsReduction(), "sumA should be a reduction barrier.");
