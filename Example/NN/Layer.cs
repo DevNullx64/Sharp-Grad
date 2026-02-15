@@ -51,11 +51,34 @@ namespace SharpGrad.NN
 
         public void Step(TType lr)
         {
-            Dimdexer dimdexer = new(Weights.Shape);
-            IReadOnlyDataBuffer<TType> WeightsGrad = Weights.Grad;
-            foreach (Dimdices dimdices in dimdexer)
+            var weightsData = Weights.Data;
+            var weightsGrad = Weights.Grad;
+
+            int oSize = Shape[0].Size;
+            int iSize = Shape[1].Size;
+            if (oSize == 1)
             {
-                Weights[dimdices] -= lr * WeightsGrad[dimdices];
+                for (int i = 0; i < iSize; i++)
+                {
+                    weightsData[i] -= lr * weightsGrad[i];
+                }
+            }
+            else if (iSize == 1)
+            {
+                for (int o = 0; o < oSize; o++)
+                {
+                    weightsData[o] -= lr * weightsGrad[o];
+                }
+            }
+            else
+            {
+                for (int o = 0; o < oSize; o++)
+                {
+                    for (int i = 0; i < iSize; i++)
+                    {
+                        weightsData[o, i] -= lr * weightsGrad[o, i];
+                    }
+                }
             }
         }
     }

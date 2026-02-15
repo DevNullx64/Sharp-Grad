@@ -19,7 +19,7 @@ internal class Program
         Dimension output = Dimension.Scalar;
         MLP<float> cerebrin = new([input, hidden, output]);
 
-        int epochs = 1000;
+        int epochs = 30;
 
         DataSet.Data[] preds = new DataSet.Data[batch.Size];
 
@@ -58,12 +58,12 @@ internal class Program
             cpu.Backward(loss);
 
             // Build prediction data
-            foreach (Dimdices dimdices in new Dimdexer(Y.Shape))
+            var yData = (IReadOnlyDataBuffer<float>)Y.Data;
+            for (int b = 0; b < batch.Size; b++)
             {
-                int j = dimdices[batch];
-                float d = Y[dimdices];
+                float d = yData[b];
                 int val = Math.Abs(d - 1) < Math.Abs(d - 2) ? 1 : 2;
-                preds[j] = new(v[j].X, [val]);
+                preds[b] = new(v[b].X, [val]);
             }
 
             // Update weights
@@ -72,16 +72,16 @@ internal class Program
             cpu.ResetGradient(loss);
 
             // Print loss and scatter plot
-            Dimdices lossDim = new(loss.Shape, new int[loss.Shape.Rank]);
-            Console.WriteLine($"Loss: {loss[lossDim]:E3} / {minLoss:E3}");
+            float lossValue = loss.Data[0];
+            Console.WriteLine($"Loss: {lossValue:E3} / {minLoss:E3}");
             if ((DateTime.Now - lastShow).TotalMilliseconds > 125)
             {
                 lastShow = DateTime.Now;
                 DataSet.Scatter(v, preds);
             }
-            if (minLoss > loss[lossDim])
+            if (minLoss > lossValue)
             {
-                minLoss = loss[lossDim];
+                minLoss = lossValue;
             }
         }
     }
