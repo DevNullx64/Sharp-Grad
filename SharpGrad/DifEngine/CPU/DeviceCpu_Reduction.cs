@@ -92,7 +92,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         private void ExecuteReductionForward<TType>(KindReduction kind, Value untypedInput, Value untypedOutput, Dimension[] reduceDims)
             where TType : struct, INumber<TType>
         {
-            TType[] currentInput = untypedInput.GetInitializedData<TType>().ToArray();
+            TType[] currentInput = untypedInput.GetInitializedDataSpan<TType>().ToArray();
             Shape currentShape = untypedInput.Shape;
 
             KindBinary baseOp = kind.GetBaseOperation();
@@ -113,7 +113,7 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
                 if (isFinal)
                 {
-                    currentOutput.CopyTo(untypedOutput.GetInitializedData<TType>());
+                    currentOutput.CopyTo(untypedOutput.GetInitializedDataSpan<TType>());
                 }
 
                 currentInput = currentOutput;
@@ -126,15 +126,15 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         {
             untypedOutput.InitializeData();
 
-            TType[] input = untypedInput.GetInitializedData<TType>().ToArray();
-            TType[] output = untypedOutput.GetInitializedData<TType>().ToArray();
+            TType[] input = untypedInput.GetInitializedDataSpan<TType>().ToArray();
+            TType[] output = untypedOutput.GetInitializedDataSpan<TType>().ToArray();
 
             KindBinary baseOp = kind.GetBaseOperation();
             Func<TType, TType, TType> operation = BinaryOperations.GetKindForwardDelegate<TType>(baseOp);
 
             FillSpan(output.AsSpan(), ((KindGraphNode)baseOp).GetNeutralElement<TType>());
             Reduce(input, untypedInput.Shape, output, reduceDim, operation);
-            output.CopyTo(untypedOutput.GetInitializedData<TType>());
+            output.CopyTo(untypedOutput.GetInitializedDataSpan<TType>());
         }
 
         public static void FillArray<TType>(TType[] output, TType neutralElement)
@@ -229,8 +229,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
         {
             untypedInput.InitializeGrad<TGrad>();
 
-            KindBinary baseOp = (KindBinary)((int)kind & ~(int)KindCategory.Reduction);
-            KindBinary inverseOp = (KindBinary)((int)baseOp | (int)KindProperty.Inverse);
+            KindBinary baseOp = kind.GetBaseOperation();
+            KindBinary inverseOp = (KindBinary)((KindGraphNode)baseOp).GetInverse();
 
             Func<TType, TType, TType> inverseOperation = BinaryOperations.GetKindForwardDelegate<TType>(inverseOp);
             Func<TType, TType, TGrad, TGrad> backwardRight = BinaryOperations.GetKindBackwardRightDelegate<TType, TGrad>(baseOp);
@@ -241,9 +241,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
             ParallelFor(0, inputLength, range =>
             {
-                Span<TType> input = untypedInput.GetInitializedData<TType>();
+                Span<TType> input = untypedInput.GetInitializedDataSpan<TType>();
                 Span<TGrad> gradInput = untypedInput.GetInitializedGrad<TGrad>();
-                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                Span<TType> output = untypedOutput.GetInitializedDataSpan<TType>();
                 Span<TGrad> gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
 
                 for (int iInput = range.Item1; iInput < range.Item2; iInput++)

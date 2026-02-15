@@ -70,8 +70,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             
             ParallelFor(0, length, range =>
             {
-                Span<TType> input = untypedInput.GetInitializedData<TType>();
-                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                Span<TType> input = untypedInput.GetInitializedDataSpan<TType>();
+                Span<TType> output = untypedOutput.GetInitializedDataSpan<TType>();
 
                 for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
@@ -140,8 +140,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
             ParallelFor(0, length, range =>
             {
-                Span<TFrom> input = untypedInput.GetInitializedData<TFrom>();
-                Span<TTo> output = untypedOutput.GetInitializedData<TTo>();
+                Span<TFrom> input = untypedInput.GetInitializedDataSpan<TFrom>();
+                Span<TTo> output = untypedOutput.GetInitializedDataSpan<TTo>();
 
                 for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                 {
@@ -212,9 +212,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
             ParallelFor(0, length, range =>
             {
-                Span<TType> input = untypedInput.GetInitializedData<TType>();
+                Span<TType> input = untypedInput.GetInitializedDataSpan<TType>();
                 Span<TGrad> gradInput = untypedInput.GetInitializedGrad<TGrad>();
-                Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                Span<TType> output = untypedOutput.GetInitializedDataSpan<TType>();
                 Span<TGrad> gradOutput = untypedOutput.GetInitializedGrad<TGrad>();
 
                 for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
@@ -287,9 +287,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
             ParallelFor(0, length, range =>
             {
-                Span<TFrom> input = untypedInput.GetInitializedData<TFrom>();
+                Span<TFrom> input = untypedInput.GetInitializedDataSpan<TFrom>();
                 Span<TGrad> inputGrad = untypedInput.GetInitializedGrad<TGrad>();
-                Span<TTo> output = untypedOutput.GetInitializedData<TTo>();
+                Span<TTo> output = untypedOutput.GetInitializedDataSpan<TTo>();
                 Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
                 for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)

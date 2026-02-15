@@ -245,19 +245,6 @@ namespace SharpGrad
             }
         }
 
-        public T this[Dimdices indices]
-        {
-            get => GetFlatData()[Shape.GetLinearIndex(indices)];
-            set
-            {
-                if (internalData is null)
-                {
-                    throw new InvalidOperationException("Buffer is not initialized.");
-                }
-                GetFlatData()[Shape.GetLinearIndex(indices)] = value;
-            }
-        }
-
         protected bool NoLock_Initialize()
         {
             if (internalData is null)

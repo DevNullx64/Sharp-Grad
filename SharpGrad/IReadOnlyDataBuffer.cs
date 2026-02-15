@@ -42,12 +42,5 @@ namespace SharpGrad
         /// <param name="indices">The indices of the element.</param>
         /// <returns>The element at the specified indices.</returns>
         T this[params Index[] indices] { get; }
-
-        /// <summary>
-        /// Gets the element at the specified indices.
-        /// </summary>
-        /// <param name="indices">The indices of the element.</param>
-        /// <returns>The element at the specified indices.</returns>
-        T this[Dimdices indices] { get; }
     }
 }

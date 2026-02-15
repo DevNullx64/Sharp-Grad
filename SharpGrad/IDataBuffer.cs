@@ -45,13 +45,6 @@ namespace SharpGrad
         new T this[params Index[] indices] { get; set; }
 
         /// <summary>
-        /// Gets or sets the element at the specified indices.
-        /// </summary>
-        /// <param name="indices">The indices of the element.</param>
-        /// <returns>The element at the specified indices.</returns>
-        new T this[Dimdices indices] { get; set; }
-
-        /// <summary>
         /// Fills the array with the specified value.
         /// </summary>
         /// <param name="value">The value to fill the array with.</param>

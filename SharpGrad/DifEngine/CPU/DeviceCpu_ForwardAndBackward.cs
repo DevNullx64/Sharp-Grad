@@ -170,7 +170,14 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
                             ExecuteBinaryBackward(binaryNode.Kind, binaryNode.Left, binaryNode.Right, node);
                             break;
                         case IGraphNodeReduction<Value> reductionNode:
-                            throw new NotImplementedException($"Backward for GraphNodeKind {node.Kind} is not implemented.");
+                            if (!reductionNode.Operand.IsGradiable)
+                                continue;
+                            Dimension[] dimensions = reductionNode.Dimensions;
+                            for (int j = reductionNode.Dimensions.Length - 1; j >= 0; j--)
+                            {
+                                ExecuteReductionBackward(reductionNode.Kind, reductionNode.Operand, node, dimensions[j]);
+                            }
+                            break;
                         case IFunctionGraphNode<Value> functionNode:
                             throw new NotImplementedException($"Backward for GraphNodeKind {node.Kind} is not implemented.");
                         default:

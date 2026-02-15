@@ -1,6 +1,4 @@
-﻿using SharpGrad;
-using SharpGrad.DifEngine;
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace SharpGrad.DifEngine.Loss
 {

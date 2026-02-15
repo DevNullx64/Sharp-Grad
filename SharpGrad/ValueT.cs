@@ -38,14 +38,6 @@ namespace SharpGrad
             set => data[indices] = value;
         }
 
-        public TType this[Dimdices indices]
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Data[indices];
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal set => data[indices] = value;
-        }
-
 
         internal readonly DataBuffer<TType> data;
 

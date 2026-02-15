@@ -41,7 +41,7 @@ namespace SharpGrad
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal Span<TType> GetInitializedData<TType>() where TType : struct, INumber<TType>
+        internal Span<TType> GetInitializedDataSpan<TType>() where TType : struct, INumber<TType>
         {
             if (untypedData is DataBuffer<TType> dataBuffer)
             {
@@ -175,7 +175,7 @@ namespace SharpGrad
             return GetInitializedGradBuffer<TGrad>();
         }
 
-        public bool IsGradiable { get; set; } = !kind.IsValue();
+        public bool IsGradiable { get; set; } = kind != KindGraphNode.Constant;
 
         public KindGraphNode Kind
         {

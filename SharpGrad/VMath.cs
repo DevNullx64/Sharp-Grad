@@ -1,4 +1,6 @@
 ﻿using SharpGrad.DifEngine.SyntaxBuilder;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -17,8 +19,19 @@ namespace SharpGrad
             => new(KindBinary.Power, @this, exponent);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ReducedValue<TType> Sum<TType>(this Value<TType> @this, params Dimension[] toReduce)
+        public static Value<TType> Sum<TType>(this Value<TType> @this, params Dimension[] toReduce)
             where TType : struct, INumber<TType>
-            => new(KindReduction.Sum, @this, toReduce);
+        {
+            // toReduce = [.. toReduce.Where(d => !d.IsScalar).Distinct()];
+            List<Dimension> toReduceList = [];
+            foreach (Dimension d in toReduce)
+            {
+                if (!d.IsScalar && !toReduceList.Contains(d))
+                    toReduceList.Add(d);
+            }
+            return toReduceList.Count == 0
+                ? @this
+                : new ReducedValue<TType>(KindReduction.Sum, @this, toReduceList.ToArray());
+        }
     }
 }

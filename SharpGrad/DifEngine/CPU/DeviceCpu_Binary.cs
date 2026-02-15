@@ -50,9 +50,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
-                    Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
+                    Span<TType> output = untypedOutput.GetInitializedDataSpan<TType>();
 
                     for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                     {
@@ -64,9 +64,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
-                    Span<TType> output = untypedOutput.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
+                    Span<TType> output = untypedOutput.GetInitializedDataSpan<TType>();
 
                     for (int iOutput = range.Item1; iOutput < range.Item2; iOutput++)
                     {
@@ -144,9 +144,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
                     for (int i = range.Item1; i < range.Item2; i++)
@@ -159,9 +159,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
                     
                     for (int i = range.Item1; i < range.Item2; i++)
@@ -177,9 +177,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = toReduceLeftGrad;
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
                     for (int i = range.Item1; i < range.Item2; i++)
@@ -232,8 +232,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -247,8 +247,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -265,8 +265,8 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = toReduceRightGrad;
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -322,9 +322,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -339,9 +339,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -357,9 +357,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
             {
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = untypedLeft.GetInitializedGrad<TGrad>();
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = untypedRight.GetInitializedGrad<TGrad>();
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 
@@ -378,9 +378,9 @@ namespace SharpGrad.DifEngine.SyntaxBuilder.CPU
 
                 ParallelFor(0, length, range =>
                 {
-                    Span<TType> left = untypedLeft.GetInitializedData<TType>();
+                    Span<TType> left = untypedLeft.GetInitializedDataSpan<TType>();
                     Span<TGrad> leftGrad = toReduceLeftGrad;
-                    Span<TType> right = untypedRight.GetInitializedData<TType>();
+                    Span<TType> right = untypedRight.GetInitializedDataSpan<TType>();
                     Span<TGrad> rightGrad = toReduceRightGrad;
                     Span<TGrad> outputGrad = untypedOutput.GetInitializedGrad<TGrad>();
 

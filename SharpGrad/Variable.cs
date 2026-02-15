@@ -8,13 +8,6 @@ namespace SharpGrad
     public class Variable<TType> : Value<TType>
         where TType : struct, INumber<TType>
     {
-        public new TType this[Dimdices indices] {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => base[indices];
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set => base[indices] = value;
-        }
-
         public Variable(string name, Shape shape)
             : base(shape, name, KindGraphNode.Variable)
         { }
@@ -23,6 +16,11 @@ namespace SharpGrad
             : this(shape, name)
         {
             base.data.SetData(data);
+        }
+        public new DataBuffer<TType> Data
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => data;
         }
 
         public Variable(string name, TType data)

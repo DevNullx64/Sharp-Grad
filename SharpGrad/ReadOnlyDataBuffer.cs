@@ -109,15 +109,5 @@ namespace SharpGrad
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => flatData[Shape.GetLinearIndex(indices)];
         }
-        /// <summary>
-        /// Gets the element at the specified indices.
-        /// </summary>
-        /// <param name="indices">The indices of the element.</param>
-        /// <returns>The element at the specified indices.</returns>
-        public T this[Dimdices indices]
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => flatData[Shape.GetLinearIndex(indices)];
-        }
     }
 }

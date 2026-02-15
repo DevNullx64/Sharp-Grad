@@ -196,7 +196,7 @@ namespace SharpGrad
         {
             if(dimensions is null || Strides is null) // this.Rank == 0
             {
-                if (indices.Length != 0)
+                if (indices.Length > 1)
                 {
                     throw new ArgumentException($"The shape is scalar, but indices length is {indices.Length}.");
                 }
@@ -243,42 +243,6 @@ namespace SharpGrad
                 offsets[i] = indices[i].GetOffset(dimensions[i].Size);
             }
             return GetLinearIndex(offsets);
-        }
-
-        /// <summary>
-        /// Get the linear index in this shape from the given dimdices, which must contain all dimensions of this shape.
-        /// </summary>
-        /// <param name="dimdices">The dimdices containing the indices for each dimension of this shape.</param>
-        /// <returns>The linear index corresponding to the given dimdices.</returns>
-        /// <remarks>
-        /// This method assumes that the provided dimdices contain all dimensions of this shape.
-        /// It will throw an exception if any dimension of this shape is missing in the dimdices.
-        /// </remarks>
-        /// <exception cref="IndexOutOfRangeException">Thrown if any dimension of this shape is missing in the dimdices or if any index is out of range for its corresponding dimension.</exception>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetLinearIndex(Dimdices dimdices)
-        {
-            if (dimensions is null) // this.Rank == 0
-            {
-                return 0;
-            }
-
-            int rank = dimensions.Length;
-            int[] localIndices = new int[rank];
-            for (int i = 0; i < rank; i++)
-            {
-                Dimension dim = dimensions[i];
-                Index index = dimdices[dim]; // Throws if the dimension is not found in the dimdices.
-                int dimSize = dim.Size;
-                int idx = index.GetOffset(dimSize);
-                if(idx < 0 || idx >= dimSize)
-                {
-                    throw new IndexOutOfRangeException($"Index {index} is out of range for dimension {dim} with size {dim.Size}.");
-                }
-                localIndices[i] = idx;
-            }
-
-            return GetLinearIndex(localIndices);
         }
 
         /// <summary>
